@@ -1,6 +1,6 @@
 {
-  "revision": 9,
-  "progress": "crest_playable_solo_and_local",
+  "revision": 10,
+  "progress": "lunar_bases_campaign",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
     "duration_minutes": 120,
@@ -313,10 +313,6 @@
     "status": "playable",
     "main_scene_baseline": "res://field/field.tscn",
     "demo_level": "coop_crest",
-    "later_level_candidates": [
-      "coop_nobile",
-      "coop_taurus"
-    ],
     "platform": "Windows desktop",
     "presentation": "2.5D con cámara ortográfica a tres cuartos y movimiento en un plano",
     "players": 2,
@@ -347,7 +343,9 @@
     },
     "flow": [
       "lobby",
+      "bases",
       "briefing",
+      "intro",
       "tutorial",
       "active",
       "countdown",
@@ -379,7 +377,7 @@
     "radio_round_trip_seconds": 2.56,
     "data_snapshot": "context_core/data/lunar_reference_v1.json",
     "next": [
-      "Sesión con jugadores nuevos para medir claridad, dificultad y ganas de repetir"
+      "Observar primeras partidas voluntarias con jugadores de 12 años"
     ],
     "demo_zones": [
       "crest_habitat",
@@ -433,6 +431,152 @@
         "active_players": 2
       }
     },
-    "main_scene": "res://crest/crest.tscn"
+    "main_scene": "res://crest/crest.tscn",
+    "campaign": {
+      "order": [
+        "cresta",
+        "nobile",
+        "taurus"
+      ],
+      "bases": {
+        "cresta": {
+          "name": "Estación Cresta",
+          "tag": "INICIACIÓN",
+          "region": "Borde de Shackleton",
+          "hint": "Aprende a montar la base y a guardar energía para la noche.",
+          "soil": "#5c586c",
+          "nights": [
+            [
+              106,
+              142
+            ],
+            [
+              230,
+              254
+            ],
+            [
+              342,
+              368
+            ]
+          ],
+          "last_day": 2,
+          "events": [
+            [
+              "sep",
+              58,
+              18
+            ],
+            [
+              "supply",
+              148,
+              0
+            ],
+            [
+              "sep",
+              206,
+              18
+            ]
+          ]
+        },
+        "nobile": {
+          "name": "Puesto Nobile",
+          "tag": "INTERMEDIA",
+          "region": "Cráter Nobile",
+          "hint": "Las colinas cortan la radio. Aprovecha el regreso de la señal.",
+          "soil": "#4e596c",
+          "nights": [
+            [
+              86,
+              115
+            ],
+            [
+              204,
+              236
+            ],
+            [
+              334,
+              366
+            ]
+          ],
+          "last_day": 3,
+          "events": [
+            [
+              "relay",
+              48,
+              24
+            ],
+            [
+              "supply",
+              118,
+              0
+            ],
+            [
+              "sep",
+              163,
+              20
+            ],
+            [
+              "relay",
+              242,
+              26
+            ]
+          ]
+        },
+        "taurus": {
+          "name": "Base Taurus-Littrow",
+          "tag": "AVANZADA",
+          "region": "Valle de Taurus-Littrow",
+          "hint": "Una avería puede cortar la energía aun cuando brilla el Sol.",
+          "soil": "#67565d",
+          "nights": [
+            [
+              86,
+              118
+            ],
+            [
+              211,
+              245
+            ],
+            [
+              342,
+              380
+            ]
+          ],
+          "last_day": 3,
+          "events": [
+            [
+              "sep",
+              52,
+              22
+            ],
+            [
+              "outage",
+              146,
+              23
+            ],
+            [
+              "supply",
+              177,
+              0
+            ],
+            [
+              "sep",
+              254,
+              22
+            ],
+            [
+              "outage",
+              297,
+              18
+            ]
+          ]
+        }
+      },
+      "bonus": {
+        "water": 2,
+        "rations": 1
+      },
+      "intro_seconds": 14.5
+    }
   }
 }

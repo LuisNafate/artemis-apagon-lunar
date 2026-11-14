@@ -119,3 +119,9 @@ El corte previsto reutiliza elementos de locomoción de FieldPilot y el patrón 
 El arranque abre `crest/crest.tscn`. CrestGame conecta dos FieldPilot con CrestWorld, CrestSim y CrestHUD. La Cámara3D ortográfica a tres cuartos encuadra la estación completa. Los personajes se desplazan sobre XZ y conservan el volumen de las mallas. Un jugador alterna el astronauta con Tab. Dos jugadores usan entradas simultáneas y comparten el inventario y el reloj. El refugio, la batería y las recetas viven en el modelo de misión, y el HUD accede a las muestras archivadas sin red.
 
 Las escenas de Apagón lunar, Academia y Tablero se mantienen editables para recuperar recursos y ejecutar sus regresiones. La exportación de Estación Cresta excluye esas escenas y las suites. Retiene la geometría auxiliar y FieldPilot, que sí utiliza la demo.
+
+## Bases lunares · revisión 10
+
+CrestGame abre el selector de astronautas y el mapa de bases. CrestIntro reproduce una secuencia de aterrizaje, montaje y mensaje de Tierra sobre CrestWorld. Al terminar restaura la cámara ortográfica y pasa al tutorial. La escena se puede omitir desde el botón o con Esc. CrestCampaign lee noches, avisos y reabastecimientos de state_registry.json. El mismo conjunto de locomoción y estaciones interpreta Cresta, Nobile y Taurus-Littrow. El núcleo de las estaciones mantiene la misma distribución.
+
+Los tres objetos Kenney se importan desde assets/props_luna/kenney. El registro de modelos identifica su procedencia, licencia y uso. El protocolo de observación de jugadores nuevos está en tools/skills/probar-juego-con-ninos/SKILL.md.

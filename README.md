@@ -1,10 +1,10 @@
 # ARTEMIS · Última ventana
 
-Entrenador de misión para astronautas junior. Juega en **Estación Cresta**, una estación lunar 2.5D. Mantén a dos astronautas con vida, construye mejoras y prepara su ascenso a órbita lunar.
+Entrenador de misión para astronautas junior. Juega en tres bases lunares 2.5D. Cresta enseña a sostener la base, Nobile añade cortes de radio y Taurus-Littrow añade averías de energía. Mantén a dos astronautas con vida, construye mejoras y prepara su ascenso a órbita lunar.
 
 ## Jugar
 
-En Windows ejecuta `Artemis-Ultima-Ventana.exe` de la demo. Para editarla, abre `project.godot` con Godot 4.7.2 y pulsa **F5**. El menú permite elegir un jugador o dos jugadores locales sin conexión.
+En Windows ejecuta `Artemis-Ultima-Ventana.exe` de la demo. Para editarla, abre `project.godot` con Godot 4.7.2 y pulsa **F5**. El menú permite elegir un jugador o dos jugadores locales sin conexión. Luego elige base y abre su historia animada. Esc omite la historia y deja el tutorial disponible.
 
 | Modo | Movimiento | Actuar | Pasar o soltar |
 | --- | --- | --- | --- |
@@ -14,9 +14,9 @@ En Windows ejecuta `Artemis-Ultima-Ventana.exe` de la demo. Para editarla, abre 
 
 **Esc** pausa. **F1** abre el archivo científico. En el menú de pausa o en el informe, usa **R** para empezar de nuevo.
 
-El tutorial enseña a recoger y entregar una caja. En la misión, lleva hielo y mineral al refinado. Intercambia agua por aire, cosechas y lotes de propelente. Puedes invertir el mineral en un taladro más rápido o en una batería que te ayude durante el apagón. Para despegar, carga tres lotes y dos raciones, confirma la lista con Tierra y sienta a ambos astronautas.
+Los días y noches se aceleran para la misión. Usa las horas de luz para acumular energía y mira el aviso verde cuando llegue un suministro. El tutorial enseña a recoger y entregar una caja. En la misión, lleva hielo y mineral al refinado. Intercambia agua por aire, cosechas y lotes de propelente. Puedes invertir el mineral en un taladro más rápido o en una batería que te ayude durante el apagón. Para despegar, carga tres lotes y dos raciones, confirma la lista con Tierra y sienta a ambos astronautas.
 
-Las muestras históricas de NASA DONKI, RadLab y NeoWs, junto con un TLE terrestre de la ISS, funcionan sin Internet. Las magnitudes didácticas y la procedencia se explican en el [catálogo científico](context_core/science_catalog.md). El [diseño de Estación Cresta](context_core/coop_tycoon_design.md) describe el escenario y los niveles candidatos.
+Las muestras históricas de NASA DONKI, RadLab y NeoWs, junto con un TLE terrestre de la ISS, funcionan sin Internet. Las magnitudes didácticas y la procedencia se explican en el [catálogo científico](context_core/science_catalog.md). El [diseño de Estación Cresta](context_core/coop_tycoon_design.md) describe los calendarios y las bases. El [registro de modelos](assets/props_luna/asset-register.md) identifica los objetos CC0 de Kenney.
 
 ## Apagón lunar
 

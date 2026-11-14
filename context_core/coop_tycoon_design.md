@@ -78,3 +78,7 @@ El reparto de tareas con objetos físicos toma como referencia Overcooked 2. El 
 La demo usa cámara ortográfica a tres cuartos y movimiento en un plano. Hay un selector de un jugador o dos locales. En individual, Tab alterna el astronauta y el reloj pasa de 7:00 a 8:30. El turno de práctica dura 10:00 y reduce la exposición. F1 abre el archivo científico y congela la simulación. Mayús derecha y la tecla de barra son equivalentes para pasar la carga de J2.
 
 La sombra pausa la respuesta de radio y la producción al agotarse la reserva. Dos avisos programados permiten practicar el refugio. Los tiempos definitivos para esta versión se guardan en state_registry.json. Nobile y Taurus-Littrow siguen como propuestas de nivel.
+
+## Selección de bases lunares
+
+Cresta, Nobile y Taurus-Littrow ahora entran por el mismo selector y representan tres dificultades. Cresta enseña energía y refugio, Nobile añade interrupciones de radio y Taurus-Littrow añade averías solares durante el día. Cada base conserva las estaciones y las señales comunes, tiene su propio terreno y abre su primera ventana en un amanecer distinto. En el amanecer pueden llegar suministros de agua y comida. Los días y las noches duran minutos en la simulación. [NASA · iluminación del polo sur](https://science.nasa.gov/resource/illumination-map-of-the-moons-south-pole/)

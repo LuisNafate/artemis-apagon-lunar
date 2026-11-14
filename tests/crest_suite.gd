@@ -18,6 +18,7 @@ func _ready() -> void:
 	_shared_inventory()
 	_power_and_hazards()
 	_science()
+	_campaign()
 	await _input_and_world()
 	if "--crest-capture" in OS.get_cmdline_user_args():
 		await _capture_liftoff()
@@ -163,6 +164,65 @@ func _science() -> void:
 	)
 
 
+func _campaign() -> void:
+	cases += 1
+	for id: StringName in [&"cresta", &"nobile", &"taurus"]:
+		var sim := CrestSim.new()
+		sim.campaign.select(id)
+		sim.begin(false, true)
+		var first: Array = sim.campaign.base.nights[0]
+		_check(not sim.shadow_active() and sim.campaign.day(0) == 1, "inicia con luz")
+		sim.elapsed = float(first[0])
+		_check(sim.shadow_active() and not sim.window_open(), "no despega con noche")
+		sim.elapsed = float(first[1])
+		_check(not sim.shadow_active() and sim.campaign.day(sim.elapsed) == 2, "amanece")
+		var supply_at := 0.0
+		for event: Array in sim.campaign.base.events:
+			if event[0] == "supply":
+				supply_at = float(event[1])
+		sim.elapsed = supply_at - 0.1
+		sim.tick(0.2, INDOORS, NO_SPOTS)
+		_check(sim.campaign.supply_pending, "una entrega aterriza")
+		var prior_water := sim.water
+		sim.water = int(sim.runtime.water_capacity)
+		sim.use_station(0, &"supply")
+		_check(sim.campaign.supply_pending, "reserva llena conserva el suministro")
+		sim.water = prior_water
+		sim.use_station(0, &"supply")
+		sim.use_station(1, &"supply")
+		_check(sim.water == prior_water + 2 and not sim.campaign.supply_pending, "bono único")
+		if id == &"nobile":
+			sim.elapsed = 47.0
+			sim.use_station(0, &"radio")
+			_run(sim, 3.0, INDOORS)
+			_check(
+				sim.radio_left > 0.0 and not sim.earth_ok, "respuesta en tránsito espera la señal"
+			)
+			sim.radio_left = 0.0
+			sim.use_station(0, &"radio")
+			_check(sim.radio_left == 0.0 and sim.radio_cut(), "la colina corta el enlace")
+			sim.elapsed = 73.0
+			sim.use_station(1, &"radio")
+			_check(sim.radio_left > 0.0, "confirma al despejarse")
+		elif id == &"taurus":
+			sim.elapsed = 151.0
+			sim.charge = 0.0
+			sim.tick(1.0, INDOORS, NO_SPOTS)
+			_check(sim.energy_cut() and not sim.life_powered, "avería durante el día")
+			sim.elapsed = 170.0
+			sim.tick(1.0, INDOORS, NO_SPOTS)
+			_check(sim.life_powered, "vuelve la generación")
+		var last_night: Array = sim.campaign.base.nights[int(sim.campaign.base.last_day) - 2]
+		sim.elapsed = float(last_night[1])
+		sim.fuel_loaded = 3
+		sim.food_loaded = 2
+		sim.earth_ok = true
+		sim.use_station(0, &"pad")
+		sim.use_station(1, &"pad")
+		_run(sim, float(sim.runtime.countdown) + 0.15, INDOORS)
+		_check(sim.phase == &"success", "ascenso posible en " + String(id))
+
+
 func _input_and_world() -> void:
 	cases += 1
 	var game := GAME.instantiate()
@@ -174,6 +234,16 @@ func _input_and_world() -> void:
 		get_viewport().get_texture().get_image().save_png("user://crest-lobby.png")
 	_tap(KEY_2)
 	_tap(KEY_1)
+	_tap(KEY_1)
+	_check(game._menu == &"intro" and game.intro.visible, "historia tras elegir Cresta")
+	_check(game.sim.elapsed == 0.0, "la animación no gasta tiempo")
+	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
+		game.intro._process(3.2)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("user://crest-story.png")
+	_tap(KEY_ESCAPE)
 	await get_tree().physics_frame
 	_check(game.sim.phase == &"tutorial" and not game.sim.solo, "selector cooperativo por teclado")
 	_tap(KEY_E)
@@ -220,6 +290,8 @@ func _input_and_world() -> void:
 	await get_tree().physics_frame
 	_tap(KEY_1)
 	_tap(KEY_1)
+	_tap(KEY_1)
+	solo.intro._process(30.0)
 	await get_tree().physics_frame
 	_check(solo.sim.solo and solo.sim.phase == &"tutorial", "selector individual por teclado")
 	_tap(KEY_E)
@@ -247,8 +319,9 @@ func _capture_liftoff() -> void:
 	add_child(game)
 	await get_tree().physics_frame
 	_tap(KEY_2)
+	_tap(KEY_1)
 	_tap(KEY_3)
-	game.sim.elapsed = float(game.sim.runtime.launch_opens) + 2
+	game.sim.elapsed = float(game.sim.campaign.base.nights[0][1]) + 2
 	game.sim.fuel_loaded = 3
 	game.sim.food_loaded = 2
 	game.sim.earth_ok = true
@@ -275,6 +348,7 @@ func _map_route(solo: bool) -> void:
 	add_child(game)
 	await get_tree().physics_frame
 	_tap(KEY_1 if solo else KEY_2)
+	_tap(KEY_1)
 	_tap(KEY_3)
 	await _walk(game, 0, Vector3(-10.9, 0.0, 5.0))
 	await _walk(game, 0, CrestWorld.STATIONS[&"ice"])
@@ -341,6 +415,8 @@ func _map_route(solo: bool) -> void:
 			await get_tree().physics_frame
 			await get_tree().physics_frame
 	_check(game.sim.fuel_loaded == 3, "lotes cargados recorriendo planta y vehículo")
+	while not game.sim.window_open() and not game.sim.terminal():
+		await get_tree().physics_frame
 	_check(game.sim.window_open(), "preparados con ventana abierta")
 	for player in range(2):
 		await _walk(game, player, Vector3(0.02, 0, 4.85))

@@ -1,5 +1,5 @@
 {
-  "revision": 9,
+  "revision": 10,
   "nodes": [
     {
       "id": "config",
@@ -432,23 +432,23 @@
     },
     {
       "id": "coop_crest",
-      "kind": "level",
+      "kind": "lunar_base",
       "title": "Estación Cresta · Shackleton",
       "status": "implemented",
       "fictional_outpost": true
     },
     {
       "id": "coop_nobile",
-      "kind": "level",
+      "kind": "lunar_base",
       "title": "Puesto Nobile · prospección y radio",
-      "status": "candidate",
+      "status": "implemented",
       "fictional_outpost": true
     },
     {
       "id": "coop_taurus",
-      "kind": "level",
+      "kind": "lunar_base",
       "title": "Estación Taurus-Littrow · misión científica",
-      "status": "candidate",
+      "status": "implemented",
       "fictional_outpost": true
     },
     {
@@ -731,6 +731,37 @@
       "id": "crest_menu_choice",
       "kind": "signal",
       "name": "selected"
+    },
+    {
+      "id": "lunar_campaign",
+      "kind": "script",
+      "path": "crest/crest_campaign.gd"
+    },
+    {
+      "id": "lunar_intro",
+      "kind": "script",
+      "path": "crest/crest_intro.gd"
+    },
+    {
+      "id": "kenney_props",
+      "kind": "asset",
+      "path": "assets/props_luna/kenney"
+    },
+    {
+      "id": "lunar_asset_register",
+      "kind": "data",
+      "path": "assets/props_luna/asset-register.md"
+    },
+    {
+      "id": "junior_playtest",
+      "kind": "skill",
+      "path": "tools/skills/probar-juego-con-ninos/SKILL.md"
+    },
+    {
+      "id": "lunar_forecast",
+      "kind": "mechanic",
+      "title": "Calendario independiente por base",
+      "status": "implemented"
     }
   ],
   "edges": [
@@ -1411,16 +1442,6 @@
     ],
     [
       "coop_design",
-      "proposes",
-      "coop_nobile"
-    ],
-    [
-      "coop_design",
-      "proposes",
-      "coop_taurus"
-    ],
-    [
-      "coop_design",
       "documents_sources_in",
       "coop_catalog"
     ],
@@ -1793,6 +1814,86 @@
       "crest_export",
       "packages",
       "crest_scene"
+    ],
+    [
+      "crest_sim",
+      "owns",
+      "lunar_campaign"
+    ],
+    [
+      "lunar_campaign",
+      "loads",
+      "config"
+    ],
+    [
+      "lunar_campaign",
+      "offers",
+      "coop_crest"
+    ],
+    [
+      "lunar_campaign",
+      "offers",
+      "coop_nobile"
+    ],
+    [
+      "lunar_campaign",
+      "offers",
+      "coop_taurus"
+    ],
+    [
+      "lunar_campaign",
+      "defines",
+      "lunar_forecast"
+    ],
+    [
+      "lunar_forecast",
+      "changes",
+      "coop_power"
+    ],
+    [
+      "lunar_forecast",
+      "changes",
+      "coop_radio"
+    ],
+    [
+      "crest_game",
+      "plays",
+      "lunar_intro"
+    ],
+    [
+      "lunar_intro",
+      "depicts",
+      "coop_crest"
+    ],
+    [
+      "lunar_intro",
+      "depicts",
+      "coop_nobile"
+    ],
+    [
+      "lunar_intro",
+      "depicts",
+      "coop_taurus"
+    ],
+    [
+      "crest_world",
+      "uses",
+      "kenney_props"
+    ],
+    [
+      "lunar_asset_register",
+      "documents",
+      "kenney_props"
+    ],
+    [
+      "crest_suite_script",
+      "exercises",
+      "lunar_campaign"
+    ],
+    [
+      "coop_test_first_run",
+      "described_by",
+      "junior_playtest"
     ]
   ]
 }

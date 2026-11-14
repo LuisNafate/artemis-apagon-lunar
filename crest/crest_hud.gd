@@ -17,6 +17,8 @@ const RED := Color("#ff927e")
 const PANEL := Color("#131b29")
 const EDGE := Color("#39465d")
 
+var base_title: Label
+var cycle: Label
 var clock: Label
 var weather: Label
 var headline: Label
@@ -45,9 +47,9 @@ func build() -> void:
 	var top := _panel(self, Rect2(24, 20, 1232, 85), PANEL)
 	_panel(top, Rect2(0, 0, 5, 85), AMBER, AMBER)
 	_label(top, "ARTEMIS / ENTRENADOR LUNAR", Rect2(17, 8, 280, 21), 12, MONO, AMBER)
-	_label(top, "ESTACIÓN CRESTA", Rect2(17, 25, 352, 47), 34, DISPLAY, WHITE)
+	base_title = _label(top, "ESTACIÓN CRESTA", Rect2(17, 25, 295, 47), 32, DISPLAY, WHITE)
 	_panel(top, Rect2(319, 13, 1, 60), EDGE)
-	_label(top, "VENTANA DE VUELO", Rect2(339, 8, 215, 21), 12, MONO, DIM)
+	cycle = _label(top, "TIEMPO DE MISIÓN", Rect2(339, 8, 215, 21), 12, MONO, DIM)
 	clock = _label(top, "", Rect2(339, 26, 145, 45), 31, MONO, WHITE)
 	_panel(top, Rect2(513, 13, 1, 60), EDGE)
 	_label(top, "ESTADO DE SUPERFICIE", Rect2(532, 8, 304, 21), 12, MONO, DIM)
@@ -102,9 +104,13 @@ func update_status(
 	sim: CrestSim, spots: Array[StringName], feedback_message: String, active_pilot: int
 ) -> void:
 	var seconds := maxi(0, ceili(sim.duration() - sim.elapsed))
+	if not sim.campaign.base.is_empty():
+		base_title.text = String(sim.campaign.base.name).to_upper()
+		var day := sim.campaign.day(sim.elapsed)
+		cycle.text = "%s %d  /  RESTANTE" % ["NOCHE" if sim.shadow_active() else "DÍA", day]
 	clock.text = "%02d:%02d" % [seconds / 60, seconds % 60]
 	weather.text = _weather(sim)
-	weather.modulate = RED if sim.storm_active() or sim.shadow_active() else WHITE
+	weather.modulate = RED if sim.storm_active() or sim.energy_cut() else WHITE
 	checklist.text = (
 		"PROP. %d/%d   COMIDA %d/%d   J %d/2"
 		% [
@@ -116,10 +122,12 @@ func update_status(
 		]
 	)
 	signal_state.text = "Tierra confirmó la lista" if sim.earth_ok else "Radio · por confirmar"
+	if sim.radio_cut() and not sim.earth_ok:
+		signal_state.text = "Radio · sin señal por ahora"
 	if sim.radio_left > 0.0:
 		signal_state.text = (
-			"Radio · espera luz en el relé"
-			if sim.shadow_active()
+			"Radio · espera el regreso de la señal"
+			if sim.radio_cut()
 			else "Radio · respuesta en %.1f s" % sim.radio_left
 		)
 	inventories.text = (
@@ -156,6 +164,16 @@ func menu(mode: StringName, sim: CrestSim, science_index: int = 0) -> void:
 		return
 	var options: Array[String] = []
 	match mode:
+		&"bases":
+			_dialog_kicker.text = "BASES LUNARES   /   ELIGE TU MISIÓN"
+			_dialog_title.text = "¿Dónde aterrizamos?"
+			_dialog_body.text = (
+				"Cresta · Iniciación: guarda energía para la noche.\n"
+				+ "Nobile · Intermedia: prepárate para cortes de radio.\n"
+				+ "Taurus-Littrow · Avanzada: resiste averías de energía."
+			)
+			_dialog_note.text = "Esc vuelve al selector de jugadores"
+			options = ["1  Estación Cresta", "2  Puesto Nobile", "3  Taurus-Littrow"]
 		&"lobby":
 			_dialog_kicker.text = "ESTACIÓN CRESTA   /   ENTRENADOR LUNAR"
 			_dialog_title.text = "Última ventana"
@@ -163,21 +181,31 @@ func menu(mode: StringName, sim: CrestSim, science_index: int = 0) -> void:
 			_dialog_note.text = "Misión 2.5D · Teclado compartido · Sin conexión"
 			options = ["1  Un jugador", "2  Dos jugadores", "Archivo científico"]
 		&"briefing":
-			_dialog_kicker.text = "ESTACIÓN CRESTA   /   MISIÓN COOPERATIVA"
-			_dialog_title.text = "Última ventana"
+			_dialog_kicker.text = (
+				String(sim.campaign.base.tag)
+				+ "   /   "
+				+ String(sim.campaign.base.region).to_upper()
+			)
+			_dialog_title.text = sim.campaign.base.name
 			_dialog_body.text = (
-				"Alterna entre los dos astronautas con Tab y prepara el despegue."
-				if sim.solo
-				else "Dos astronautas. Un cohete. Repartan el trabajo y despeguen juntos."
+				(
+					"Alterna entre los dos astronautas con Tab y prepara el despegue."
+					if sim.solo
+					else "Dos astronautas. Un cohete. Repartan el trabajo y despeguen juntos."
+				)
+				+ "\n"
+				+ String(sim.campaign.base.hint)
 			)
 			_dialog_note.text = (
 				"Tab cambia de astronauta · Esc vuelve · F1 abre ciencia"
 				if sim.solo
 				else "Dos personas · Esc vuelve · F1 abre ciencia"
 			)
-			options = ["1  Empezar tutorial", "2  Modo práctica", "3  Saltar tutorial"]
+			options = ["1  Ver historia y jugar", "2  Modo práctica", "3  Jugar directamente"]
 		&"paused":
-			_dialog_kicker.text = "ESTACIÓN CRESTA   /   MISIÓN EN PAUSA"
+			_dialog_kicker.text = (
+				String(sim.campaign.base.name).to_upper() + "   /   MISIÓN EN PAUSA"
+			)
 			_dialog_title.text = "Pausa"
 			_dialog_body.text = "El reloj, las recetas y los mensajes esperan."
 			_dialog_note.text = "Esc reanuda · F1 abre el archivo científico"
@@ -199,7 +227,9 @@ func menu(mode: StringName, sim: CrestSim, science_index: int = 0) -> void:
 				)
 				options = ["← Anterior", "Siguiente →", "Abrir fuente"]
 		&"result":
-			_dialog_kicker.text = "ESTACIÓN CRESTA   /   INFORME DE VUELO"
+			_dialog_kicker.text = (
+				String(sim.campaign.base.name).to_upper() + "   /   INFORME DE VUELO"
+			)
 			var success := sim.phase == &"success"
 			_dialog_title.text = "En órbita lunar" if success else "Misión interrumpida"
 			_dialog_body.text = sim.result + "\n" + _debrief(sim)
@@ -214,7 +244,7 @@ func menu(mode: StringName, sim: CrestSim, science_index: int = 0) -> void:
 			)
 			options = ["Volver a jugar", "Archivo científico", "Controles"]
 		&"controls":
-			_dialog_kicker.text = "ESTACIÓN CRESTA   /   TECLADO COMPARTIDO"
+			_dialog_kicker.text = "ARTEMIS   /   TECLADO COMPARTIDO"
 			_dialog_title.text = "Controles"
 			_dialog_body.text = (
 				"WASD mueve · E actúa · Q pasa o suelta\nTab cambia de astronauta"
@@ -239,13 +269,19 @@ func _weather(sim: CrestSim) -> String:
 	if sim.storm_active():
 		return "¡PARTÍCULAS SOLARES! · REFUGIO"
 	if sim.shadow_active():
-		return "SOMBRA · RED EN BATERÍA"
+		return "NOCHE · RED EN BATERÍA"
+	if sim.energy_cut():
+		return "AVERÍA · RED EN BATERÍA"
+	if sim.radio_cut():
+		return "RELÉ SIN SEÑAL"
 	var until_storm := sim.storm_warning()
 	if until_storm > 0.0 and until_storm <= float(sim.targets.storm_warning_seconds):
 		return "ALERTA SOLAR EN %d s" % ceili(until_storm)
 	var until_shadow := float(sim.runtime.shadow_start) - sim.elapsed
+	if not sim.campaign.base.is_empty():
+		until_shadow = sim.campaign.next_night(sim.elapsed)
 	if until_shadow > 0.0 and until_shadow <= 12.0:
-		return "SOMBRA EN %d s" % ceili(until_shadow)
+		return "NOCHE EN %d s" % ceili(until_shadow)
 	return "LUZ SOLAR · RED ACTIVA"
 
 
@@ -290,10 +326,17 @@ func _objective(sim: CrestSim) -> void:
 		or sim.food_loaded < int(sim.config.launch_requirements.rations)
 	):
 		headline.text = "Abastezcan el cohete"
-		task.text = "Fabriquen propelente y cultiven raciones. Lleven cada lote al cohete."
+		task.text = "Preparen combustible para el cohete (propelente) y llévenle comida."
 	elif not sim.earth_ok:
 		headline.text = "Contacten con Tierra"
 		task.text = "Envíen la lista desde Radio. Pueden moverse mientras esperan."
+	elif not sim.window_open() and not sim.campaign.base.is_empty():
+		var release_day := maxi(
+			int(sim.campaign.base.last_day),
+			sim.campaign.day(sim.elapsed) + int(sim.shadow_active())
+		)
+		headline.text = "Esperen la luz del día %d" % release_day
+		task.text = "Recarguen aire en el refugio hasta que la ventana esté abierta."
 	else:
 		headline.text = "Embarquen juntos"
 		task.text = "Ambos actúan en el cohete con las manos libres. F1 abre ciencia."
@@ -315,6 +358,8 @@ func _station_hint(sim: CrestSim, player: int, station: StringName) -> String:
 	match station:
 		&"training":
 			return "Mesa de práctica"
+		&"supply":
+			return "Recoger agua y una ración"
 		&"ice", &"ore":
 			return (
 				"Extraer %s · %.0f s"

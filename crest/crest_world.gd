@@ -2,6 +2,9 @@ class_name CrestWorld
 extends Node3D
 
 const MONO := preload("res://assets/ui/fonts/IBMPlexMono-Medium.ttf")
+const TRANSPORT := preload("res://assets/props_luna/kenney/transporte.glb")
+const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
+const RECEIVER := preload("res://assets/props_luna/kenney/consola.glb")
 const BLUE := Color("#82ddff")
 const LIME := Color("#acd891")
 const AMBER := Color("#ffbc76")
@@ -11,6 +14,7 @@ const FRAME := Color("#273345")
 const DECK := Color("#4d5970")
 const SOIL := Color("#5c586c")
 const STATIONS := {
+	&"supply": Vector3(-3.7, 0, 6.55),
 	&"training": Vector3(0, 0, 5.3),
 	&"ice": Vector3(-11.1, 0, -0.5),
 	&"ore": Vector3(-11.1, 0, 4.2),
@@ -28,6 +32,7 @@ const SPAWNS := [Vector3(-1.0, 0.1, 6.1), Vector3(1.0, 0.1, 6.1)]
 const BOARDING := [Vector3(10.45, 0.04, 0.5), Vector3(11.95, 0.04, 0.5)]
 const SHELTER := Rect2(-2.9, 1.55, 5.8, 5.75)
 const NAMES := {
+	&"supply": "SUMINISTROS",
 	&"training": "PRÁCTICA",
 	&"ice": "HIELO",
 	&"ore": "MINERAL",
@@ -47,11 +52,17 @@ var rocket: Node3D
 var plume: Node3D
 var booster: Node3D
 var sun: DirectionalLight3D
+var night_lights: Array[MeshInstance3D] = []
 var aux_module: Node3D
 var drill_upgrade: Node3D
 var training_desk: Node3D
 var crops: Node3D
+var transport: Node3D
+var supply_pallet: Node3D
+var shelter_shell: Node3D
 var _floor_color: StandardMaterial3D
+var _equipment: Array[Node3D] = []
+var _soil := SOIL
 var _mission_clock := 0.0
 
 
@@ -61,17 +72,52 @@ func build() -> void:
 	_walkways()
 	_stations()
 	_build_rocket()
+	transport = TRANSPORT.instantiate()
+	transport.position = Vector3(-4, 0.25, 6.1)
+	transport.rotation_degrees.y = 66
+	transport.scale = Vector3.ONE * 2.0
+	add_child(transport)
+	transport.hide()
+	supply_pallet = _console(&"supply", LIME)
+	for index in range(3):
+		var parcel := Vector3(-0.49 + 0.49 * index, 0.22, 0.08)
+		FieldWorld.box(supply_pallet, parcel, Vector3(0.42, 0.39, 0.48), LIME)
+		FieldWorld.box(
+			supply_pallet, parcel + Vector3.UP * 0.211, Vector3(0.09, 0.025, 0.46), FRAME
+		)
+	supply_pallet.hide()
+
+
+func set_base(soil_color: String) -> void:
+	_soil = Color(soil_color)
+	_floor_color.albedo_color = _soil
+
+
+func animate_intro(progress: float) -> void:
+	transport.visible = progress < 0.64
+	var arrival := smoothstep(0.0, 0.31, progress)
+	transport.position = Vector3(lerpf(-12.0, -3.5, arrival), lerpf(4.8, 0.15, arrival), 3.6)
+	shelter_shell.scale = Vector3(1.0, maxf(0.01, smoothstep(0.29, 0.52, progress)), 1.0)
+	rocket.scale = Vector3.ONE * maxf(0.01, smoothstep(0.44, 0.68, progress))
+	for index in range(_equipment.size()):
+		var equipment := _equipment[index]
+		var delay := 0.32 + 0.026 * index
+		var unfold := smoothstep(delay, delay + 0.17, progress)
+		equipment.scale = Vector3.ONE * maxf(0.01, unfold)
+	training_desk.visible = progress >= 1.0
+	for marker: Node3D in markers.values():
+		marker.hide()
 
 
 func sheltered(point: Vector3) -> bool:
 	return SHELTER.has_point(Vector2(point.x, point.z))
 
 
-func nearest(point: Vector3, tutorial: bool) -> StringName:
+func nearest(point: Vector3, tutorial: bool, supply: bool = false) -> StringName:
 	var result := &""
 	var closest := 2.1 if tutorial else 1.63
 	for key: StringName in STATIONS:
-		if (key == &"training") != tutorial:
+		if (key == &"training") != tutorial or (key == &"supply" and not supply):
 			continue
 		var location: Vector3 = STATIONS[key]
 		var distance := point.distance_to(location)
@@ -84,10 +130,14 @@ func nearest(point: Vector3, tutorial: bool) -> StringName:
 func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> void:
 	_mission_clock += delta
 	var storm := sim.storm_active()
-	var power := 0.32 if sim.shadow_active() else 1.03
+	var power := 0.22 if sim.shadow_active() else 1.03
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
+	var light_color := Color("#93b9f5") if sim.shadow_active() else Color("#fff4dc")
+	sun.light_color = sun.light_color.lerp(light_color, minf(1.0, delta * 2.0))
+	for lamp in night_lights:
+		lamp.visible = sim.shadow_active()
 	_floor_color.albedo_color = _floor_color.albedo_color.lerp(
-		Color("#774756") if storm else SOIL, minf(1.0, delta * 3.0)
+		Color("#774756") if storm else _soil, minf(1.0, delta * 3.0)
 	)
 	for spot: StringName in markers:
 		var marker: Node3D = markers[spot]
@@ -97,6 +147,8 @@ func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> vo
 		var target := 1.1 if spot in active_spots else 1.0
 		marker.scale = marker.scale.lerp(Vector3.ONE * target, minf(1.0, delta * 10.0))
 	training_desk.visible = sim.phase in [&"briefing", &"tutorial"]
+	markers[&"supply"].visible = sim.campaign.supply_pending
+	supply_pallet.visible = sim.campaign.supply_pending
 	aux_module.visible = sim.auxiliary
 	drill_upgrade.visible = sim.drill
 	var grow := clampf(1.0 - float(sim.jobs[&"crop"]) / float(sim.runtime.crop_seconds), 0.18, 1.0)
@@ -183,18 +235,29 @@ func _walkways() -> void:
 
 func _stations() -> void:
 	_shelter()
+	for point in [
+		Vector3(-10, 0.06, 4.25),
+		Vector3(-6.7, 0.06, 4.25),
+		Vector3(-3.6, 0.06, 4.25),
+		Vector3(3.6, 0.06, 4.25),
+		Vector3(6.5, 0.06, 4.25),
+		Vector3(9.5, 0.06, 4.25)
+	]:
+		var lamp := FieldWorld.box(self, point, Vector3(0.38, 0.065, 0.12), BLUE, true)
+		lamp.hide()
+		night_lights.append(lamp)
 	_solar()
 	_greenhouse()
 	_quarry(&"ice", BLUE)
 	_quarry(&"ore", AMBER)
 	training_desk = _console(&"training", BLUE)
-	_console(&"refinery", BLUE)
+	_equipment.append(_console(&"refinery", BLUE))
 	_console(&"drill", AMBER)
 	_console(&"battery", AMBER)
-	_console(&"fuel", AMBER)
+	_equipment.append(_console(&"fuel", AMBER))
 	_console(&"radio", PURPLE)
 	_console(&"pad", AMBER)
-	_console(&"life", BLUE)
+	_equipment.append(_console(&"life", BLUE))
 	_marker(&"crop", LIME)
 	_marker(&"power", AMBER)
 	var plant: Vector3 = STATIONS[&"fuel"]
@@ -203,11 +266,8 @@ func _stations() -> void:
 		_disc(self, plant + Vector3(x, 1.17, -1.36), 0.436, 0.16, AMBER, 12)
 	_solid(plant + Vector3(0, 0.75, -1.36), Vector3(1.92, 1.5, 0.78))
 	var radio: Vector3 = STATIONS[&"radio"]
-	_disc(self, radio + Vector3(0.77, 0.99, -0.69), 0.13, 1.9, WHITE, 10)
-	var dish := FieldWorld.ball(
-		self, radio + Vector3(0.77, 2.05, -0.69), Vector3(1.41, 0.3, 0.91), WHITE
-	)
-	dish.rotation_degrees.z = 28
+	_equipment.append(_prop(ANTENNA, radio + Vector3(0.77, 0.06, -1.16), 3.05))
+	_equipment.append(_prop(RECEIVER, radio + Vector3(-0.73, 0.055, -0.95), 1.22))
 	var refine: Vector3 = STATIONS[&"refinery"]
 	FieldWorld.box(self, refine + Vector3(0, 0.69, -1.32), Vector3(2.35, 1.36, 0.82), WHITE)
 	FieldWorld.box(self, refine + Vector3(0, 0.77, -0.89), Vector3(1.63, 0.32, 0.07), BLUE, true)
@@ -226,18 +286,20 @@ func _stations() -> void:
 
 
 func _shelter() -> void:
+	shelter_shell = Node3D.new()
+	add_child(shelter_shell)
 	_deck(Vector3(0, 0.005, 4.38), Vector3(5.8, 0.055, 5.73), BLUE)
 	for x in [-2.74, 2.74]:
 		for z in [1.64, 7.15]:
-			FieldWorld.box(self, Vector3(x, 0.61, z), Vector3(0.31, 1.22, 0.31), BLUE)
+			FieldWorld.box(shelter_shell, Vector3(x, 0.61, z), Vector3(0.31, 1.22, 0.31), BLUE)
 			_solid(Vector3(x, 0.61, z), Vector3(0.31, 1.22, 0.31))
-		FieldWorld.box(self, Vector3(x, 0.66, 4.4), Vector3(0.2, 0.16, 5.5), BLUE, true)
+		FieldWorld.box(shelter_shell, Vector3(x, 0.66, 4.4), Vector3(0.2, 0.16, 5.5), BLUE, true)
 	for pos in [Vector3(-1.79, 0.34, 3.0), Vector3(1.79, 0.34, 3.0)]:
-		FieldWorld.box(self, pos, Vector3(0.85, 0.69, 1.5), FRAME)
-		FieldWorld.box(self, pos + Vector3.UP * 0.4, Vector3(0.78, 0.14, 1.4), BLUE)
+		FieldWorld.box(shelter_shell, pos, Vector3(0.85, 0.69, 1.5), FRAME)
+		FieldWorld.box(shelter_shell, pos + Vector3.UP * 0.4, Vector3(0.78, 0.14, 1.4), BLUE)
 		_solid(pos, Vector3(0.85, 0.69, 1.5))
-	FieldWorld.box(self, Vector3(0, 0.12, 4.24), Vector3(0.23, 0.08, 0.77), BLUE, true)
-	FieldWorld.box(self, Vector3(0, 0.12, 4.24), Vector3(0.76, 0.08, 0.23), BLUE, true)
+	FieldWorld.box(shelter_shell, Vector3(0, 0.12, 4.24), Vector3(0.23, 0.08, 0.77), BLUE, true)
+	FieldWorld.box(shelter_shell, Vector3(0, 0.12, 4.24), Vector3(0.76, 0.08, 0.23), BLUE, true)
 
 
 func _solar() -> void:
@@ -248,6 +310,7 @@ func _solar() -> void:
 		panel.position = point + Vector3.UP * 1.25
 		panel.rotation_degrees.x = -29
 		add_child(panel)
+		_equipment.append(panel)
 		FieldWorld.box(panel, Vector3.ZERO, Vector3(2.9, 0.16, 1.38), WHITE)
 		for col in range(6):
 			for row in range(3):
@@ -298,6 +361,18 @@ func _quarry(key: StringName, color: Color) -> void:
 		item.rotation_degrees = Vector3(12 + offset * 9, offset * 26, -13 + offset * 7)
 		offset += 1
 	_marker(key, color)
+
+
+func _prop(scene: PackedScene, point: Vector3, model_scale: float) -> Node3D:
+	var prop: Node3D = scene.instantiate()
+	add_child(prop)
+	prop.position = point
+	prop.scale = Vector3.ONE * model_scale
+	var stand := Node3D.new()
+	add_child(stand)
+	stand.position = point
+	prop.reparent(stand)
+	return stand
 
 
 func _console(key: StringName, accent: Color) -> Node3D:

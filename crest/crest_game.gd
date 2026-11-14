@@ -16,6 +16,7 @@ var sim := CrestSim.new()
 var world := CrestWorld.new()
 var camera := Camera3D.new()
 var hud := CrestHUD.new()
+var intro := CrestIntro.new()
 var pilots: Array[FieldPilot] = []
 var crate_meshes: Dictionary = {}
 var _spots: Array[StringName] = [&"", &""]
@@ -23,6 +24,10 @@ var _queued: Array[Vector2i] = []
 var _pressed: Dictionary = {}
 var _menu := &"lobby"
 var _active_pilot := 0
+var _intro_practice := false
+var _bonus_announced := false
+var _fault_announced := false
+var _relay_announced := false
 var _science_return := &""
 var _science_index := 0
 var _feedback := ""
@@ -50,6 +55,8 @@ func _ready() -> void:
 	canvas.add_child(hud)
 	hud.build()
 	hud.selected.connect(_choose)
+	canvas.add_child(intro)
+	intro.finished.connect(_finish_intro)
 	add_child(_tone)
 	_build_sounds()
 	hud.menu(_menu, sim)
@@ -66,6 +73,11 @@ func _input(event: InputEvent) -> void:
 	if event.echo:
 		return
 	var viewport := get_viewport()
+	if _menu == &"intro":
+		if key in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER]:
+			intro.skip()
+		viewport.set_input_as_handled()
+		return
 	if _menu != &"" and _menu_input(key):
 		viewport.set_input_as_handled()
 	elif _menu == &"" and _crew_input(key, event.location):
@@ -81,6 +93,15 @@ func _notification(what: int) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _menu == &"intro":
+		world.animate_intro(intro.progress)
+		var arrival := smoothstep(0.04, 0.31, intro.progress)
+		var release := smoothstep(0.32, 0.59, intro.progress)
+		camera.h_offset = -4.0 * arrival * (1.0 - release)
+		camera.size = 19.9 - 3.6 * arrival * (1.0 - release)
+		for pilot in pilots:
+			pilot.visible = intro.progress >= 0.29
+		return
 	if _menu != &"":
 		return
 	if sim.terminal():
@@ -91,7 +112,9 @@ func _physics_process(delta: float) -> void:
 		return
 	for player in range(2):
 		_move_player(player, delta)
-		_spots[player] = world.nearest(pilots[player].position, sim.phase == &"tutorial")
+		_spots[player] = world.nearest(
+			pilots[player].position, sim.phase == &"tutorial", sim.campaign.supply_pending
+		)
 	for action in _queued:
 		_interact(action.x, action.y == 1)
 	_queued.clear()
@@ -99,18 +122,37 @@ func _physics_process(delta: float) -> void:
 		world.sheltered(pilots[0].position), world.sheltered(pilots[1].position)
 	]
 	sim.tick(delta, protected, _spots)
+	if sim.energy_cut() and not _fault_announced:
+		_notice("Avería solar · reserva la batería para el aire", &"warning")
+	_fault_announced = sim.energy_cut()
+	if sim.radio_cut() and not sim.shadow_active() and not _relay_announced:
+		_notice("Radio sin señal · sigue preparando la nave", &"warning")
+	_relay_announced = sim.radio_cut() and not sim.shadow_active()
+	if sim.campaign.supply_pending and not _bonus_announced:
+		_bonus_announced = true
+		_notice("Llegaron suministros · recógelos junto al refugio", &"move")
 	var warning := sim.storm_warning()
 	var storm_announced := warning > 0.0 and warning <= float(sim.targets.storm_warning_seconds)
 	if storm_announced and not _storm_alerted:
 		_notice("Alerta solar · ubiquen el refugio azul", &"warning")
 	_storm_alerted = storm_announced
-	if not _shadow_alerted and sim.elapsed >= float(sim.runtime.shadow_start) - 12.0:
-		_shadow_alerted = true
-		_notice("Se acerca la sombra · revisen la batería", &"warning")
+	var night_announced := _night_warning()
+	if night_announced and not _shadow_alerted:
+		_notice("Se acerca la noche · revisen la batería", &"warning")
+	_shadow_alerted = night_announced
 	if sim.phase == &"success":
 		_celebration = 2.3
 		_notice("¡Despegue!", &"launch")
 	_refresh(delta)
+
+
+func _night_warning() -> bool:
+	var left := (
+		sim.campaign.next_night(sim.elapsed)
+		if not sim.campaign.base.is_empty()
+		else float(sim.runtime.shadow_start) - sim.elapsed
+	)
+	return left > 0.0 and left <= 12.0
 
 
 func _add_pilot(player: int) -> void:
@@ -263,6 +305,18 @@ func _crew_input(key: Key, location: KeyLocation) -> bool:
 
 func _menu_input(key: Key) -> bool:
 	match _menu:
+		&"bases":
+			match key:
+				KEY_1:
+					_select_base(0)
+				KEY_2:
+					_select_base(1)
+				KEY_3:
+					_select_base(2)
+				KEY_ESCAPE:
+					_show(&"lobby")
+				_:
+					return false
 		&"lobby":
 			match key:
 				KEY_1:
@@ -282,7 +336,7 @@ func _menu_input(key: Key) -> bool:
 				KEY_3:
 					_start(false, true)
 				KEY_ESCAPE:
-					_show(&"lobby")
+					_show(&"bases")
 				KEY_F1:
 					_open_science(&"briefing")
 				_:
@@ -324,6 +378,8 @@ func _menu_input(key: Key) -> bool:
 
 func _choose(action: StringName) -> void:
 	match action:
+		&"bases_0", &"bases_1", &"bases_2":
+			_select_base(int(String(action).right(1)))
 		&"lobby_0":
 			_mode_selected(true)
 		&"lobby_1":
@@ -364,12 +420,37 @@ func _choose(action: StringName) -> void:
 func _mode_selected(solo: bool) -> void:
 	sim.solo = solo
 	_active_pilot = 0
+	_show(&"bases")
+	_refresh(0.0)
+
+
+func _select_base(index: int) -> void:
+	sim.campaign.select(StringName(sim.campaign.data.order[index]))
+	world.set_base(sim.campaign.base.soil)
 	_show(&"briefing")
 	_refresh(0.0)
 
 
 func _start(practice: bool, skip: bool) -> void:
-	sim.begin(practice, skip)
+	if skip:
+		sim.begin(practice, true)
+		_show(&"")
+		_refresh(0.0)
+		return
+	_intro_practice = practice
+	_show(&"intro")
+	hud.hide()
+	intro.play(sim.campaign.base.name, float(sim.campaign.data.intro_seconds), sim.campaign.id)
+	world.animate_intro(0.0)
+	_notice("Transporte en descenso", &"move")
+
+
+func _finish_intro() -> void:
+	world.animate_intro(1.0)
+	camera.h_offset = 0.0
+	camera.size = 19.9
+	hud.show()
+	sim.begin(_intro_practice)
 	_show(&"")
 	_refresh(0.0)
 

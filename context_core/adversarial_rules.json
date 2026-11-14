@@ -1,5 +1,5 @@
 {
-  "revision": 9,
+  "revision": 10,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -206,6 +206,27 @@
         "effect": "Tab cambia el destino de las entradas. Posición, carga, asiento y trabajo pertenecen a cada astronauta",
         "counter": "Dejar al astronauta en espera en el refugio o a bordo",
         "acceptance": "Completar tutorial y despegue completo en modo individual"
+      },
+      {
+        "id": "CT12",
+        "cause": "Día, noche o alerta coinciden con la preparación del cohete",
+        "effect": "El calendario apaga generación y limita la salida. La cuenta se cancela si la ventana cambia.",
+        "counter": "Consulta el día y espera en el refugio con agua y batería.",
+        "acceptance": "Cruzar cada límite de noche y comprobar el día de lanzamiento de cada base."
+      },
+      {
+        "id": "CT13",
+        "cause": "Dos cadetes intentan abrir el mismo suministro",
+        "effect": "Solo se acredita una entrega. Con el depósito lleno se conserva la entrega.",
+        "counter": "Haz espacio y vuelve a la caja verde.",
+        "acceptance": "Intentar cobro concurrente y reintento con depósitos llenos."
+      },
+      {
+        "id": "CT14",
+        "cause": "El jugador salta la historia durante el descenso o el montaje",
+        "effect": "El mapa termina su montaje visual y el tutorial arranca con tiempo cero.",
+        "counter": "Usa Esc o deja terminar el relato.",
+        "acceptance": "Comparar la llegada natural y la omisión."
       }
     ]
   }

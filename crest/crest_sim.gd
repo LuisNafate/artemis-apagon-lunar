@@ -21,6 +21,7 @@ const SCIENCE_TITLES := {
 
 var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH)).coop_tycoon
 var runtime: Dictionary = config.runtime
+var campaign := CrestCampaign.new(config)
 var targets: Dictionary = config.targets_provisional
 var records: Array[Dictionary] = []
 var phase := &"briefing"
@@ -87,6 +88,8 @@ func duration() -> float:
 
 
 func storm_active() -> bool:
+	if not campaign.base.is_empty():
+		return campaign.event_active("sep", elapsed)
 	var remaining := storm_left()
 	return remaining > 0.0 and remaining <= float(runtime.storm_duration)
 
@@ -100,15 +103,33 @@ func storm_left() -> float:
 
 
 func storm_warning() -> float:
+	if not campaign.base.is_empty():
+		return campaign.next_event("sep", elapsed)
 	var remaining := storm_left() - float(runtime.storm_duration)
 	return remaining if remaining > 0.0 else -1.0
 
 
 func shadow_active() -> bool:
+	if not campaign.base.is_empty():
+		return campaign.night(elapsed)
 	return _in_range(float(runtime.shadow_start), float(runtime.shadow_duration))
 
 
+func energy_cut() -> bool:
+	return not campaign.base.is_empty() and campaign.event_active("outage", elapsed)
+
+
+func radio_cut() -> bool:
+	return (
+		shadow_active()
+		or (not campaign.base.is_empty() and campaign.event_active("relay", elapsed))
+	)
+
+
 func window_open() -> bool:
+	if not campaign.base.is_empty():
+		if campaign.day(elapsed) < int(campaign.base.last_day) or shadow_active():
+			return false
 	return (
 		not terminal()
 		and elapsed >= float(runtime.launch_opens)
@@ -162,6 +183,8 @@ func use_station(player: int, station: StringName) -> String:
 			return _eat(player)
 		&"radio":
 			return _radio()
+		&"supply":
+			return _consume_supply()
 		&"pad":
 			return _pad(player)
 	return ""
@@ -202,6 +225,8 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 	if phase not in [&"active", &"countdown"]:
 		return
 	elapsed += delta
+	if not campaign.base.is_empty():
+		campaign.tick(elapsed)
 	_tick_mining(delta, nearby)
 	_tick_power(delta)
 	_tick_crew(delta, sheltered)
@@ -210,7 +235,7 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 	if elapsed >= duration():
 		_fail("Se cerró la ventana de lanzamiento.")
 		return
-	if radio_left > 0.0 and not shadow_active():
+	if radio_left > 0.0 and not radio_cut():
 		radio_left = maxf(0.0, radio_left - delta)
 		if radio_left == 0.0:
 			earth_ok = true
@@ -476,13 +501,32 @@ func _eat(player: int) -> String:
 	return "Tripulación alimentada"
 
 
+func _consume_supply() -> String:
+	if not campaign.supply_pending:
+		return "Sin suministros pendientes"
+	var water_bonus := int(campaign.data.bonus.water)
+	var rations_bonus := int(campaign.data.bonus.rations)
+	if water + water_bonus > int(runtime.water_capacity):
+		return "Usa agua para hacer lugar a la entrega"
+	if food + rations_bonus > int(runtime.rations_capacity):
+		return "Retira raciones para hacer lugar a la entrega"
+	campaign.supply_pending = false
+	water += water_bonus
+	food += rations_bonus
+	return "Suministros · +%d agua y +%d ración" % [water_bonus, rations_bonus]
+
+
 func _radio() -> String:
 	if earth_ok:
 		return "Tierra confirmó la lista de vuelo"
 	if radio_left > 0.0:
 		return "La señal está viajando"
-	if shadow_active():
-		return "Relé en sombra · espera el regreso de la luz"
+	if radio_cut():
+		return (
+			"Relé en sombra · espera el regreso de la luz"
+			if shadow_active()
+			else "Sin señal · la radio volverá al despejarse la ruta"
+		)
 	radio_left = float(config.radio_round_trip_seconds)
 	return "Lista enviada · retorno en 2,56 s"
 
@@ -530,7 +574,7 @@ func _embark(player: int) -> String:
 
 
 func _tick_power(delta: float) -> void:
-	if not shadow_active():
+	if not shadow_active() and not energy_cut():
 		charge = minf(battery_capacity(), charge + float(runtime.solar_output) * delta)
 	life_powered = _draw(float(runtime.life_draw) * delta)
 	var second: StringName = &"fuel" if priority == &"crop" else &"crop"
