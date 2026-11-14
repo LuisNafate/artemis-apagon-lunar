@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "mode": "historical_offline",
+  "records": [
+    {
+      "id": "donki_sep_20240510",
+      "provider": "NASA CCMC",
+      "source_url": "https://ccmc.gsfc.nasa.gov/DONKI/api/#tag/donki-api/GET/get/notifications",
+      "query_url": "https://ccmc.gsfc.nasa.gov/DONKI/WS/get/notifications?startDate=2024-05-10&endDate=2024-05-12&type=SEP",
+      "observation": {
+        "messageID": "20240510-AL-004",
+        "messageIssueTime": "2024-05-10T13:46Z",
+        "messageType": "SEP",
+        "messageURL": "https://ccmc.gsfc.nasa.gov/DONKI/view/Alert/30678/1"
+      },
+      "use": "Referencia histórica de aviso. La exposición y los tiempos de juego son parámetros de diseño."
+    },
+    {
+      "id": "radlab_artemis_i_hera",
+      "provider": "NASA OSDR RadLab",
+      "source_url": "https://visualization.osdr.nasa.gov/radlab/gui/data-api/",
+      "query_url": "https://visualization.osdr.nasa.gov/radlab/api/?query=%28spacecraft%3DOrion%29AND%28timestamp%3E%3D2022-11-16T07%3A00%29AND%28timestamp%3C2022-11-16T07%3A05%29&fields=instrument_id,absorbed_dose_rate,dose_equivalent_rate&format=csv",
+      "observation": {
+        "spacecraft": "Orion",
+        "instrument_id": "Artemis-I-HERA-HSU1",
+        "absorption_rate_unit": "µGy/h",
+        "samples": [
+          {
+            "timestamp_utc": "2022-11-16T07:00:00Z",
+            "absorbed_dose_rate": 2.477208
+          },
+          {
+            "timestamp_utc": "2022-11-16T07:01:00Z",
+            "absorbed_dose_rate": 2.599494
+          },
+          {
+            "timestamp_utc": "2022-11-16T07:02:00Z",
+            "absorbed_dose_rate": 1.8907440000000002
+          },
+          {
+            "timestamp_utc": "2022-11-16T07:03:00Z",
+            "absorbed_dose_rate": 2.4319319999999998
+          },
+          {
+            "timestamp_utc": "2022-11-16T07:04:00Z",
+            "absorbed_dose_rate": 2.596254
+          }
+        ]
+      },
+      "use": "Lectura en Orion, para la consola científica. El escenario emplea puntos didácticos de exposición."
+    },
+    {
+      "id": "neows_2016_ft14",
+      "provider": "NASA NeoWs",
+      "source_url": "https://data.nasa.gov/dataset/asteroids-neows-api",
+      "query_url": "https://api.nasa.gov/neo/rest/v1/feed?start_date=2024-05-10&end_date=2024-05-10",
+      "query_auth": "El servicio solicita api_key. La copia local incluye los valores consultados.",
+      "observation": {
+        "neo_id": "3748517",
+        "name": "(2016 FT14)",
+        "orbiting_body": "Earth",
+        "datetime_as_reported": "2024-May-10 13:55",
+        "epoch_milliseconds": 1715349300000,
+        "miss_distance_km": 7634671.779680443
+      },
+      "use": "Observación opcional de un acercamiento a la Tierra."
+    },
+    {
+      "id": "tle_iss_25544",
+      "provider": "Ivan Stanojević / CelesTrak",
+      "source_url": "https://tle.ivanstanojevic.me/",
+      "query_url": "https://tle.ivanstanojevic.me/api/tle/25544",
+      "observation": {
+        "satelliteId": 25544,
+        "name": "ISS (ZARYA)",
+        "date": "2026-11-13T21:59:13+00:00",
+        "line1": "1 25544U 98067A   26317.91612726  .00008668  00000+0  16320-3 0  9995",
+        "line2": "2 25544  51.6324 279.1461 0007382  22.6178 337.5134 15.49359724594967"
+      },
+      "derived": {
+        "mean_motion_revs_per_day": 15.49359724,
+        "estimated_period_minutes": 92.941618
+      },
+      "use": "Demostración opcional en órbita terrestre."
+    },
+    {
+      "id": "ntrs_life_support_mass",
+      "provider": "NASA NTRS",
+      "source_url": "https://ntrs.nasa.gov/api/citations/20160005782/downloads/20160005782.pdf",
+      "reference": {
+        "unit": "kg/persona/día",
+        "oxygen": 0.84,
+        "drinking_and_food_water": 3.52,
+        "food_solids": 0.62,
+        "carbon_dioxide_produced": 1.0
+      },
+      "use": "Magnitudes de referencia para el informe científico."
+    },
+    {
+      "id": "ntrs_lunar_radio",
+      "provider": "NASA NTRS",
+      "source_url": "https://ntrs.nasa.gov/api/citations/20240007214/downloads/NDE%20Needs%20to%20Enable%20Deep%20Space%20Exploration.pdf",
+      "reference": {
+        "nominal_earth_moon_distance_km": 384000,
+        "one_way_seconds_rounded": 1.28,
+        "round_trip_seconds_rounded": 2.56
+      },
+      "use": "Retardo ideal de propagación. Procesamiento y pérdida de enlace tienen reglas separadas."
+    }
+  ]
+}

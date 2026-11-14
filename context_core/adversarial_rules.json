@@ -1,5 +1,5 @@
 {
-  "revision": 7,
+  "revision": 9,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -117,5 +117,96 @@
     "El refugio bloquea la exposición de tormenta.",
     "La grieta penaliza aire, restaura al jugador y suelta su carga.",
     "Agotar el tiempo, aire o exposición termina el intento."
-  ]
+  ],
+  "coop_tycoon_rules": {
+    "status": "implemented",
+    "order": [
+      "leer entradas y mover astronautas",
+      "ejecutar acciones y validar propiedad",
+      "avanzar reloj y minería",
+      "repartir energía y actualizar recetas",
+      "actualizar traje, comida y radio",
+      "validar cuenta y resultado",
+      "proyectar estado"
+    ],
+    "rules": [
+      {
+        "id": "CT01",
+        "cause": "Dos astronautas intentan tomar, pasar o entregar la misma caja en el mismo paso",
+        "effect": "El identificador tiene un único dueño y la entrega se acredita una vez",
+        "counter": "Resolver solicitudes por paso y validar la propiedad al aplicar",
+        "acceptance": "Contar una caja, un consumo, un resultado"
+      },
+      {
+        "id": "CT02",
+        "cause": "Falta material, agua, energía o capacidad de salida para una receta o mejora",
+        "effect": "No se descuentan insumos al rechazar. Una receta iniciada reserva insumos y conserva progreso al perder energía",
+        "counter": "Mostrar el requisito exacto. Mantener toda reserva en el estado compartido",
+        "acceptance": "Comprobar disminución única, pausa, reanudación y reinicio limpio"
+      },
+      {
+        "id": "CT03",
+        "cause": "La sombra reduce la generación y la batería cae",
+        "effect": "Soporte vital tiene prioridad. Cada otra carga requiere presupuesto completo. El blindaje físico permanece aunque falte aire de reposición",
+        "counter": "Conmutar prioridad secundaria, usar batería auxiliar o mover tareas al interior",
+        "acceptance": "Ningún saldo fuera de [0, capacidad]. El resultado cambia según inversión"
+      },
+      {
+        "id": "CT04",
+        "cause": "Se aproxima un episodio SEP",
+        "effect": "El aviso local precede a la exposición exterior. El refugio reduce exposición sin depender de la red eléctrica",
+        "counter": "Marcar dos rutas de regreso y ejercicios de reparto en interior",
+        "acceptance": "Ambos llegan desde los extremos durante el aviso con la ruta lenta"
+      },
+      {
+        "id": "CT05",
+        "cause": "Se gasta agua de más o se deja el cultivo sin potencia",
+        "effect": "Se retrasa un objetivo y se conserva el inventario válido y el progreso posible",
+        "counter": "Dar aviso de recursos faltantes. Permitir volver a extraer o reasignar energía antes del último margen",
+        "acceptance": "Ganar por dos órdenes de inversión con un error recuperable en cada uno"
+      },
+      {
+        "id": "CT06",
+        "cause": "Se envía la lista de vuelo y se intenta armar dos veces la cuenta",
+        "effect": "Un único visto bueno por intento. La espera de Tierra deja disponibles controles y trabajo local",
+        "counter": "Mostrar la espera. La sombra pausa el relé y la respuesta continúa con la luz.",
+        "acceptance": "Pausa congela demora y reiniciar invalida una respuesta antigua"
+      },
+      {
+        "id": "CT07",
+        "cause": "Falta una plaza ocupada, ración, propelente, visto bueno o ventana segura",
+        "effect": "Bloqueo o cancelación de cuenta. Se conservan las cargas y el fallo de seguridad tiene prioridad sobre el despegue",
+        "counter": "Indicar el requisito faltante y dejar corregirlo antes del fin",
+        "acceptance": "Simular salida de una plaza en el último paso e intento terminal"
+      },
+      {
+        "id": "CT08",
+        "cause": "Falla Internet, una fuente o la tableta científica",
+        "effect": "Se usa la copia local. Un archivo opcional inválido deja no disponible su ficha; la misión cuenta con una alerta programada de respaldo",
+        "counter": "Separar registro científico, parámetros de juego y sus etiquetas",
+        "acceptance": "Reproducir el escenario sin Internet, con latencia e invalidando un registro"
+      },
+      {
+        "id": "CT09",
+        "cause": "Cada jugador pulsa su banco de entrada a la vez o se pausa",
+        "effect": "Cada orden se asigna a su astronauta. Pausa detiene reloj, amenazas, recetas y radio",
+        "counter": "Mantener acciones separadas por puesto y probar combinación física del teclado",
+        "acceptance": "Mover ambos a la vez, interactuar y reanudar sin una orden retenida"
+      },
+      {
+        "id": "CT10",
+        "cause": "Quieren ganar refugiándose siempre o ignorando el hábitat",
+        "effect": "En refugio no entran materiales nuevos. La salida permanente pierde aire y exposición. Ambos perfiles necesitan viajes y al menos una entrega de apoyo",
+        "counter": "Ubicar taller y refugio para trabajo interior, y mantener extracción exterior con rutas de distinta longitud",
+        "acceptance": "Probar ambos extremos e identificar visiblemente la condición que impide ganar"
+      },
+      {
+        "id": "CT11",
+        "cause": "En modo individual se alterna el control mientras el otro astronauta sostiene una caja o está sentado",
+        "effect": "Tab cambia el destino de las entradas. Posición, carga, asiento y trabajo pertenecen a cada astronauta",
+        "counter": "Dejar al astronauta en espera en el refugio o a bordo",
+        "acceptance": "Completar tutorial y despegue completo en modo individual"
+      }
+    ]
+  }
 }

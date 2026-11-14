@@ -1,5 +1,5 @@
 {
-  "revision": 7,
+  "revision": 9,
   "nodes": [
     {
       "id": "config",
@@ -265,6 +265,472 @@
       "id": "field_suite",
       "kind": "test",
       "path": "tests/field_suite.tscn"
+    },
+    {
+      "id": "coop_design",
+      "kind": "design",
+      "title": "Artemis · Última ventana",
+      "status": "designed",
+      "path": "context_core/coop_tycoon_design.md"
+    },
+    {
+      "id": "coop_catalog",
+      "kind": "reference",
+      "title": "Catálogo científico",
+      "path": "context_core/science_catalog.md"
+    },
+    {
+      "id": "coop_snapshot",
+      "kind": "data",
+      "title": "Muestras científicas sin conexión",
+      "path": "context_core/data/lunar_reference_v1.json",
+      "status": "archived"
+    },
+    {
+      "id": "source_spaceapps",
+      "kind": "source",
+      "title": "Space Apps 2026 · Junior Astronaut Mission Trainer",
+      "url": "https://www.spaceappschallenge.org/2026/challenges/junior-astronaut-mission-trainer/"
+    },
+    {
+      "id": "source_spaceapps_athlone",
+      "kind": "source",
+      "title": "Ficha de la sede Athlone",
+      "url": "https://hackathlone.com/challenges/junior-astronaut-mission-trainer"
+    },
+    {
+      "id": "source_nasa_api",
+      "kind": "source",
+      "title": "Catálogo NASA APIs",
+      "url": "https://api.nasa.gov/"
+    },
+    {
+      "id": "source_donki",
+      "kind": "source",
+      "title": "NASA CCMC · notificaciones DONKI",
+      "url": "https://ccmc.gsfc.nasa.gov/DONKI/api/#tag/donki-api/GET/get/notifications"
+    },
+    {
+      "id": "source_neows",
+      "kind": "source",
+      "title": "NASA NeoWs",
+      "url": "https://data.nasa.gov/dataset/asteroids-neows-api"
+    },
+    {
+      "id": "source_tle",
+      "kind": "source",
+      "title": "TLE API · Ivan Stanojević / CelesTrak",
+      "url": "https://tle.ivanstanojevic.me/"
+    },
+    {
+      "id": "source_radlab",
+      "kind": "source",
+      "title": "NASA OSDR · RadLab",
+      "url": "https://visualization.osdr.nasa.gov/radlab/gui/data-api/"
+    },
+    {
+      "id": "source_osdr",
+      "kind": "source",
+      "title": "NASA OSDR · repositorio",
+      "url": "https://osdr.nasa.gov/bio/repo/"
+    },
+    {
+      "id": "source_mars_trek",
+      "kind": "source",
+      "title": "Mars Trek · referencia futura",
+      "url": "https://trek.nasa.gov/mars/"
+    },
+    {
+      "id": "source_csa_stem",
+      "kind": "source",
+      "title": "CSA · material didáctico",
+      "url": "https://www.asc-csa.gc.ca/eng/youth-educators/resources-stem-and-youth-organizations.asp"
+    },
+    {
+      "id": "source_csa_food",
+      "kind": "source",
+      "title": "CSA · producción alimentaria",
+      "url": "https://www.asc-csa.gc.ca/eng/youth-educators/toolkits/food-production/"
+    },
+    {
+      "id": "source_life_mass",
+      "kind": "source",
+      "title": "NASA NTRS · valores por tripulante",
+      "url": "https://ntrs.nasa.gov/api/citations/20160005782/downloads/20160005782.pdf"
+    },
+    {
+      "id": "source_lunar_delay",
+      "kind": "source",
+      "title": "NASA NTRS · comunicaciones de espacio profundo",
+      "url": "https://ntrs.nasa.gov/api/citations/20240007214/downloads/NDE%20Needs%20to%20Enable%20Deep%20Space%20Exploration.pdf"
+    },
+    {
+      "id": "source_eclss",
+      "kind": "source",
+      "title": "NASA · ECLSS de la ISS",
+      "url": "https://www.nasa.gov/reference/environmental-control-and-life-support-systems-eclss/"
+    },
+    {
+      "id": "source_lro",
+      "kind": "source",
+      "title": "NASA · LRO y LOLA",
+      "url": "https://science.nasa.gov/mission/lro/"
+    },
+    {
+      "id": "source_shackleton",
+      "kind": "source",
+      "title": "NASA · iluminación del borde de Shackleton",
+      "url": "https://science.nasa.gov/resource/shackleton-craters-illuminated-rim-shadowed-interior/"
+    },
+    {
+      "id": "source_lcross",
+      "kind": "source",
+      "title": "NASA · LCROSS en Cabeus",
+      "url": "https://science.nasa.gov/image-detail/20110615lcross/"
+    },
+    {
+      "id": "source_viper",
+      "kind": "source",
+      "title": "NASA · VIPER y sus operaciones lunares",
+      "url": "https://science.nasa.gov/mission/viper/lunar-operations/"
+    },
+    {
+      "id": "source_apollo17",
+      "kind": "source",
+      "title": "NASA · Apollo 17 y ALSEP",
+      "url": "https://www.nasa.gov/missions/apollo/apollo-17-mission-details/"
+    },
+    {
+      "id": "source_challenger",
+      "kind": "source",
+      "title": "NASA · ascenso de Challenger",
+      "url": "https://www.nasa.gov/history/50-years-ago-apollo-17-heads-home-to-earth/"
+    },
+    {
+      "id": "source_hera",
+      "kind": "source",
+      "title": "NASA · HERA en Artemis I",
+      "url": "https://www.nasa.gov/missions/artemis/artemis-1/artemis-i-radiation-measurements-validate-orion-safety-for-astronauts/"
+    },
+    {
+      "id": "source_veggie",
+      "kind": "source",
+      "title": "NASA · Veggie en la ISS",
+      "url": "https://www.nasa.gov/exploration-research-and-technology/growing-plants-in-space/"
+    },
+    {
+      "id": "source_overcooked",
+      "kind": "source",
+      "title": "Team17 · Overcooked 2",
+      "url": "https://www.team17.com/games/overcooked-2"
+    },
+    {
+      "id": "source_unrailed",
+      "kind": "source",
+      "title": "Indoor Astronaut · Unrailed!",
+      "url": "https://store.steampowered.com/app/1016920/Unrailed/"
+    },
+    {
+      "id": "coop_crest",
+      "kind": "level",
+      "title": "Estación Cresta · Shackleton",
+      "status": "implemented",
+      "fictional_outpost": true
+    },
+    {
+      "id": "coop_nobile",
+      "kind": "level",
+      "title": "Puesto Nobile · prospección y radio",
+      "status": "candidate",
+      "fictional_outpost": true
+    },
+    {
+      "id": "coop_taurus",
+      "kind": "level",
+      "title": "Estación Taurus-Littrow · misión científica",
+      "status": "candidate",
+      "fictional_outpost": true
+    },
+    {
+      "id": "coop_eclss",
+      "kind": "mechanic",
+      "title": "Soporte vital y aire individual",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_shelter",
+      "kind": "mechanic",
+      "title": "Refugio, exposición y alertas SEP",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_power",
+      "kind": "mechanic",
+      "title": "Solar, sombra, batería y prioridades",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_farm",
+      "kind": "mechanic",
+      "title": "Cultivo y reparto de raciones",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_radio",
+      "kind": "mechanic",
+      "title": "Confirmación Tierra con demora",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_logistics",
+      "kind": "mechanic",
+      "title": "Extracción, carga física y entrega",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_build",
+      "kind": "mechanic",
+      "title": "Taller y mejoras con coste único",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_refinery",
+      "kind": "mechanic",
+      "title": "Agua y lotes de propelente",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_launch",
+      "kind": "mechanic",
+      "title": "Lista de vuelo, dos plazas y ascenso lunar",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_local",
+      "kind": "mechanic",
+      "title": "Dos controles y ciclo local compartido",
+      "status": "implemented"
+    },
+    {
+      "id": "coop_science",
+      "kind": "mechanic",
+      "title": "Consola científica opcional",
+      "status": "implemented"
+    },
+    {
+      "id": "spaceapps_life",
+      "kind": "requirement",
+      "title": "Soporte vital"
+    },
+    {
+      "id": "spaceapps_shield",
+      "kind": "requirement",
+      "title": "Protección frente a radiación"
+    },
+    {
+      "id": "spaceapps_power",
+      "kind": "requirement",
+      "title": "Presupuesto energético"
+    },
+    {
+      "id": "spaceapps_food",
+      "kind": "requirement",
+      "title": "Producción de alimentos"
+    },
+    {
+      "id": "spaceapps_comms",
+      "kind": "requirement",
+      "title": "Demora de comunicación"
+    },
+    {
+      "id": "obs_sep_20240510",
+      "kind": "observation",
+      "title": "donki_sep_20240510",
+      "record_id": "donki_sep_20240510",
+      "status": "archived"
+    },
+    {
+      "id": "obs_radlab_hera",
+      "kind": "observation",
+      "title": "radlab_artemis_i_hera",
+      "record_id": "radlab_artemis_i_hera",
+      "status": "archived"
+    },
+    {
+      "id": "obs_neows_ft14",
+      "kind": "observation",
+      "title": "neows_2016_ft14",
+      "record_id": "neows_2016_ft14",
+      "status": "archived"
+    },
+    {
+      "id": "obs_tle_iss",
+      "kind": "observation",
+      "title": "tle_iss_25544",
+      "record_id": "tle_iss_25544",
+      "status": "archived"
+    },
+    {
+      "id": "obs_life_support",
+      "kind": "observation",
+      "title": "ntrs_life_support_mass",
+      "record_id": "ntrs_life_support_mass",
+      "status": "archived"
+    },
+    {
+      "id": "obs_lunar_delay",
+      "kind": "observation",
+      "title": "ntrs_lunar_radio",
+      "record_id": "ntrs_lunar_radio",
+      "status": "archived"
+    },
+    {
+      "id": "coop_test_inputs",
+      "kind": "acceptance_case",
+      "title": "Marcadores de los dos astronautas y entrada local",
+      "status": "automation_verified",
+      "rule_ids": [
+        "CT09",
+        "CT11"
+      ]
+    },
+    {
+      "id": "coop_test_logistics",
+      "kind": "acceptance_case",
+      "title": "Entrega simultánea, reservas, falta de insumos",
+      "status": "automation_verified",
+      "rule_ids": [
+        "CT01",
+        "CT02"
+      ]
+    },
+    {
+      "id": "coop_test_balance",
+      "kind": "acceptance_case",
+      "title": "Dos inversiones ganadoras, presupuesto y margen de recuperación",
+      "status": "automation_verified",
+      "rule_ids": [
+        "CT03",
+        "CT05",
+        "CT10"
+      ]
+    },
+    {
+      "id": "coop_test_hazards",
+      "kind": "acceptance_case",
+      "title": "Alerta, sombra y dos caminos al refugio",
+      "status": "automation_verified",
+      "rule_ids": [
+        "CT03",
+        "CT04"
+      ]
+    },
+    {
+      "id": "coop_test_launch",
+      "kind": "acceptance_case",
+      "title": "Visto bueno y cuenta cancelable",
+      "status": "automation_verified",
+      "rule_ids": [
+        "CT06",
+        "CT07"
+      ]
+    },
+    {
+      "id": "coop_test_offline",
+      "kind": "acceptance_case",
+      "title": "Ciclo completo sin Internet y muestra inválida",
+      "status": "automation_verified",
+      "rule_ids": [
+        "CT08"
+      ]
+    },
+    {
+      "id": "coop_test_first_run",
+      "kind": "acceptance_case",
+      "title": "Primer intercambio autónomo y explicación de una consecuencia",
+      "status": "human_session_pending",
+      "rule_ids": []
+    },
+    {
+      "id": "crest_habitat",
+      "kind": "zone",
+      "title": "Hábitat y refugio central",
+      "status": "implemented"
+    },
+    {
+      "id": "crest_solar",
+      "kind": "zone",
+      "title": "Cresta solar",
+      "status": "implemented"
+    },
+    {
+      "id": "crest_quarry",
+      "kind": "zone",
+      "title": "Cantera en sombra",
+      "status": "implemented"
+    },
+    {
+      "id": "crest_workshop",
+      "kind": "zone",
+      "title": "Taller e invernadero",
+      "status": "implemented"
+    },
+    {
+      "id": "crest_pad",
+      "kind": "zone",
+      "title": "Plataforma y radio",
+      "status": "implemented"
+    },
+    {
+      "id": "crest_scene",
+      "kind": "scene",
+      "path": "crest/crest.tscn"
+    },
+    {
+      "id": "crest_game",
+      "kind": "script",
+      "path": "crest/crest_game.gd"
+    },
+    {
+      "id": "crest_sim",
+      "kind": "script",
+      "path": "crest/crest_sim.gd"
+    },
+    {
+      "id": "crest_world",
+      "kind": "script",
+      "path": "crest/crest_world.gd"
+    },
+    {
+      "id": "crest_hud",
+      "kind": "script",
+      "path": "crest/crest_hud.gd"
+    },
+    {
+      "id": "crest_suite",
+      "kind": "test",
+      "path": "tests/crest_suite.tscn"
+    },
+    {
+      "id": "crest_suite_script",
+      "kind": "script",
+      "path": "tests/crest_suite.gd"
+    },
+    {
+      "id": "crest_export",
+      "kind": "tool",
+      "path": "export_presets.cfg"
+    },
+    {
+      "id": "crest_solo",
+      "kind": "mechanic",
+      "title": "Modo individual con cambio de astronauta",
+      "status": "implemented"
+    },
+    {
+      "id": "crest_menu_choice",
+      "kind": "signal",
+      "name": "selected"
     }
   ],
   "edges": [
@@ -652,6 +1118,681 @@
       "field_suite",
       "instantiates",
       "field_scene"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_eclss"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_shelter"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_power"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_farm"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_radio"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_logistics"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_build"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_refinery"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_launch"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_local"
+    ],
+    [
+      "coop_crest",
+      "plans",
+      "coop_science"
+    ],
+    [
+      "source_spaceapps",
+      "requires",
+      "spaceapps_life"
+    ],
+    [
+      "spaceapps_life",
+      "covered_by_design",
+      "coop_eclss"
+    ],
+    [
+      "source_spaceapps",
+      "requires",
+      "spaceapps_shield"
+    ],
+    [
+      "spaceapps_shield",
+      "covered_by_design",
+      "coop_shelter"
+    ],
+    [
+      "source_spaceapps",
+      "requires",
+      "spaceapps_power"
+    ],
+    [
+      "spaceapps_power",
+      "covered_by_design",
+      "coop_power"
+    ],
+    [
+      "source_spaceapps",
+      "requires",
+      "spaceapps_food"
+    ],
+    [
+      "spaceapps_food",
+      "covered_by_design",
+      "coop_farm"
+    ],
+    [
+      "source_spaceapps",
+      "requires",
+      "spaceapps_comms"
+    ],
+    [
+      "spaceapps_comms",
+      "covered_by_design",
+      "coop_radio"
+    ],
+    [
+      "coop_snapshot",
+      "contains",
+      "obs_sep_20240510"
+    ],
+    [
+      "obs_sep_20240510",
+      "transcribed_from",
+      "source_donki"
+    ],
+    [
+      "coop_shelter",
+      "references",
+      "obs_sep_20240510"
+    ],
+    [
+      "coop_snapshot",
+      "contains",
+      "obs_radlab_hera"
+    ],
+    [
+      "obs_radlab_hera",
+      "transcribed_from",
+      "source_radlab"
+    ],
+    [
+      "coop_shelter",
+      "references",
+      "obs_radlab_hera"
+    ],
+    [
+      "coop_science",
+      "references",
+      "obs_radlab_hera"
+    ],
+    [
+      "coop_snapshot",
+      "contains",
+      "obs_neows_ft14"
+    ],
+    [
+      "obs_neows_ft14",
+      "transcribed_from",
+      "source_neows"
+    ],
+    [
+      "coop_science",
+      "references",
+      "obs_neows_ft14"
+    ],
+    [
+      "coop_snapshot",
+      "contains",
+      "obs_tle_iss"
+    ],
+    [
+      "obs_tle_iss",
+      "transcribed_from",
+      "source_tle"
+    ],
+    [
+      "coop_science",
+      "references",
+      "obs_tle_iss"
+    ],
+    [
+      "coop_snapshot",
+      "contains",
+      "obs_life_support"
+    ],
+    [
+      "obs_life_support",
+      "transcribed_from",
+      "source_life_mass"
+    ],
+    [
+      "coop_eclss",
+      "references",
+      "obs_life_support"
+    ],
+    [
+      "coop_snapshot",
+      "contains",
+      "obs_lunar_delay"
+    ],
+    [
+      "obs_lunar_delay",
+      "transcribed_from",
+      "source_lunar_delay"
+    ],
+    [
+      "coop_radio",
+      "references",
+      "obs_lunar_delay"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_inputs"
+    ],
+    [
+      "coop_test_inputs",
+      "exercises",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_logistics"
+    ],
+    [
+      "coop_test_logistics",
+      "exercises",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_balance"
+    ],
+    [
+      "coop_test_balance",
+      "exercises",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_hazards"
+    ],
+    [
+      "coop_test_hazards",
+      "exercises",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_launch"
+    ],
+    [
+      "coop_test_launch",
+      "exercises",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_offline"
+    ],
+    [
+      "coop_test_offline",
+      "exercises",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "defines_check",
+      "coop_test_first_run"
+    ],
+    [
+      "coop_design",
+      "responds_to",
+      "source_spaceapps"
+    ],
+    [
+      "source_spaceapps_athlone",
+      "mirrors",
+      "source_spaceapps"
+    ],
+    [
+      "coop_design",
+      "specified_in",
+      "config"
+    ],
+    [
+      "coop_design",
+      "specifies_rules_in",
+      "rules"
+    ],
+    [
+      "coop_design",
+      "designs",
+      "coop_crest"
+    ],
+    [
+      "coop_design",
+      "proposes",
+      "coop_nobile"
+    ],
+    [
+      "coop_design",
+      "proposes",
+      "coop_taurus"
+    ],
+    [
+      "coop_design",
+      "documents_sources_in",
+      "coop_catalog"
+    ],
+    [
+      "coop_catalog",
+      "documents",
+      "coop_snapshot"
+    ],
+    [
+      "coop_crest",
+      "inspired_by",
+      "source_shackleton"
+    ],
+    [
+      "coop_nobile",
+      "inspired_by",
+      "source_viper"
+    ],
+    [
+      "coop_taurus",
+      "inspired_by",
+      "source_apollo17"
+    ],
+    [
+      "coop_build",
+      "may_reuse",
+      "construction"
+    ],
+    [
+      "coop_eclss",
+      "inspired_by",
+      "source_eclss"
+    ],
+    [
+      "coop_power",
+      "inspired_by",
+      "source_lro"
+    ],
+    [
+      "coop_logistics",
+      "inspired_by",
+      "source_lcross"
+    ],
+    [
+      "coop_logistics",
+      "inspired_by",
+      "source_unrailed"
+    ],
+    [
+      "coop_local",
+      "inspired_by",
+      "source_overcooked"
+    ],
+    [
+      "coop_farm",
+      "inspired_by",
+      "source_veggie"
+    ],
+    [
+      "coop_farm",
+      "supported_by",
+      "source_csa_food"
+    ],
+    [
+      "coop_shelter",
+      "describes_instrument",
+      "source_hera"
+    ],
+    [
+      "coop_launch",
+      "inspired_by",
+      "source_challenger"
+    ],
+    [
+      "coop_radio",
+      "authorizes",
+      "coop_launch"
+    ],
+    [
+      "coop_logistics",
+      "supplies",
+      "coop_build"
+    ],
+    [
+      "coop_logistics",
+      "supplies",
+      "coop_refinery"
+    ],
+    [
+      "coop_refinery",
+      "supplies",
+      "coop_farm"
+    ],
+    [
+      "coop_refinery",
+      "supplies",
+      "coop_eclss"
+    ],
+    [
+      "coop_refinery",
+      "loads_propellant_into",
+      "coop_launch"
+    ],
+    [
+      "coop_farm",
+      "loads_rations_into",
+      "coop_launch"
+    ],
+    [
+      "coop_power",
+      "supplies",
+      "coop_eclss"
+    ],
+    [
+      "coop_power",
+      "supplies",
+      "coop_farm"
+    ],
+    [
+      "coop_power",
+      "supplies",
+      "coop_refinery"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_nasa_api"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_donki"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_osdr"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_radlab"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_mars_trek"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_csa_stem"
+    ],
+    [
+      "source_spaceapps",
+      "recommends_resource",
+      "source_csa_food"
+    ],
+    [
+      "coop_crest",
+      "contains",
+      "crest_habitat"
+    ],
+    [
+      "crest_habitat",
+      "hosts",
+      "coop_eclss"
+    ],
+    [
+      "crest_habitat",
+      "hosts",
+      "coop_shelter"
+    ],
+    [
+      "coop_crest",
+      "contains",
+      "crest_solar"
+    ],
+    [
+      "crest_solar",
+      "hosts",
+      "coop_power"
+    ],
+    [
+      "coop_crest",
+      "contains",
+      "crest_quarry"
+    ],
+    [
+      "crest_quarry",
+      "hosts",
+      "coop_logistics"
+    ],
+    [
+      "coop_crest",
+      "contains",
+      "crest_workshop"
+    ],
+    [
+      "crest_workshop",
+      "hosts",
+      "coop_build"
+    ],
+    [
+      "crest_workshop",
+      "hosts",
+      "coop_farm"
+    ],
+    [
+      "crest_workshop",
+      "hosts",
+      "coop_refinery"
+    ],
+    [
+      "coop_crest",
+      "contains",
+      "crest_pad"
+    ],
+    [
+      "crest_pad",
+      "hosts",
+      "coop_radio"
+    ],
+    [
+      "crest_pad",
+      "hosts",
+      "coop_launch"
+    ],
+    [
+      "crest_quarry",
+      "exposed_shortcut",
+      "crest_workshop"
+    ],
+    [
+      "crest_quarry",
+      "protected_detour",
+      "crest_habitat"
+    ],
+    [
+      "crest_habitat",
+      "walkway",
+      "crest_workshop"
+    ],
+    [
+      "crest_habitat",
+      "walkway",
+      "crest_solar"
+    ],
+    [
+      "crest_workshop",
+      "walkway",
+      "crest_pad"
+    ],
+    [
+      "crest_habitat",
+      "walkway",
+      "crest_pad"
+    ],
+    [
+      "crest_scene",
+      "attaches",
+      "crest_game"
+    ],
+    [
+      "coop_crest",
+      "implemented_in",
+      "crest_scene"
+    ],
+    [
+      "crest_game",
+      "owns",
+      "crest_sim"
+    ],
+    [
+      "crest_game",
+      "hosts",
+      "crest_world"
+    ],
+    [
+      "crest_game",
+      "hosts",
+      "field_pilot"
+    ],
+    [
+      "crest_game",
+      "displays",
+      "crest_hud"
+    ],
+    [
+      "crest_world",
+      "uses_geometry_helpers_from",
+      "field_world"
+    ],
+    [
+      "crest_sim",
+      "loads",
+      "config"
+    ],
+    [
+      "crest_sim",
+      "reads",
+      "coop_snapshot"
+    ],
+    [
+      "crest_sim",
+      "implements",
+      "rules"
+    ],
+    [
+      "crest_hud",
+      "defines",
+      "crest_menu_choice"
+    ],
+    [
+      "crest_game",
+      "consumes",
+      "crest_menu_choice"
+    ],
+    [
+      "crest_game",
+      "implements",
+      "crest_solo"
+    ],
+    [
+      "crest_game",
+      "implements",
+      "coop_local"
+    ],
+    [
+      "crest_hud",
+      "displays",
+      "coop_science"
+    ],
+    [
+      "coop_crest",
+      "offers",
+      "crest_solo"
+    ],
+    [
+      "verify",
+      "boots",
+      "crest_scene"
+    ],
+    [
+      "verify",
+      "runs",
+      "crest_suite"
+    ],
+    [
+      "crest_suite",
+      "attaches",
+      "crest_suite_script"
+    ],
+    [
+      "crest_suite_script",
+      "plays",
+      "crest_scene"
+    ],
+    [
+      "crest_suite_script",
+      "exercises",
+      "crest_solo"
+    ],
+    [
+      "crest_suite_script",
+      "exercises",
+      "coop_local"
+    ],
+    [
+      "crest_export",
+      "packages",
+      "crest_scene"
     ]
   ]
 }

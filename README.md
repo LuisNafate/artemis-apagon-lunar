@@ -1,17 +1,26 @@
-# ARTEMIS · Apagón lunar
+# ARTEMIS · Última ventana
 
-Entrenador de misión para astronautas junior. Controla a un astronauta en tercera persona, devuelve la energía al puesto y recupera dos cápsulas de cultivo mientras llegan alertas solares.
+Entrenador de misión para astronautas junior. Juega en **Estación Cresta**, una estación lunar 2.5D. Mantén a dos astronautas con vida, construye mejoras y prepara su ascenso a órbita lunar.
 
 ## Jugar
 
-Abre `project.godot` en Godot 4.7 y pulsa **F5**. Avanza hacia la batería naranja y pulsa **E** para levantarla. Cruza la grieta con un salto y un impulso o rodéala por el terreno firme. Encaja la batería en el generador para iniciar el turno.
+En Windows ejecuta `Artemis-Ultima-Ventana.exe` de la demo. Para editarla, abre `project.godot` con Godot 4.7.2 y pulsa **F5**. El menú permite elegir un jugador o dos jugadores locales sin conexión.
 
-- **WASD** o flechas para moverte. **Espacio** para saltar y **Shift** para el turbo.
-- **E** recoge, entrega y recarga cuando aparece la instrucción. Solo puedes llevar una cápsula.
-- Lleva las cápsulas verdes al invernadero. Cada cosecha necesita energía. Cúbrete bajo el refugio durante las alertas y regresa allí cuando estén listas las dos cosechas.
-- **R** reinicia la misión desde el principio.
+| Modo | Movimiento | Actuar | Pasar o soltar |
+| --- | --- | --- | --- |
+| Un jugador | WASD, Tab cambia de astronauta | E | Q |
+| Dos jugadores, J1 | WASD | E | Q |
+| Dos jugadores, J2 | Flechas | Intro | Mayús derecha o / |
 
-El campo 3D y el traje se construyen con geometría original. El aire, la energía y la exposición usan unidades de juego.
+**Esc** pausa. **F1** abre el archivo científico. En el menú de pausa o en el informe, usa **R** para empezar de nuevo.
+
+El tutorial enseña a recoger y entregar una caja. En la misión, lleva hielo y mineral al refinado. Intercambia agua por aire, cosechas y lotes de propelente. Puedes invertir el mineral en un taladro más rápido o en una batería que te ayude durante el apagón. Para despegar, carga tres lotes y dos raciones, confirma la lista con Tierra y sienta a ambos astronautas.
+
+Las muestras históricas de NASA DONKI, RadLab y NeoWs, junto con un TLE terrestre de la ISS, funcionan sin Internet. Las magnitudes didácticas y la procedencia se explican en el [catálogo científico](context_core/science_catalog.md). El [diseño de Estación Cresta](context_core/coop_tycoon_design.md) describe el escenario y los niveles candidatos.
+
+## Apagón lunar
+
+Abre `field/field.tscn` y pulsa **F6**. En esta escena de desarrollo, restaura la red y recupera dos cápsulas de cultivo. Usa WASD o flechas, Espacio para saltar, Shift para el impulso, E para interactuar y R para reiniciar.
 
 ## Prototipo de tablero
 
@@ -70,3 +79,5 @@ El grafo, los parámetros del escenario y la auditoría están en `context_core/
 El prototipo de academia usa un atlas de visitantes generado a partir del astronauta original de Artemis. Para regenerarlo, ejecuta `python3 tools/draw_field_visitors.py`. [Análisis histórico de Resort Empire](context_core/resort_empire_analysis.md)
 
 El balance usa tasas de consumo humano de NASA y simplifica el soporte vital, la recuperación de agua, la generación solar y el consumo del traje para el ejercicio. El indicador de CO₂ muestra masa acumulada. [Tasas de referencia](https://ntrs.nasa.gov/api/citations/20160005782/downloads/20160005782.pdf) · [Sistemas ECLSS de NASA](https://www.nasa.gov/reference/environmental-control-and-life-support-systems-eclss/)
+
+La demo utiliza Godot Engine. El paquete de Windows incluye los avisos del motor y de las fuentes. [Licencia de Godot](https://godotengine.org/license/)

@@ -29,23 +29,24 @@ function Invoke-GodotCheck {
     if ($engineStatus -ne 0 -or $logContents -match '(?im)^\s*(SCRIPT ERROR|ERROR|WARNING|Parse Error):') {
         throw "$Name falló (salida $engineStatus).`n$logContents"
     }
-    if ($Name -like 'Regresión*' -and $logContents -notmatch '(?m)^(ARTEMIS|OUTPOST|FIELD) SUITE: \d+ cases, \d+ assertions, 0 failed') {
+    if ($Name -like 'Regresión*' -and $logContents -notmatch '(?m)^(ARTEMIS|OUTPOST|FIELD|CREST) SUITE: \d+ cases, \d+ assertions, 0 failed') {
         throw 'La suite se cerró antes de completar los casos.'
     }
-    $logContents -split '\r?\n' | Where-Object { $_ -match '^Godot Engine|^(ARTEMIS|OUTPOST|FIELD) SUITE' }
+    $logContents -split '\r?\n' | Where-Object { $_ -match '^Godot Engine|^(ARTEMIS|OUTPOST|FIELD|CREST) SUITE' }
 }
 
 Push-Location $project
 try {
-    & $python.Source -m gdtoolkit.formatter --check src tests outpost field
+    & $python.Source -m gdtoolkit.formatter --check src tests outpost field crest
     if ($LASTEXITCODE -ne 0) { throw 'Falló gdformat.' }
-    & $python.Source -m gdtoolkit.linter src tests outpost field
+    & $python.Source -m gdtoolkit.linter src tests outpost field crest
     if ($LASTEXITCODE -ne 0) { throw 'Falló gdlint.' }
     Invoke-GodotCheck -Name 'Importación en editor' -GodotArguments @('--editor', '--import')
     Invoke-GodotCheck -Name 'Arranque principal' -GodotArguments @('--quit-after', '12')
     Invoke-GodotCheck -Name 'Regresión' -GodotArguments @('--quit-after', '300', 'res://tests/mission_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión del puesto lunar' -GodotArguments @('--quit-after', '300', 'res://tests/outpost_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión 3D' -GodotArguments @('--disable-render-loop', '--fixed-fps', '60', '--quit-after', '8000', 'res://tests/field_suite.tscn')
+    Invoke-GodotCheck -Name 'Regresión Estación Cresta' -GodotArguments @('--fixed-fps', '60', '--quit-after', '25000', 'res://tests/crest_suite.tscn')
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue

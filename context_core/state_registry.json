@@ -1,6 +1,6 @@
 {
-  "revision": 7,
-  "progress": "verified_field_3d",
+  "revision": 9,
+  "progress": "crest_playable_solo_and_local",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
     "duration_minutes": 120,
@@ -308,5 +308,131 @@
     "godot": "4.7.2",
     "cases": 3,
     "headless_assertions": 35
+  },
+  "coop_tycoon": {
+    "status": "playable",
+    "main_scene_baseline": "res://field/field.tscn",
+    "demo_level": "coop_crest",
+    "later_level_candidates": [
+      "coop_nobile",
+      "coop_taurus"
+    ],
+    "platform": "Windows desktop",
+    "presentation": "2.5D con cámara ortográfica a tres cuartos y movimiento en un plano",
+    "players": 2,
+    "offline": true,
+    "input": {
+      "player_1": {
+        "move": [
+          "W",
+          "A",
+          "S",
+          "D"
+        ],
+        "interact": "E",
+        "release_or_pass": "Q"
+      },
+      "player_2": {
+        "move": [
+          "Up",
+          "Left",
+          "Down",
+          "Right"
+        ],
+        "interact": "Enter",
+        "release_or_pass": "Right Shift or Slash"
+      },
+      "pause": "Escape",
+      "science": "F1"
+    },
+    "flow": [
+      "lobby",
+      "briefing",
+      "tutorial",
+      "active",
+      "countdown",
+      "success_or_failure"
+    ],
+    "targets_provisional": {
+      "session_seconds": [
+        360,
+        480
+      ],
+      "first_handoff_seconds": 45,
+      "storm_warning_seconds": 20,
+      "initial_drill_cycle_seconds": 6,
+      "upgraded_drill_cycle_seconds": 4,
+      "drill_upgrade_ore": 2,
+      "aux_battery_ore": 2,
+      "aux_battery_capacity_units": 4,
+      "water_units_per_ice": 1,
+      "water_units_per_propellant_batch": 2,
+      "rations_per_crop_cycle": 2
+    },
+    "launch_requirements": {
+      "propellant_batches": 3,
+      "rations": 2,
+      "seated_players": 2,
+      "earth_confirmed": true,
+      "safe_window": true
+    },
+    "radio_round_trip_seconds": 2.56,
+    "data_snapshot": "context_core/data/lunar_reference_v1.json",
+    "next": [
+      "Sesión con jugadores nuevos para medir claridad, dificultad y ganas de repetir"
+    ],
+    "demo_zones": [
+      "crest_habitat",
+      "crest_solar",
+      "crest_quarry",
+      "crest_workshop",
+      "crest_pad"
+    ],
+    "runtime": {
+      "duration": 420.0,
+      "practice_duration": 600.0,
+      "storm_start": 58.0,
+      "storm_repeat": 224.0,
+      "storm_duration": 18.0,
+      "shadow_start": 106.0,
+      "shadow_duration": 36.0,
+      "launch_opens": 94.0,
+      "countdown": 5.0,
+      "air_capacity": 100.0,
+      "air_drain": 0.87,
+      "air_recovery": 10.0,
+      "life_water_cycle": 25.0,
+      "exposure_rate": 3.3,
+      "exposure_limit": 100.0,
+      "battery_capacity": 11.0,
+      "starting_charge": 9.0,
+      "solar_output": 0.65,
+      "life_draw": 0.29,
+      "job_draw": 0.26,
+      "starting_water": 2,
+      "starting_ore": 0,
+      "starting_rations": 1,
+      "crop_water": 1,
+      "crop_seconds": 14.0,
+      "propellant_seconds": 9.0,
+      "ration_seconds": 90.0,
+      "starting_ration_seconds": 115.0,
+      "water_capacity": 12,
+      "ore_capacity": 8,
+      "rations_capacity": 6,
+      "practice_exposure_scale": 0.55,
+      "solo_duration": 510.0,
+      "solo_exposure_scale": 0.8
+    },
+    "modes": {
+      "solo": {
+        "active_players": 1,
+        "switch": "Tab"
+      },
+      "local": {
+        "active_players": 2
+      }
+    },
+    "main_scene": "res://crest/crest.tscn"
   }
 }

@@ -59,3 +59,19 @@
 - Para preparar el repositorio, el atlas de academia se regeneró a partir del astronauta original de Artemis. La adaptación anterior del SWF quedó archivada en el equipo.
 
 - La misión completa también superó 38 comprobaciones con renderizado a 1280 × 720. Se revisaron la apertura, la restauración de la red y el resultado.
+
+## Revisión 8 · Diseño cooperativo de Estación Cresta
+
+- Se verificó el texto y la pestaña de recursos de la ficha global de Space Apps 2026 y se contrastaron con la ficha de Athlone. El grafo enlaza soporte vital, blindaje, energía, alimentos y demora de comunicación con mecánicas y zonas de la demo.
+- Aplicadas las skills de Design Game Studio 0.1.2 para diseño, sistemas, niveles, mejora del juego y diagnóstico. La reproducción inicial del proyecto en Godot 4.7.2 completó los tres grupos de regresión. El alcance del corte fue diseño y datos para una demo 3D local de dos jugadores. Estación Cresta es la demo. Nobile y Taurus-Littrow son candidatos posteriores.
+- Verificados en el grafo 117 nodos, 191 aristas, 5 requisitos con sistemas y zonas, y 10 reglas adversarias enlazadas a criterios de aceptación. Se comprobó la integridad de los nodos y aristas previos y los parámetros que leen las tres simulaciones existentes.
+- Contrastadas las muestras locales de DONKI, RadLab, NeoWs y TLE con las respuestas originales. Se validaron ambos dígitos de control TLE y el período derivado, el cálculo de demora Tierra–Luna y el ejemplo de oxígeno para dos personas. Quedan seis registros científicos disponibles sin conexión.
+- `tests/verify.ps1` pasó en Godot 4.7.2 con importación, arranque principal, formato y lint de 27 scripts. Regresiones de academia 16/3618, tablero 7/75 y misión 3D 3/35, sin fallos. Los cocientes indican casos y comprobaciones. Queda pendiente implementar y probar el cooperativo, sus dos rutas de victoria y el despegue con una pareja.
+
+## Revisión 9 · Demo 2.5D individual y cooperativa
+
+- Estación Cresta es la escena de inicio. Se implementaron tutorial, inventario con cajas físicas, mejoras de taladro y batería, soporte vital, cultivo, planta de propelente, relé con retardo, embarque y despegue. Se jugaron ambos roles con los mismos controles en un teclado o alternando con Tab en individual. Las alertas aparecen en texto, con sonido y cambios de iluminación.
+- La prueba de recorrido detectó que el trayecto directo puede chocar con la protección del cohete o el mobiliario del refugio. El recorrido se verificó por las pasarelas y la entrada central. La simulación permite repartir la espera entre producción y refugio y se ajustó la reposición de aire para usar agua al necesitarla.
+- Godot 4.7.2. `tests/verify.ps1` pasó importación, arranque, gdformat y gdlint de 32 scripts. Academia 16 casos y 3657 comprobaciones, tablero 7 y 75, Apagón lunar 3 y 35, Estación Cresta 9 y 239. La nueva suite completó dos partidas con eventos de teclado, movimiento y despegue. También probó las rutas de taladro y batería a nivel de simulación.
+- Con OpenGL Compatibility, AMD Radeon 760M, 1280 × 720 y `--crest-capture` pasaron 8 casos y 55 comprobaciones, incluidos menú, entrega y cuenta regresiva animada. Las dos partidas completas usan la suite headless. Las capturas se guardaron en el directorio de usuario de Godot. Pendiente observar una partida de jugadores nuevos.
+- La exportación Windows x64 integra el PCK y los seis registros históricos. Se lanzó el ejecutable exportado, reportó Godot 4.7.2 y OpenGL y salió con código 0 sin errores. El ZIP incluye avisos del motor y de las fuentes. Se excluyen los prototipos históricos y las pruebas del paquete. Los archivos fuente de los prototipos conservan sus regresiones.

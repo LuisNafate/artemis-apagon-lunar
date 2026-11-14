@@ -1,4 +1,4 @@
-# Arquitectura · revisión 3
+# Arquitectura del juego
 
 Godot 4.7.2 · GDScript · Compatibility · escritorio 1280 × 720 · UI en español.
 
@@ -88,3 +88,34 @@ La confirmación de la categoría redefine la revisión 6 como tablero de admini
 ## Apagón lunar · revisión 7
 
 Nueva escena principal 3D con personaje cinemático, mundo físico, simulación y HUD separados. El tablero del puesto se puede abrir desde outpost/outpost.tscn. Véase field_design.md.
+
+## Última ventana · revisión 8
+
+El siguiente modo parte de un único nivel 3D compartido, Estación Cresta. Puesto Nobile y Estación Taurus-Littrow quedan como niveles candidatos. El arranque jugable se verifica en Apagón lunar.
+
+```text
+context_core/
+  coop_tycoon_design.md         Estación Cresta, economía, controles y criterios de aceptación
+  science_catalog.md            Fuentes, instrumentos y límites de las observaciones
+  data/
+    lunar_reference_v1.json     Muestras históricas que se pueden leer sin red
+```
+
+Jerarquía propuesta para el corte cooperativo.
+
+```text
+StationCresta (Node3D)
+├── World (Node3D, hábitat, cresta, cantera, taller, huerto y plataforma)
+├── Astronaut 1, Astronaut 2 (CharacterBody3D, bancos separados de entradas)
+├── Mission (Node, estado compartido, recetas, amenazas, radio y lista de vuelo)
+├── SharedCamera (Camera3D)
+└── HUD (CanvasLayer, aire, carga eléctrica y estado de ascenso)
+```
+
+El corte previsto reutiliza elementos de locomoción de FieldPilot y el patrón de validación de ConstructionBay, sujetos a las pruebas de dos entradas. El estado de la misión resuelve conflictos y comunica el resultado a la vista. El catálogo histórico y los valores para jugar mantienen campos separados.
+
+## Estación Cresta · revisión 9
+
+El arranque abre `crest/crest.tscn`. CrestGame conecta dos FieldPilot con CrestWorld, CrestSim y CrestHUD. La Cámara3D ortográfica a tres cuartos encuadra la estación completa. Los personajes se desplazan sobre XZ y conservan el volumen de las mallas. Un jugador alterna el astronauta con Tab. Dos jugadores usan entradas simultáneas y comparten el inventario y el reloj. El refugio, la batería y las recetas viven en el modelo de misión, y el HUD accede a las muestras archivadas sin red.
+
+Las escenas de Apagón lunar, Academia y Tablero se mantienen editables para recuperar recursos y ejecutar sus regresiones. La exportación de Estación Cresta excluye esas escenas y las suites. Retiene la geometría auxiliar y FieldPilot, que sí utiliza la demo.
