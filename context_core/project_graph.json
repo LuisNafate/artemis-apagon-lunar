@@ -1,0 +1,657 @@
+{
+  "revision": 7,
+  "nodes": [
+    {
+      "id": "config",
+      "kind": "data",
+      "path": "context_core/state_registry.json"
+    },
+    {
+      "id": "rules",
+      "kind": "data",
+      "path": "context_core/adversarial_rules.json"
+    },
+    {
+      "id": "bus",
+      "kind": "autoload",
+      "path": "src/core/event_bus.gd"
+    },
+    {
+      "id": "resources",
+      "kind": "autoload",
+      "path": "src/core/resource_manager.gd"
+    },
+    {
+      "id": "director",
+      "kind": "autoload",
+      "path": "src/core/adversarial_director.gd"
+    },
+    {
+      "id": "solar",
+      "kind": "script",
+      "path": "src/modules/solar_array.gd"
+    },
+    {
+      "id": "eclss",
+      "kind": "script",
+      "path": "src/modules/life_support.gd"
+    },
+    {
+      "id": "greenhouse",
+      "kind": "script",
+      "path": "src/modules/greenhouse.gd"
+    },
+    {
+      "id": "eva",
+      "kind": "script",
+      "path": "src/modules/eva.gd"
+    },
+    {
+      "id": "geography",
+      "kind": "script",
+      "path": "src/entities/lunar_map.gd"
+    },
+    {
+      "id": "astronaut",
+      "kind": "script",
+      "path": "src/entities/astronaut_controller.gd"
+    },
+    {
+      "id": "station",
+      "kind": "script",
+      "path": "src/entities/station.gd"
+    },
+    {
+      "id": "hud",
+      "kind": "script",
+      "path": "src/ui/hud.gd"
+    },
+    {
+      "id": "mission",
+      "kind": "scene",
+      "path": "src/mission.tscn"
+    },
+    {
+      "id": "orchestrator",
+      "kind": "script",
+      "path": "src/mission.gd"
+    },
+    {
+      "id": "sprite_art",
+      "kind": "asset",
+      "path": "assets/sprites_25d"
+    },
+    {
+      "id": "terrain_art",
+      "kind": "asset",
+      "path": "assets/tilemaps"
+    },
+    {
+      "id": "ui_art",
+      "kind": "asset",
+      "path": "assets/ui"
+    },
+    {
+      "id": "telemetry",
+      "kind": "signal",
+      "name": "telemetry_changed"
+    },
+    {
+      "id": "message",
+      "kind": "signal",
+      "name": "message_posted"
+    },
+    {
+      "id": "test",
+      "kind": "test",
+      "path": "tests/mission_suite.gd"
+    },
+    {
+      "id": "art_source",
+      "kind": "asset_source",
+      "path": "tools/draw_assets.py"
+    },
+    {
+      "id": "astronaut_atlas",
+      "kind": "asset",
+      "path": "assets/sprites_25d/astronaut.png"
+    },
+    {
+      "id": "deck_atlas",
+      "kind": "asset",
+      "path": "assets/tilemaps/deck.png"
+    },
+    {
+      "id": "world_bg",
+      "kind": "asset",
+      "path": "assets/tilemaps/lunar_horizon.png"
+    },
+    {
+      "id": "icons_atlas",
+      "kind": "asset",
+      "path": "assets/ui/resources.png"
+    },
+    {
+      "id": "fonts",
+      "kind": "asset",
+      "path": "assets/ui/fonts"
+    },
+    {
+      "id": "suite_scene",
+      "kind": "scene",
+      "path": "tests/mission_suite.tscn"
+    },
+    {
+      "id": "verify",
+      "kind": "tool",
+      "path": "tests/verify.ps1"
+    },
+    {
+      "id": "construction",
+      "kind": "script",
+      "path": "src/modules/construction_bay.gd"
+    },
+    {
+      "id": "resort_analysis",
+      "kind": "reference",
+      "path": "context_core/resort_empire_analysis.md"
+    },
+    {
+      "id": "battery_art",
+      "kind": "asset",
+      "path": "assets/sprites_25d/battery.png"
+    },
+    {
+      "id": "build_selected",
+      "kind": "signal",
+      "name": "blueprint_selected"
+    },
+    {
+      "id": "reception",
+      "kind": "script",
+      "path": "src/modules/crew_reception.gd"
+    },
+    {
+      "id": "tutorial",
+      "kind": "script",
+      "path": "src/modules/training_drill.gd"
+    },
+    {
+      "id": "visitor_view",
+      "kind": "script",
+      "path": "src/entities/crew_visuals.gd"
+    },
+    {
+      "id": "visitor_art",
+      "kind": "asset",
+      "path": "assets/sprites_25d/visitors.png"
+    },
+    {
+      "id": "visitor_art_tool",
+      "kind": "asset_source",
+      "path": "tools/draw_field_visitors.py"
+    },
+    {
+      "id": "diagnosis",
+      "kind": "signal",
+      "name": "diagnosis_selected"
+    },
+    {
+      "id": "outpost_design",
+      "kind": "data",
+      "path": "context_core/outpost_design.md"
+    },
+    {
+      "id": "outpost_scene",
+      "kind": "scene",
+      "path": "outpost/outpost.tscn"
+    },
+    {
+      "id": "outpost_game",
+      "kind": "script",
+      "path": "outpost/outpost_game.gd"
+    },
+    {
+      "id": "outpost_sim",
+      "kind": "script",
+      "path": "outpost/outpost_sim.gd"
+    },
+    {
+      "id": "outpost_map",
+      "kind": "script",
+      "path": "outpost/outpost_map.gd"
+    },
+    {
+      "id": "outpost_tests",
+      "kind": "test",
+      "path": "tests/outpost_suite.tscn"
+    },
+    {
+      "id": "field_design",
+      "kind": "data",
+      "path": "context_core/field_design.md"
+    },
+    {
+      "id": "field_scene",
+      "kind": "scene",
+      "path": "field/field.tscn"
+    },
+    {
+      "id": "field_game",
+      "kind": "script",
+      "path": "field/field_game.gd"
+    },
+    {
+      "id": "field_world",
+      "kind": "script",
+      "path": "field/field_world.gd"
+    },
+    {
+      "id": "field_pilot",
+      "kind": "script",
+      "path": "field/field_pilot.gd"
+    },
+    {
+      "id": "field_sim",
+      "kind": "script",
+      "path": "field/field_sim.gd"
+    },
+    {
+      "id": "field_hud",
+      "kind": "script",
+      "path": "field/field_hud.gd"
+    },
+    {
+      "id": "field_suite",
+      "kind": "test",
+      "path": "tests/field_suite.tscn"
+    }
+  ],
+  "edges": [
+    [
+      "director",
+      "loads",
+      "config"
+    ],
+    [
+      "director",
+      "implements",
+      "rules"
+    ],
+    [
+      "director",
+      "owns",
+      "resources"
+    ],
+    [
+      "director",
+      "ticks",
+      "solar"
+    ],
+    [
+      "director",
+      "ticks",
+      "eclss"
+    ],
+    [
+      "director",
+      "ticks",
+      "greenhouse"
+    ],
+    [
+      "director",
+      "ticks",
+      "eva"
+    ],
+    [
+      "director",
+      "publishes",
+      "bus"
+    ],
+    [
+      "bus",
+      "defines",
+      "telemetry"
+    ],
+    [
+      "bus",
+      "defines",
+      "message"
+    ],
+    [
+      "hud",
+      "consumes",
+      "telemetry"
+    ],
+    [
+      "hud",
+      "consumes",
+      "message"
+    ],
+    [
+      "hud",
+      "uses",
+      "ui_art"
+    ],
+    [
+      "mission",
+      "attaches",
+      "orchestrator"
+    ],
+    [
+      "mission",
+      "hosts",
+      "geography"
+    ],
+    [
+      "mission",
+      "hosts",
+      "hud"
+    ],
+    [
+      "geography",
+      "hosts",
+      "astronaut"
+    ],
+    [
+      "geography",
+      "hosts",
+      "station"
+    ],
+    [
+      "geography",
+      "uses",
+      "terrain_art"
+    ],
+    [
+      "astronaut",
+      "uses",
+      "sprite_art"
+    ],
+    [
+      "station",
+      "uses",
+      "sprite_art"
+    ],
+    [
+      "orchestrator",
+      "validates_position_in",
+      "geography"
+    ],
+    [
+      "orchestrator",
+      "dispatches_to",
+      "director"
+    ],
+    [
+      "test",
+      "instantiates",
+      "mission"
+    ],
+    [
+      "test",
+      "exercises",
+      "rules"
+    ],
+    [
+      "art_source",
+      "generates",
+      "sprite_art"
+    ],
+    [
+      "art_source",
+      "generates",
+      "terrain_art"
+    ],
+    [
+      "art_source",
+      "generates",
+      "icons_atlas"
+    ],
+    [
+      "astronaut",
+      "uses",
+      "astronaut_atlas"
+    ],
+    [
+      "geography",
+      "uses",
+      "deck_atlas"
+    ],
+    [
+      "geography",
+      "uses",
+      "world_bg"
+    ],
+    [
+      "geography",
+      "uses",
+      "fonts"
+    ],
+    [
+      "hud",
+      "uses",
+      "icons_atlas"
+    ],
+    [
+      "hud",
+      "uses",
+      "fonts"
+    ],
+    [
+      "suite_scene",
+      "attaches",
+      "test"
+    ],
+    [
+      "verify",
+      "runs",
+      "suite_scene"
+    ],
+    [
+      "verify",
+      "boots",
+      "mission"
+    ],
+    [
+      "director",
+      "owns",
+      "construction"
+    ],
+    [
+      "construction",
+      "reads_catalog_from",
+      "config"
+    ],
+    [
+      "geography",
+      "renders",
+      "construction"
+    ],
+    [
+      "orchestrator",
+      "dispatches_builds_to",
+      "director"
+    ],
+    [
+      "construction",
+      "changes",
+      "resources"
+    ],
+    [
+      "construction",
+      "accelerates",
+      "greenhouse"
+    ],
+    [
+      "construction",
+      "implements_adaptation_from",
+      "resort_analysis"
+    ],
+    [
+      "hud",
+      "defines",
+      "build_selected"
+    ],
+    [
+      "orchestrator",
+      "consumes",
+      "build_selected"
+    ],
+    [
+      "hud",
+      "reads",
+      "construction"
+    ],
+    [
+      "geography",
+      "uses",
+      "battery_art"
+    ],
+    [
+      "art_source",
+      "generates",
+      "battery_art"
+    ],
+    [
+      "test",
+      "exercises",
+      "construction"
+    ],
+    [
+      "director",
+      "owns",
+      "reception"
+    ],
+    [
+      "director",
+      "owns",
+      "tutorial"
+    ],
+    [
+      "reception",
+      "uses",
+      "config"
+    ],
+    [
+      "reception",
+      "books",
+      "construction"
+    ],
+    [
+      "reception",
+      "increases_demand_on",
+      "eclss"
+    ],
+    [
+      "visitor_view",
+      "uses",
+      "visitor_art"
+    ],
+    [
+      "visitor_view",
+      "uses",
+      "astronaut"
+    ],
+    [
+      "geography",
+      "hosts",
+      "visitor_view"
+    ],
+    [
+      "hud",
+      "displays",
+      "tutorial"
+    ],
+    [
+      "hud",
+      "displays",
+      "reception"
+    ],
+    [
+      "visitor_art_tool",
+      "generates",
+      "visitor_art"
+    ],
+    [
+      "hud",
+      "defines",
+      "diagnosis"
+    ],
+    [
+      "orchestrator",
+      "consumes",
+      "diagnosis"
+    ],
+    [
+      "outpost_scene",
+      "attaches",
+      "outpost_game"
+    ],
+    [
+      "outpost_game",
+      "runs",
+      "outpost_sim"
+    ],
+    [
+      "outpost_game",
+      "displays",
+      "outpost_map"
+    ],
+    [
+      "outpost_sim",
+      "loads",
+      "config"
+    ],
+    [
+      "outpost_sim",
+      "implements",
+      "rules"
+    ],
+    [
+      "outpost_tests",
+      "instantiates",
+      "outpost_scene"
+    ],
+    [
+      "field_scene",
+      "attaches",
+      "field_game"
+    ],
+    [
+      "field_game",
+      "runs",
+      "field_sim"
+    ],
+    [
+      "field_game",
+      "hosts",
+      "field_world"
+    ],
+    [
+      "field_game",
+      "hosts",
+      "field_pilot"
+    ],
+    [
+      "field_game",
+      "displays",
+      "field_hud"
+    ],
+    [
+      "field_sim",
+      "loads",
+      "config"
+    ],
+    [
+      "field_sim",
+      "implements",
+      "rules"
+    ],
+    [
+      "field_suite",
+      "instantiates",
+      "field_scene"
+    ]
+  ]
+}

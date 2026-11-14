@@ -1,0 +1,312 @@
+{
+  "revision": 7,
+  "progress": "verified_field_3d",
+  "validation_engine": "Godot 4.7.2",
+  "scenario": {
+    "duration_minutes": 120,
+    "dust_minute": 34,
+    "crew": 2,
+    "initial": {
+      "o2": 0.125,
+      "co2": 0.025,
+      "water": 0.84,
+      "energy": 0.44
+    },
+    "capacity": {
+      "o2": 0.24,
+      "co2": 0.16,
+      "water": 1.4,
+      "energy": 0.84
+    },
+    "daily_crew_kg": {
+      "o2": 0.84,
+      "co2": 1.0,
+      "water": 3.52
+    },
+    "solar_kw": 1.5,
+    "dust_factor": 0.18,
+    "cleaned_factor": 0.8,
+    "essential_kw": 0.28,
+    "eclss_kw": 0.52,
+    "greenhouse_kw": 0.29,
+    "o2_per_minute": 0.002,
+    "water_per_kg_o2": 1.125,
+    "co2_removed_per_minute": 0.0028,
+    "water_recycled_per_minute": 0.0045,
+    "greenhouse_water_kg": 0.18,
+    "crop_powered_minutes": 18,
+    "suit_o2_kg": 0.032,
+    "suit_o2_per_minute": 0.00085,
+    "suit_charge_kwh": 0.025,
+    "construction": {
+      "materials": 18,
+      "catalog": {
+        "walkway": {
+          "title": "Pasarela",
+          "cost": 1,
+          "size": 1,
+          "minutes": 0,
+          "benefit": "Abre una ruta"
+        },
+        "habitat": {
+          "title": "Hábitat",
+          "cost": 5,
+          "size": 2,
+          "minutes": 4,
+          "benefit": "+0.12 kg de capacidad O₂",
+          "bonus": 0.12
+        },
+        "greenhouse": {
+          "title": "Invernadero",
+          "cost": 6,
+          "size": 2,
+          "minutes": 5,
+          "benefit": "+1 de avance de cultivo",
+          "bonus": 1
+        },
+        "battery": {
+          "title": "Batería",
+          "cost": 4,
+          "size": 2,
+          "minutes": 3,
+          "benefit": "+0.40 kWh de capacidad",
+          "bonus": 0.4
+        }
+      }
+    },
+    "reception": {
+      "duration_minutes": 150,
+      "filter_fault_minute": 76,
+      "filter_cost": 2,
+      "filter_scrub_factor": 0.25,
+      "berths_per_habitat": 2,
+      "guest_kw": 0.09,
+      "minimum_reserves": {
+        "o2": 0.075,
+        "water": 0.17,
+        "energy": 0.08
+      },
+      "resupply_water": 0.28,
+      "resupply_materials": 3,
+      "waves": [
+        {
+          "name": "Alfa",
+          "size": 2,
+          "arrival": 24,
+          "deadline": 50,
+          "stay": 48,
+          "needs_crop": false
+        },
+        {
+          "name": "Bravo",
+          "size": 2,
+          "arrival": 60,
+          "deadline": 94,
+          "stay": 33,
+          "needs_crop": true
+        }
+      ]
+    }
+  },
+  "units": {
+    "o2": "kg",
+    "co2": "kg",
+    "water": "kg",
+    "energy": "kWh"
+  },
+  "mission_states": [
+    "briefing",
+    "active",
+    "paused",
+    "success",
+    "failed"
+  ],
+  "eva_states": [
+    "indoors",
+    "outside",
+    "calibrated",
+    "complete"
+  ],
+  "solar_states": [
+    "clear",
+    "dusty",
+    "cleaned"
+  ],
+  "validation": {
+    "scripts": 17,
+    "regression_cases": 16,
+    "headless_assertions": 3395,
+    "visual_assertions": 3402,
+    "renderer": "Compatibility",
+    "target": "Windows desktop 1280 x 720"
+  },
+  "outpost": {
+    "initial": {
+      "air": 6,
+      "water": 5,
+      "food": 4,
+      "charge": 4,
+      "dose": 0,
+      "growth": 0,
+      "kits": 2,
+      "harvests": 0
+    },
+    "limits": {
+      "air": 9,
+      "water": 8,
+      "food": 8,
+      "charge": 7,
+      "dose": 8
+    },
+    "draw": {
+      "life": 3,
+      "farm": 2,
+      "shelter": 1
+    },
+    "minimum_harvests": 2,
+    "scenarios": [
+      {
+        "name": "Turno de tormenta",
+        "forecast": [
+          [
+            "Calibración",
+            6,
+            0,
+            ""
+          ],
+          [
+            "Cae la generación",
+            4,
+            0,
+            ""
+          ],
+          [
+            "Alerta solar",
+            2,
+            4,
+            ""
+          ],
+          [
+            "Corte del sur",
+            3,
+            5,
+            "south"
+          ],
+          [
+            "Luz en la cresta",
+            7,
+            0,
+            ""
+          ],
+          [
+            "Segundo corte",
+            5,
+            0,
+            "south"
+          ],
+          [
+            "Alerta solar",
+            2,
+            4,
+            ""
+          ],
+          [
+            "Última luz",
+            6,
+            0,
+            ""
+          ]
+        ]
+      },
+      {
+        "name": "Noche en la cresta",
+        "forecast": [
+          [
+            "Calibración",
+            6,
+            0,
+            ""
+          ],
+          [
+            "Alerta temprana",
+            3,
+            4,
+            ""
+          ],
+          [
+            "Corte del norte",
+            5,
+            0,
+            "north"
+          ],
+          [
+            "Luz en la cresta",
+            5,
+            0,
+            ""
+          ],
+          [
+            "Sombra polar",
+            2,
+            3,
+            ""
+          ],
+          [
+            "Corte del sur",
+            3,
+            5,
+            "south"
+          ],
+          [
+            "Luz en la cresta",
+            7,
+            0,
+            ""
+          ],
+          [
+            "Última luz",
+            6,
+            0,
+            ""
+          ]
+        ]
+      }
+    ]
+  },
+  "outpost_validation": {
+    "godot": "4.7.2",
+    "cases": 7,
+    "headless_assertions": 75,
+    "rendered_assertions": 78,
+    "resolutions": [
+      "1280x720",
+      "1152x648"
+    ]
+  },
+  "field": {
+    "duration": 85.0,
+    "air": 100.0,
+    "charge": 100.0,
+    "growth_seconds": 6.0,
+    "storm_windows": [
+      [
+        18,
+        26
+      ],
+      [
+        41,
+        50
+      ],
+      [
+        64,
+        74
+      ]
+    ],
+    "dose_limit": 100.0
+  },
+  "field_validation": {
+    "godot": "4.7.2",
+    "cases": 3,
+    "headless_assertions": 35
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "revision": 7,
+  "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
+  "order": [
+    "eventos programados",
+    "terminar obras y aplicar módulos conectados",
+    "generacion y reparto de energia",
+    "consumo y soporte vital",
+    "crecimiento y traje",
+    "limites y resultado",
+    "telemetria"
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "cause": "Regolito simulado al minuto 34",
+      "effect": "Generación baja al 18%; limpiar la matriz la lleva al 80% por el resto del turno",
+      "counter": "Ir a Solar y limpiar"
+    },
+    {
+      "id": "R2",
+      "cause": "Déficit de generación",
+      "effect": "Se usa la batería; las cargas completas reciben energía en orden esencial, soporte vital y cultivo",
+      "counter": "Recuperar generación solar"
+    },
+    {
+      "id": "R3",
+      "cause": "Soporte vital apagado o sin energía",
+      "effect": "La tripulación consume O2 y agua, acumula CO2, y la electrólisis requiere agua",
+      "counter": "Restablecer soporte vital y mantener la energía"
+    },
+    {
+      "id": "R4",
+      "cause": "Activar cultivo",
+      "effect": "Descuenta una vez 0.18 kg de agua; solo acumula progreso con potencia completa",
+      "counter": "Regar y mantener la potencia"
+    },
+    {
+      "id": "R5",
+      "cause": "Salir por la esclusa",
+      "effect": "Transfiere O2 y usa batería; cada minuto fuera consume O2 del traje Regresar sin calibrar permite reintentar. El O2 restante del traje vuelve a la base hasta el límite del depósito.",
+      "counter": "Calibrar baliza y volver a la esclusa"
+    },
+    {
+      "id": "R6",
+      "cause": "O2 o agua agotados, CO2 al máximo o traje agotado",
+      "effect": "Fallo inmediato y terminal",
+      "counter": "Reiniciar"
+    },
+    {
+      "id": "R7",
+      "cause": "Alcanzar minuto 120",
+      "effect": "Éxito con soporte y solar restaurados, cultivo listo, salida completada y un módulo construido. La pérdida de reservas tiene prioridad. La misión de recepción requiere alojar y despedir a Alfa y Bravo.",
+      "counter": "Completar la lista antes del minuto 120"
+    },
+    {
+      "id": "R8",
+      "cause": "Acción repetida, fuera de alcance, sin presupuesto, fuera de fase o partida terminal",
+      "effect": "La transacción se rechaza sin mutar reservas",
+      "counter": "Leer diagnóstico y cumplir la condición"
+    },
+    {
+      "id": "R9",
+      "cause": "Colocar plano en el sector de ampliación",
+      "effect": "El coste se cobra al colocar. La huella completa debe ser libre y estar conectada a una pasarela. Una pasarela puede arrancar desde el borde de la plataforma.",
+      "counter": "Comenzar en el borde y extender pasarelas"
+    },
+    {
+      "id": "R10",
+      "cause": "Avanza el turno",
+      "effect": "La obra aparta su huella desde el inicio. Un módulo finalizado aplica su mejora una vez. Una pasarela se habilita de inmediato.",
+      "counter": "Consultar el tiempo en obra"
+    },
+    {
+      "id": "R11",
+      "cause": "Llegada de una tripulación",
+      "effect": "Aguarda hasta su ventana límite. La admisión exige camas conectadas, soporte operativo y reservas mínimas. Bravo requiere cultivo listo.",
+      "counter": "Planifica hábitats y abastecimiento"
+    },
+    {
+      "id": "R12",
+      "cause": "Tripulación alojada",
+      "effect": "Aumenta el consumo de O2, agua y potencia. Ocupa las camas hasta su salida. Al salir entrega agua y materiales.",
+      "counter": "Escalona las admisiones"
+    },
+    {
+      "id": "R13",
+      "cause": "El filtro se satura durante el ejercicio",
+      "effect": "Cae la extracción de CO2 al 25 %. Reemplazar el filtro consume materiales.",
+      "counter": "Lee la alerta de CO2, diagnostica extracción deficiente y usa dos materiales"
+    },
+    {
+      "id": "R14",
+      "cause": "Comienza la práctica guiada",
+      "effect": "El reloj principal permanece detenido. Las acciones reales habilitan los pasos y prueban una avería y una recepción.",
+      "counter": "Completa o sal de la práctica desde el informe"
+    }
+  ],
+  "limits": "Reservas finitas en [0, capacidad]. Las pérdidas y umbrales son parámetros didácticos. El CO2 representa inventario acumulado, no presión parcial. Se suman producciones y consumos de cada reserva antes de aplicar sus límites. La generación y la batería comparten un presupuesto de energía por minuto; una carga sin presupuesto completo queda inactiva.",
+  "sources": {
+    "daily_crew_rates": "https://ntrs.nasa.gov/api/citations/20160005782/downloads/20160005782.pdf",
+    "eclss": "https://www.nasa.gov/reference/environmental-control-and-life-support-systems-eclss/",
+    "resort_empire": "https://www.littlegiantworld.com/games/resort-empire/"
+  },
+  "outpost_rules": [
+    "Primero ocurre el corte anunciado, luego se aplican la reparación y la derivación ordenadas.",
+    "La derivación une dos ramales. Prioridad del suministro: soporte vital, ventilación y cultivo.",
+    "Cada turno gasta 2 de aire, 1 de agua y 1 de comida. Soporte repone 3 de aire y 2 de agua.",
+    "Dos ciclos con luz y 2 de agua producen 4 raciones. Refugiarse pausa el cultivo.",
+    "El refugio pasivo deja pasar dos puntos más de exposición que el ventilado en este modelo abstracto. Un umbral de 8 termina el intento.",
+    "Resiste ocho turnos y consigue dos cosechas. Las órdenes se pueden ensayar sin gastar hasta confirmar."
+  ],
+  "field_rules": [
+    "Arrancar la red inicia la cuenta.",
+    "Una cápsula por viaje y una entrega por cápsula.",
+    "Red con energía permite recuperar aire en zona protegida y crecer el cultivo.",
+    "El refugio bloquea la exposición de tormenta.",
+    "La grieta penaliza aire, restaura al jugador y suelta su carga.",
+    "Agotar el tiempo, aire o exposición termina el intento."
+  ]
+}
