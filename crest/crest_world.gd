@@ -15,7 +15,7 @@ const WATER_MACHINE_FULL := preload(
 )
 const WATER_MACHINE_SCALE := 3.2
 const MODEL_BATTERY := preload("res://assets/props_luna/estaciones/bateria.glb")
-const MODEL_DRILL := preload("res://assets/props_luna/estaciones/pico.glb")
+const MODEL_DRILL := preload("res://assets/props_luna/estaciones/taladro.glb")
 const MODEL_ICE_DEPOT := preload("res://assets/props_luna/estaciones/deposito_hielo.glb")
 const MODEL_GREENHOUSE := preload("res://assets/props_luna/estaciones/invernadero.glb")
 const MODEL_SOLAR := preload("res://assets/props_luna/estaciones/paneles.glb")
@@ -643,7 +643,9 @@ func _stations() -> void:
 		FieldWorld.box(training_desk, Vector3(0.22, 0.90, -0.46), Vector3(0.18, 0.15, 0.18), BLUE)
 	_equipment.append(_console(&"refinery", BLUE, false))
 	var drill_root := _console(&"drill", AMBER, false)
-	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 1.6), 1.5, 0.5))
+	# El taladro propio sustituye al pico: apoyado en sus patas, detras de la consola.
+	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 2.1), 2.0, 0.49))
+	_solid(STATIONS[&"drill"] + Vector3(0, 1.0, 2.1), Vector3(1.6, 2.0, 1.5))
 	_solid(STATIONS[&"drill"] + Vector3(0, 0.55, 1.6), Vector3(0.8, 1.1, 1.3))
 	var battery_root := _console(&"battery", AMBER, false)
 	_equipment.append(
