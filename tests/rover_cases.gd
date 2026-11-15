@@ -112,10 +112,7 @@ func _driving() -> void:
 	_suite._check(sim.rover.driver == 0, "Action boards the rover")
 	_suite._check(ui.action_button.text == "Bajar del rover", "inside, Action says Bajar")
 	_suite._check(not ui.jump_button.visible, "the rover has no Saltar button")
-	_suite._check(not game.pilots[0].visible, "the rider is hidden")
-	_suite._check(
-		game.pilots[0].position.distance_to(body.position) < 0.05, "the pilot rides with the rover"
-	)
+	_check_seated(game, 0, game, "the driver")
 	game._set_destination(0, Vector3(0, 0, 0))
 	_suite._check(game._route[0].is_empty(), "tapping the ground draws no route while driving")
 	# Hacia el oeste por la base: sube a 12 m/s y no pasa de ahi.
@@ -128,9 +125,7 @@ func _driving() -> void:
 	_suite._check(absf(top - 12.0) <= 0.6, "top speed 12 m/s +/- 5 percent (%.2f)" % top)
 	_suite._check(start.distance_to(body.position) > 12.0, "the rover really travels")
 	_suite._check(body.position.x > -19.0, "the west wall stops the rover (%.2f)" % body.position.x)
-	_suite._check(
-		game.pilots[0].position.distance_to(body.position) < 0.05, "pilot and rover stay together"
-	)
+	_check_seated(game, 0, game, "after driving the driver")
 	_suite._check(
 		absf(game.camera.position.x - game.pilots[0].position.x) < 40.0, "camera keeps following"
 	)
@@ -308,6 +303,7 @@ func _coop() -> void:
 		await _suite.get_tree().physics_frame
 	_suite._check(host.rover.body.position.distance_to(start) > 3.0, "the host drove away")
 	_suite._check(guest.sim.rover.driver == 0, "the guest sees the host at the wheel")
+	_check_seated(guest, 0, host, "the guest sees the host seated:")
 	_suite._check(
 		guest.rover.body._tray_kinds == [&"ice"] and guest.rover.body._tray.get_child_count() == 1,
 		"the guest sees the crate in the tray"
@@ -507,6 +503,24 @@ func _tray_drop() -> void:
 	await _close(game)
 
 
+## El conductor se ve sentado encima del rover, mirando hacia donde va. `viewer` es la partida
+## que lo dibuja; `source`, la que lo conduce (el invitado ve lo que publica el anfitrion).
+func _check_seated(viewer: Node, player: int, source: Node, label: String) -> void:
+	var pilot: CrestPilot = viewer.pilots[player]
+	var body: RoverBody = viewer.rover.body
+	var tolerance := 0.05 if viewer == source else 0.6
+	var gap := pilot.position.distance_to(body.seat_point())
+	_suite._check(gap < tolerance, "%s sits at the seat point (%.2f)" % [label, gap])
+	var rise := pilot.position.y - body.position.y
+	_suite._check(rise > 0.3, "%s sits above the ground (%.2f)" % [label, rise])
+	_suite._check(pilot.is_visible_in_tree(), "%s is visible" % label)
+	_suite._check(pilot.is_seated, "%s is in the seated pose" % label)
+	var turn := absf(angle_difference(pilot.rig.rotation.y, body.yaw))
+	_suite._check(
+		turn < deg_to_rad(10.0), "%s faces the rover heading (%.1f deg)" % [label, rad_to_deg(turn)]
+	)
+
+
 ## Pone al astronauta junto al rover aparcado y espera a que el panel se actualice.
 func _stand_by(game: Node) -> void:
 	game._set_positions([RoverSpec.stand_point() + Vector3(0, 0.1, 0), Vector3.ZERO])
@@ -525,7 +539,7 @@ func _place_rover(game: Node, point: Vector3, yaw: float) -> void:
 	game.sim.rover.yaw = yaw
 	game.rover.body.place(point, yaw)
 	if int(game.sim.rover.driver) != -1:
-		game.pilots[int(game.sim.rover.driver)].position = point
+		game.pilots[int(game.sim.rover.driver)].position = game.rover.body.seat_point()
 
 
 ## Palanca que da una direccion de mundo con la camara actual.

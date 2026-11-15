@@ -27,5 +27,10 @@ static func stand_point() -> Vector3:
 	return park_point() + Vector3(float(offset[0]), 0.0, float(offset[1]))
 
 
+## Asiento del conductor, en coordenadas locales del modelo (giran e inclinan con el rover).
+static func seat_offset() -> Vector3:
+	return _vector(data.seat_offset)
+
+
 static func _vector(values: Array) -> Vector3:
 	return Vector3(float(values[0]), float(values[1]), float(values[2]))

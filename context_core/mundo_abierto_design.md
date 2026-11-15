@@ -215,6 +215,7 @@ El rover de la antena (`assets/props_luna/estaciones/antena_rover.glb`, junto a 
 **Propuestas aprobadas**
 
 - **Conducción:** junto al rover desbloqueado, Acción = "Subir al rover"; dentro, Acción = "Bajar". El joystick conduce con la dirección relativa a la cámara, como al caminar, a unos 12 m/s. No salta. Sigue el relieve inclinándose con el terreno. Choca con rocas y muros y pasa por la puerta de la base. Mientras se conduce, tocar el suelo no traza rutas.
+- **Asiento:** el conductor se ve sentado sobre el rover (`campaign_2026.rover.seat_offset`), en pose sentada y mirando hacia donde apunta el rover; el invitado lo ve igual. Al bajar aparece en el suelo junto al rover.
 - **Supervivencia:** el astronauta sigue gastando aire del traje porque el rover no está presurizado. Noche y tormentas sin cambios.
 - **Cooperativo:** conduce uno solo. El otro sigue a pie y se mantiene el límite de 40 m entre los dos. El anfitrión es la autoridad, como en todo lo demás.
 - **Carga:** **2 cajas** como máximo. Al conducir junto a una caja suelta, Acción = "Cargar caja". Bajado junto al rover con una caja en la mano, se puede cargar en la bandeja. En la refinería, conduciendo, **Entregar** descarga una caja directamente (el hielo se refina y el mineral se guarda, igual que si la entregara el astronauta). En cualquier otro sitio, **Soltar** deja una caja en el suelo junto al rover.

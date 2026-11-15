@@ -11,7 +11,6 @@ const LAYER := 1
 var yaw := 0.0
 var _spec: Dictionary = RoverSpec.data
 var _pivot := Node3D.new()
-var _tag := Label3D.new()
 var _up := Vector3.UP
 var _tray := Node3D.new()
 var _tray_kinds: Array = []
@@ -36,20 +35,17 @@ func _init() -> void:
 	model.scale = Vector3.ONE * size
 	model.position.y = float(_spec.model_half_height) * size
 	_pivot.add_child(model)
-	_tag.font = CrestWorld.MONO
-	_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_tag.position = Vector3.UP * 2.3
-	_tag.no_depth_test = true
-	_tag.pixel_size = 0.019
-	_tag.outline_size = 12
-	_tag.hide()
-	add_child(_tag)
 	add_child(_tray)
 
 
 ## Direccion de proa (plano XZ) para un giro dado: con giro 0 el rover mira al norte (-Z).
 static func heading_of(angle: float) -> Vector2:
 	return Vector2(-sin(angle), -cos(angle))
+
+
+## Donde se sienta el conductor, en el mundo: sigue el giro y la inclinacion del modelo.
+func seat_point() -> Vector3:
+	return position + _pivot.basis * RoverSpec.seat_offset()
 
 
 ## Coloca el rover sin movimiento (carga de partida, aparcado, regreso al amanecer).
@@ -108,12 +104,6 @@ func show_tray(kinds: Array, host: Node, templates: Dictionary) -> void:
 		var slot := (float(index) - (kinds.size() - 1) * 0.5) * spacing
 		box.position = Vector3(float(anchor[0]) + slot, float(anchor[1]), float(anchor[2]))
 		_tray.add_child(box)
-
-
-func show_driver(tag: String, tint: Color) -> void:
-	_tag.visible = not tag.is_empty()
-	_tag.text = tag
-	_tag.modulate = tint
 
 
 ## Giro y cabeceo del modelo: la normal se saca de la altura del terreno bajo la proa, la popa

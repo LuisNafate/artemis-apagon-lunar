@@ -735,7 +735,7 @@ func _local_frame(delta: float) -> void:
 	rover.step(delta)
 	for index in range(2):
 		_move_pilot(index, delta)
-		_spots[index] = _spot_at(pilots[index].position)
+		_spots[index] = _spot_at(_feet(index))
 
 	if guest_peer != 0 and sim.phase not in [&"tutorial", &"flight"]:
 		var period := float(sim.rules.cycle.period)
@@ -839,9 +839,9 @@ func _guest_frame(delta: float) -> void:
 			_replica_headings[index],
 			difference > 0.012,
 			sim.pilots[index].cargo != 0,
-			sim.pilots[index].seated
+			sim.pilots[index].seated or sim.driving(index)
 		)
-		_spots[index] = _spot_at(pilot.position)
+		_spots[index] = _spot_at(_feet(index))
 	_render(delta, 1)
 
 
@@ -853,7 +853,7 @@ func _interact(player: int, release: bool) -> void:
 	if sim.phase == &"flight":
 		return
 	var pilot := pilots[player]
-	var spot := _spot_at(pilot.position)
+	var spot := _spot_at(_feet(player))
 	var message := ""
 	var was_tutorial := sim.phase == &"tutorial"
 	if release:
@@ -984,6 +984,12 @@ func _follow_path(index: int, point: Vector3) -> Vector2:
 	return Vector2.ZERO
 
 
+## Punto del suelo desde el que un jugador alcanza estaciones: el conductor, sentado en lo alto,
+## usa el del rover.
+func _feet(index: int) -> Vector3:
+	return sim.rover.position if sim.driving(index) else pilots[index].position
+
+
 ## Sentado en la nave o al volante del rover: el piloto no se mueve por su cuenta.
 func _riding(index: int) -> bool:
 	return sim.pilots[index].seated or sim.driving(index)
@@ -998,9 +1004,7 @@ func _sheltered() -> Array[bool]:
 
 func _render(delta: float, player: int) -> void:
 	for index in range(2):
-		pilots[index].visible = (
-			sim.connected[index] and sim.phase != &"flight" and not sim.driving(index)
-		)
+		pilots[index].visible = sim.connected[index] and sim.phase != &"flight"
 	for id: int in _boxes.keys():
 		if not sim.crates.has(id):
 			_boxes[id].queue_free()

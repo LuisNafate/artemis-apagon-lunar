@@ -3,7 +3,7 @@ extends Node
 
 ## Une el rover con la partida: el anfitrion (o el modo individual) lo conduce y escribe su
 ## estado en `LunarMission.rover`; el invitado solo sigue ese estado. El conductor viaja con el
-## rover: su piloto queda oculto y la camara lo sigue como siempre.
+## rover: su piloto va sentado en el asiento y la camara lo sigue como siempre.
 
 const RIDE_HEIGHT := 0.6
 const CLEARANCE := 0.4
@@ -32,7 +32,7 @@ func spot_at(point: Vector3) -> StringName:
 		return &""
 	var at: Vector3 = sim.rover.position
 	# El conductor va dentro del rover: sus estaciones son las de alrededor, no el propio rover.
-	if int(sim.rover.driver) != -1 and point.distance_to(at) < 0.2:
+	if int(sim.rover.driver) != -1 and Vector2(point.x - at.x, point.z - at.z).length() < 0.5:
 		return &""
 	if Vector2(point.x - at.x, point.z - at.z).length() > float(RoverSpec.data.reach):
 		return &""
@@ -60,8 +60,7 @@ func step(delta: float) -> void:
 	info.yaw = body.yaw
 	_present(info, terrain)
 	if driver != -1:
-		_game.pilots[driver].position = body.position
-		_game.pilots[driver].velocity = Vector3.ZERO
+		_seat(driver, delta)
 
 
 ## Un fotograma del invitado: sigue lo que publica el anfitrion.
@@ -69,6 +68,17 @@ func replicate(delta: float) -> void:
 	var info := _game.sim.rover
 	body.follow(delta, info.position, info.yaw, _game.streamer)
 	_present(info, _game.streamer)
+
+
+## El conductor viaja sentado en el asiento del rover, mirando hacia donde apunta.
+func _seat(driver: int, delta: float) -> void:
+	var pilot := _game.pilots[driver]
+	pilot.position = body.seat_point()
+	pilot.velocity = Vector3.ZERO
+	var heading := RoverBody.heading_of(body.yaw)
+	pilot.direction = Vector3(heading.x, 0.0, heading.y)
+	pilot.rig.rotation.y = lerp_angle(pilot.rig.rotation.y, body.yaw, minf(1.0, delta * 13.0))
+	pilot.animate_gait(delta, _game.sim.pilots[driver].cargo != 0, true)
 
 
 ## Boton de radio aparte (el Accion queda para subir al rover desbloqueado).
@@ -114,11 +124,6 @@ func _drive(delta: float, driver: int, terrain: ChunkStreamer) -> void:
 func _present(info: Dictionary, terrain: ChunkStreamer) -> void:
 	body.visible = terrain.is_ready_at(body.position)
 	body.show_tray(info.tray, _game, _game._cargo_templates)
-	var driver := int(info.driver)
-	if driver == -1:
-		body.show_driver("", Color.WHITE)
-	else:
-		body.show_driver("● J1" if driver == 0 else "◆ J2", _game.pilots[driver].tint)
 
 
 ## El estado cambio por fuera (partida cargada, regreso al amanecer): el cuerpo lo sigue.
@@ -140,6 +145,7 @@ func _change_driver(driver: int) -> void:
 	_driver = driver
 	if driver != -1:
 		_game._route[driver].clear()
+		_game.pilots[driver].rig.rotation.y = body.yaw
 	if before != -1:
 		_place_pilot(before)
 

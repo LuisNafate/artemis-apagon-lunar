@@ -7,10 +7,14 @@ const MODEL_HEIGHT := 1.68
 const EARTH_RATE := 2.8
 const LUNAR_RATE := 1.7
 const SHADOW_REACH := 8.0
+const SEAT_DROP := 0.2
+const SEAT_THIGH := 1.3
 
 var tint := Color.WHITE
 ## Marcha lunar fuera de la base: zancada lenta y rebotona.
 var lunar_gait := false
+## Sentado (nave o rover): sin zancada ni salto.
+var is_seated := false
 var suit: StandardMaterial3D
 var skeleton: Skeleton3D
 var _body: Node3D
@@ -135,6 +139,7 @@ func _puff() -> void:
 
 
 func animate_gait(delta: float, has_box: bool, seated: bool) -> void:
+	is_seated = seated
 	if seated:
 		_stride_strength = 0.0
 	_load_strength = move_toward(_load_strength, float(has_box), delta * 9.0)
@@ -163,7 +168,21 @@ func animate_gait(delta: float, has_box: bool, seated: bool) -> void:
 		&"forearm.R",
 		Vector3(lerpf(maxf(0.0, swing) * 0.26 + 0.3 * arm_up, 0.38, _load_strength), 0, 0)
 	)
+	if seated:
+		_sit()
 	_place_shadow()
+
+
+## Sentado al volante: las piernas van hacia delante, el cuerpo baja al asiento y los brazos
+## alcanzan el manillar.
+func _sit() -> void:
+	_body.position.y = -SEAT_DROP
+	for side in [&"L", &"R"]:
+		_rotate(StringName("thigh." + side), Vector3(SEAT_THIGH, 0, 0))
+		_rotate(StringName("shin." + side), Vector3(-SEAT_THIGH, 0, 0))
+		_rotate(StringName("foot." + side), Vector3(0.3, 0, 0))
+		_rotate(StringName("upper_arm." + side), Vector3(0.7, 0, 0))
+		_rotate(StringName("forearm." + side), Vector3(0.5, 0, 0))
 
 
 ## Sombra circular bajo el piloto: un rayo hacia abajo da el suelo; se encoge con la altura.
