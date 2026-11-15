@@ -12,6 +12,7 @@ const PLAY_V_OFFSET := 2.9
 const STORM_BEEPS := 5.0
 const SHAKE_SECONDS := 0.6
 const SHAKE_SIZE := 0.22
+const FLARE_SOUND := "res://assets/props_luna/nasa/sol_sonificacion_soho.ogg"
 const FOLLOW_FOV := 45.0
 const FOLLOW_HEIGHT := 0.8
 const BASE_HYSTERESIS := 1.0
@@ -79,6 +80,7 @@ var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
 var _beep_audio := AudioStreamPlayer.new()
+var _flare_audio := AudioStreamPlayer.new()
 var _solar_key := ""
 var _beep_second := 0
 var _storm_was_active := false
@@ -1096,12 +1098,14 @@ func _alert_if_changed() -> void:
 	_alert_kind = kind
 
 
-## Destello cuando aparece una llamarada, pitidos en los últimos 5 s del aviso, una
+## Destello y sonido del Sol cuando aparece una llamarada, pitidos en los últimos 5 s del aviso, una
 ## sacudida corta cuando llegan las partículas y bordes rojos mientras duran.
 func _storm_effects(delta: float) -> void:
 	var key := sim.solar_key()
 	if key != _solar_key and not key.is_empty():
 		ui.flash()
+		if _flare_audio.stream != null:
+			_flare_audio.play()
 	_solar_key = key
 	var left := sim.storm_warning()
 	var second := ceili(left) if left > 0.0 and left <= STORM_BEEPS else 0
@@ -1123,8 +1127,11 @@ func _build_alert_audio() -> void:
 	add_child(_alert_audio)
 	add_child(_reward_audio)
 	add_child(_beep_audio)
+	add_child(_flare_audio)
 	if DisplayServer.get_name() == "headless":
 		return
+	# Sonificación real del Sol con datos de SOHO; créditos en assets/props_luna/nasa/procedencia.md.
+	_flare_audio.stream = load(FLARE_SOUND)
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)

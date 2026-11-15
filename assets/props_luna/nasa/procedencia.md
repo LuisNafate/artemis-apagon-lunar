@@ -14,6 +14,18 @@ Uso educativo. Las adaptaciones se acreditan a sus autores y a NASA. Los materia
 
 La nave orbital de la cinemática usa geometría creada en Godot. Simplifica la silueta del módulo de mando y servicio. [NASA · Programa Apolo](https://www.nasa.gov/the-apollo-program/)
 
+## Sonido de las llamaradas
+
+| Archivo | Origen y crédito | Adaptación y uso |
+| --- | --- | --- |
+| `sol_sonificacion_soho.ogg` | [NASA · Sounds of the Sun](https://www.nasa.gov/solar-system/sounds-of-the-sun/), pista «Sun Sonification» · A. Kosovichev, Stanford Experimental Physics Lab. Sonificación de 40 días de datos del instrumento MDI de SOHO (ESA/NASA), acelerados 42 000 veces para que se puedan oír. | Tramo de 7 s (de 54,5 s a 61,5 s de 82,8 s), mono a 22 050 Hz, entrada de 0,5 s, salida de 2 s y volumen normalizado. Sin cambio de tono, para conservar el dato. Suena en la campaña cuando aparece cada llamarada, junto con el destello. La página no indica licencia; se usa con fines educativos y con este crédito. |
+
+Original: [sun_sonification.wav](https://www.nasa.gov/wp-content/uploads/2018/07/sun_sonification.wav) · SHA-256 `c2299c81ef4132c314b5a13e44af9fa6f8a4c4e733a2658df038291749f95bf8`
+
+```bash
+ffmpeg -ss 54.5 -t 7 -i sun_sonification.wav -ac 1 -ar 22050 -af "afade=t=in:st=0:d=0.5,afade=t=out:st=5:d=2,loudnorm=I=-16:TP=-1.5:LRA=7" -c:a libvorbis -q:a 5 assets/props_luna/nasa/sol_sonificacion_soho.ogg
+```
+
 ## Reproducir los GLB
 
 Guarda las descargas originales con estos nombres en un directorio temporal.
