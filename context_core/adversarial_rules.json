@@ -409,7 +409,7 @@
           "MIS-1",
           "MON-5"
         ],
-        "cause": "Se elige Jugar solo",
+        "cause": "Se elige Jugar en la portada",
         "effect": "Un astronauta, sin conexión. Puede completar la práctica, abordar por sí mismo y recibir el 100 % de las monedas del día."
       },
       {
@@ -484,7 +484,7 @@
     "scope": "piloto local de la campaña; no modifica ni transmite el estado de simulación",
     "startup": "antes del primer arranque de un clon, importar recursos con el editor Godot; conservar los metadatos y las texturas extraídas, incluidos el título y los iconos actuales",
     "volume": "control local persistente, silencio al 0 %, efectos, alertas y recompensas ajustados juntos",
-    "solar_alert": "una vez por evento: Parker Solar Probe para tormenta de partículas y sonificación SOHO para llamarada sin partículas; pitidos finales y efectos visuales acompañan la tormenta",
+    "solar_alert": "Parker Solar Probe al comenzar el aviso de partículas y SOHO en bucle durante el aviso y la tormenta, con fundido y volumen SFX; SOHO corto para llamarada sin partículas; pitidos finales y efectos visuales",
     "steps": "tres muestras alternadas según distancia recorrida, mínimo 0,35 s entre pasos; se excluyen saltos de posición de un metro o más",
     "proximity": "al cambiar a una estación o depósito cercano, con espera de 1,2 segundos",
     "mining": "golpes cada 0,42 segundos mientras la extracción permanece activa",

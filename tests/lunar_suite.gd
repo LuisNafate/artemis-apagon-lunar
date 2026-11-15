@@ -467,7 +467,7 @@ func _solo() -> void:
 		for frame in range(8):
 			await get_tree().process_frame
 		_capture_image(player, "artemis-portada.png")
-	_press_menu_button(player, "Jugar solo · sin conexión")
+	_press_menu_button(player, "Jugar")
 	if _capture:
 		for frame in range(8):
 			await get_tree().process_frame
@@ -561,9 +561,14 @@ func _solo() -> void:
 	player.sim.launch_fx = 0.01
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	var clean := int(player.sim.rules.radiation.clean_bonus)
 	_check(
-		player.sim.returned and player.profile.data.balance == 175 * LunarProfile.SCALE,
+		player.sim.returned and player.profile.data.balance == (175 + clean) * LunarProfile.SCALE,
 		"solo completes the mission and earns its bonus"
+	)
+	_check(
+		player.profile.data.received.has("lunar/clean/" + base_id),
+		"crew without radiation earns the careful astronaut bonus"
 	)
 
 	elapsed = player.sim.elapsed
@@ -579,7 +584,7 @@ func _solo() -> void:
 		"continue restores exact solo state"
 	)
 	player._leave()
-	_press_menu_button(player, "Jugar solo · sin conexión")
+	_press_menu_button(player, "Jugar")
 	_press_menu_button(player, "Reiniciar Mons Mouton Plateau…")
 	_press_menu_button(player, "Reiniciar base")
 	_check(
@@ -590,7 +595,8 @@ func _solo() -> void:
 		"solo reset only removes the solo slot"
 	)
 	_check(
-		player.profile.data.balance == 175 * LunarProfile.SCALE, "reset preserves the shared wallet"
+		player.profile.data.balance == (175 + clean) * LunarProfile.SCALE,
+		"reset preserves the shared wallet"
 	)
 	DirAccess.remove_absolute(player.profile_path)
 	player.get_parent().queue_free()

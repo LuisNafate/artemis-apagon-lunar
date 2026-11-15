@@ -204,6 +204,15 @@ func pay_mission(base: String, difficulty: int, guest_id: String) -> void:
 	_queue_guest(guest_id, receipt, amount)
 
 
+## Bono de «astronauta precavido»: una sola vez por base, si la tripulación regresó sin
+## recibir radiación. Es local: no se reparte al invitado.
+func pay_clean(base: String, difficulty: int) -> bool:
+	if not rules.bases.has(base) or difficulty != int(_difficulty_coins(base)):
+		return false
+	var amount := int(rules.radiation.clean_bonus) * difficulty * SCALE
+	return credit("lunar/clean/%s" % base, amount)
+
+
 func credit(receipt: String, amount: int) -> bool:
 	if receipt.is_empty() or receipt.length() > 128 or amount <= 0 or amount > MAX_BALANCE:
 		return false

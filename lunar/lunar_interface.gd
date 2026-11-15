@@ -36,7 +36,8 @@ const CHIP_ICONS := [
 	AIR_ICON,
 	preload("res://assets/ui/hud/bateria.png"),
 	preload("res://assets/ui/hud/agua.png"),
-	preload("res://assets/ui/hud/hambre.png")
+	preload("res://assets/ui/hud/hambre.png"),
+	preload("res://assets/ui/hud/radiacion.png")
 ]
 const PROMPTS := [
 	["Toma la muestra", "El gato azul se acerca a la mesa y toca Acción."],
@@ -147,14 +148,19 @@ func _build_play(root: Control) -> void:
 	location = _label(content, "", 29, TITLE)
 	_float_text(location)
 	_resources = GridContainer.new()
-	_resources.columns = 5
+	_resources.columns = 6
 	_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	play.add_child(_resources)
 	_resources.position = Vector2(18, 8)
 	_resources.add_theme_constant_override("h_separation", 12)
 	_resources.add_theme_constant_override("v_separation", 0)
 	var colors := [
-		Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")
+		Color("#4d7fc4"),
+		Color("#e0883a"),
+		Color("#e0883a"),
+		Color("#3f6fc0"),
+		Color("#d8602f"),
+		Color("#f4ad2e")
 	]
 	for index in range(colors.size()):
 		var chip := PanelContainer.new()
@@ -544,7 +550,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_message.add_theme_color_override("font_color", Color("#fff0cf"))
 	_message.add_theme_font_size_override("font_size", 18)
 
-	var solo := _lobby_button(_list, "Jugar solo · sin conexión", "bases", "solo", true)
+	var solo := _lobby_button(_list, "Jugar", "bases", "solo", true)
 	var recent := String(profile.data.recent)
 	if profile.data.recent_mode == "solo" and profile.saved_bases(true).has(recent):
 		_lobby_button(_list, "Continuar misión", "solo", recent)
@@ -1001,6 +1007,7 @@ func sync(
 	_readouts[2].text = "%.1f/%.0f" % [mission.charge, mission.battery_capacity()]
 	_readouts[3].text = "%.1f" % mission.water
 	_readouts[4].text = "%d" % ceili(mission.pilots[player].hunger)
+	_show_dose(mission.dose_level(player))
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
 		next_step.text = "" if mission.solo else PROMPTS[mission.tutorial_step][1]
@@ -1134,6 +1141,18 @@ func flash() -> void:
 ## Intensidad de los bordes rojos: 0 sin tormenta, 1 con partículas cayendo.
 func storm_edges(level: float) -> void:
 	_storm_edges.modulate.a = clampf(level, 0.0, 1.0)
+
+
+## Dosímetro en el HUD: verde, amarillo desde la mitad y rojo al llenarse.
+func _show_dose(level: float) -> void:
+	var reading := _readouts[5]
+	reading.text = "%d%%" % roundi(level * 100.0)
+	var color := Color("#a6e389")
+	if level >= 1.0:
+		color = Color("#ff6f5c")
+	elif level >= 0.5:
+		color = Color("#ffd36b")
+	reading.add_theme_color_override("font_color", color)
 
 
 func _show_alert(mission: LunarMission, safe: bool) -> void:

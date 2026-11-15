@@ -346,3 +346,14 @@
 - Integrado `origin/main` hasta `8a22ae6`: título con gato, fuente y botones, objetivos desplegables, piloto e insumos para cinemática; se conserva el control de sonido y la música. Conflicto de UID de moneda resuelto con el de main; importaciones y texturas nuevas se conservan, y se retiró la importación del título eliminado.
 - Godot 4.7.2 Linux: `tests/verify.ps1` aprobó formato, lint, importación, arranque y Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta 10/214 con los mismos 22 fallos de ruta identificados anteriormente. Pruebas independientes: intro, selector, nueve bases, control de sonido y música nocturna. Arranque gráfico Vulkan correcto; cierre automático notificó dos instancias ObjectDB sin liberar.
 - Las regresiones restantes se ejecutaron por separado sin fallos: Campaña 12/543, Mundo abierto 12/878, MVP 9/520, navegación 1/15 y DONKI 2/732.
+
+## Botón Jugar en la portada
+
+- **Jugar** abre el selector de bases de la campaña individual. Se actualizaron las pruebas de navegación para pulsar el nuevo texto.
+- Godot 4.7.2. Formato, lint, importación, arranque, Academia, Puesto y 3D pasaron. El verificador completo se detuvo en la ruta de Estación Cresta con 22 fallos. Por separado pasaron campaña lunar (543 comprobaciones), mundo abierto (878) y la navegación visible desde la portada hasta el primer regreso a Tierra (15).
+
+## 2026-11-15 · Integración de dosímetro y sonido solar continuo
+
+- Integrado `origin/main` hasta `e365481`, con dosímetro, consecuencias y reporte final, y sonido SOHO continuo durante la tormenta. Se conservan música, efectos y alerta inicial Parker; el fundido SOHO respeta el control SFX, incluido el silencio.
+- Godot 4.7.2 Linux: `tests/verify.ps1` pasó formato, lint, importación, arranque, Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta con los 22 fallos de ruta previamente documentados. Prueba gráfica específica verificó inicio, fundido, volumen al 50 %, silencio y apagado del sonido continuo. El primer arnés temporal se cerró con un fallo por acceder a un objeto después de liberarlo; se corrigió el arnés y la repetición terminó sin errores.
+- Las regresiones restantes pasaron por separado: Campaña 12/544, Mundo abierto 12/878, MVP 9/530, navegación 1/15 y DONKI 3/749.
