@@ -203,3 +203,7 @@ El menú público muestra la campaña sin conexión y Continuar misión. LunarIn
 ## Ítems de campaña · revisión 24
 
 LunarGame valida alcance y superficie de las cajas sueltas. LunarItemContext describe la recogida, la entrega y los estados de estación a partir de LunarMission. LunarInterface muestra el estado y el tiempo restante en el panel lateral. La [matriz de ítems](auditoria_items_mvp.md) registra modelos, controles, dependencias y pruebas.
+
+## Referencias de objetivos · revisión 25
+
+LunarObjective elige el texto y la clave del paso activo. LunarGame resuelve la estación, la puerta, la caja o el depósito en sus datos existentes. LunarInterface proyecta un marcador táctil sobre la cámara y lo reemplaza por el panel de proximidad al llegar. El marcador llama al planificador normal al pulsarlo. La [matriz de objetivos](auditoria_objetivos_mvp.md) documenta los textos, la identidad visual y el conductor automatizado de controles visibles.

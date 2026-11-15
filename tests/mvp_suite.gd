@@ -23,6 +23,7 @@ func _run() -> void:
 	add_child(_game)
 	await get_tree().physics_frame
 	_game.opening._skip.pressed.emit()
+	_objective_references()
 	var selected := OS.get_cmdline_user_args()
 	var controls := _game.ui._list.get_children()
 	_check(
@@ -39,7 +40,12 @@ func _run() -> void:
 		if not await _open(id):
 			break
 		_cases += 1
-		if not await _complete():
+		var completed := false
+		if "--mvp-guide" in selected:
+			completed = await _guided_mission("--mvp-capture" in selected)
+		else:
+			completed = await _complete()
+		if not completed:
 			break
 		print(
 			(
@@ -69,6 +75,49 @@ func _run() -> void:
 	get_tree().quit(int(_failed > 0))
 
 
+func _objective_references() -> void:
+	var mission := LunarMission.new()
+	mission.prepare("mons_mouton_plateau", 42, true)
+	var initial := LunarObjective.next(mission, 0, false)
+	_check(
+		initial[0] == &"training" and "mesa de práctica" in initial[1],
+		"tutorial names its exact station"
+	)
+	mission.use_station(0, &"training")
+	mission.release(0, Vector3.ZERO, false)
+	_check(
+		LunarObjective.next(mission, 0, false)[0] == &"loose_sample",
+		"dropped sample becomes the active target"
+	)
+	mission.pickup(0, mission.crates.keys()[0])
+	mission.use_station(0, &"training")
+	_check(
+		LunarObjective.next(mission, 0, false)[0] == &"fuel",
+		"delivery advances the guide to production"
+	)
+	mission.water = 0.0
+	_check(LunarObjective.next(mission, 0, false)[0] == &"ice", "missing water points to ice")
+	mission._create_cargo(0, &"ice")
+	var restored := mission.state()
+	_check(
+		LunarObjective.next(mission, 0, false)[0] == &"refinery", "carried ice points to refinery"
+	)
+	mission.use_station(0, &"refinery")
+	_check(
+		LunarObjective.next(mission, 0, false)[0] == &"refinery",
+		"running refinery remains the target"
+	)
+	mission.restore(restored)
+	_check(
+		LunarObjective.next(mission, 0, false)[0] == &"refinery",
+		"loaded carriage restores the exact target"
+	)
+	mission.events = [["sep", 0, 45]]
+	_check(LunarObjective.next(mission, 0, false)[0] == &"life", "storm redirects to shelter")
+	mission.phase = &"flight"
+	_check(LunarObjective.next(mission, 0, false)[0] == &"", "flight clears surface guidance")
+
+
 func _open(id: String) -> bool:
 	if not _press_menu("Jugar solo · sin conexión"):
 		return false
@@ -83,6 +132,81 @@ func _open(id: String) -> bool:
 	while _game._loading and Time.get_ticks_msec() < deadline:
 		await get_tree().physics_frame
 	return _check(_game.net == &"solo" and _game.ui.play.visible, "partida individual cargada")
+
+
+## This driver reads the displayed controls only. World positions and interaction keys
+## are deliberately absent from navigation decisions.
+func _guided_mission(capture: bool) -> bool:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if capture and DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("user://artemis-objetivo-despues.png")
+	var last_marker := ""
+	var retry := 0
+	var guide_clicks := 0
+	for step in range(3600):
+		if _game.sim.returned:
+			return _check(guide_clicks >= 5, "visible guidance leads to the Earth return")
+		var marker := _visible_button(["↓", "↑", "→", "←"], true)
+		if is_instance_valid(marker):
+			var name := marker.text.substr(3)
+			if name != last_marker or retry <= 0:
+				print("GUI RUTA: %s" % name)
+				_click_control(marker)
+				guide_clicks += 1
+				retry = 36
+			last_marker = name
+			retry -= 1
+		else:
+			last_marker = ""
+			var action := _visible_button(
+				[
+					"Tomar muestra",
+					"Entregar muestra",
+					"Preparar propelente",
+					"Recoger propelente",
+					"Cargar propelente",
+					"Sembrar cultivo",
+					"Recoger ración",
+					"Cargar ración",
+					"Enviar lista de vuelo",
+					"Subir a la nave",
+					"Extraer hielo",
+					"Entregar hielo",
+					"Recoger muestra",
+					"Recoger hielo"
+				],
+				false
+			)
+			if is_instance_valid(action):
+				print("GUI ACCIÓN: %s" % action.text)
+				_click_control(action)
+		for frame in range(15):
+			await get_tree().physics_frame
+	return _check(false, "ruta usando solo los controles visibles")
+
+
+func _visible_button(captions: Array, prefix: bool) -> Button:
+	for node: Node in _game.find_children("*", "Button", true, false):
+		var button := node as Button
+		if button.disabled or not button.is_visible_in_tree():
+			continue
+		for caption: String in captions:
+			if (prefix and button.text.begins_with(caption)) or button.text == caption:
+				return button
+	return null
+
+
+func _click_control(button: Button) -> void:
+	var point := button.get_global_rect().get_center()
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.position = point
+		event.global_position = point
+		event.pressed = down
+		get_viewport().push_input(event, true)
 
 
 func _complete() -> bool:

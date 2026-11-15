@@ -1,5 +1,5 @@
 {
-  "revision": 24,
+  "revision": 25,
   "nodes": [
     {
       "id": "config",
@@ -980,6 +980,16 @@
       "id": "lunar_mission",
       "kind": "script",
       "path": "lunar/lunar_mission.gd"
+    },
+    {
+      "id": "lunar_objective",
+      "kind": "script",
+      "path": "lunar/lunar_objective.gd"
+    },
+    {
+      "id": "lunar_objective_audit",
+      "kind": "artifact",
+      "path": "context_core/auditoria_objetivos_mvp.md"
     },
     {
       "id": "lunar_item_context",
@@ -2667,6 +2677,26 @@
       "lunar_interface",
       "presents",
       "lunar_item_context"
+    ],
+    [
+      "lunar_game",
+      "resolves",
+      "lunar_objective"
+    ],
+    [
+      "lunar_interface",
+      "presents",
+      "lunar_objective"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "verifies",
+      "lunar_objective"
+    ],
+    [
+      "lunar_objective_audit",
+      "documents",
+      "lunar_objective"
     ],
     [
       "lunar_game",

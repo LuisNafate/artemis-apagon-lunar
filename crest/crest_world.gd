@@ -58,7 +58,7 @@ const BOARDING := [Vector3(4.85, 0.04, 5.9), Vector3(6.35, 0.04, 5.9)]
 const SHELTER := Rect2(12.5, -2.6, 5.5, 9.1)
 const NAMES := {
 	&"supply": "SUMINISTROS",
-	&"training": "PRÁCTICA",
+	&"training": "MESA DE PRÁCTICA",
 	&"ice": "HIELO",
 	&"ore": "MINERAL",
 	&"refinery": "REFINADO",
@@ -69,7 +69,7 @@ const NAMES := {
 	&"crop": "CULTIVOS",
 	&"fuel": "PROPELENTE",
 	&"radio": "RADIO",
-	&"pad": "COHETE",
+	&"pad": "NAVE",
 	&"solar": "REFUERZO SOLAR",
 	&"irrigation": "RIEGO"
 }
@@ -596,6 +596,13 @@ func _stations() -> void:
 		_quarry(&"ice", BLUE)
 		_quarry(&"ore", AMBER)
 	training_desk = _console(&"training", BLUE)
+	if campaign_layout:
+		# Clipboard and sample cup distinguish this console by silhouette in shadow.
+		FieldWorld.box(training_desk, Vector3(-0.20, 0.84, -0.44), Vector3(0.33, 0.05, 0.27), WHITE)
+		FieldWorld.box(
+			training_desk, Vector3(-0.20, 0.875, -0.53), Vector3(0.16, 0.027, 0.07), BLUE
+		)
+		FieldWorld.box(training_desk, Vector3(0.22, 0.90, -0.46), Vector3(0.18, 0.15, 0.18), BLUE)
 	_equipment.append(_console(&"refinery", BLUE, false))
 	var drill_root := _console(&"drill", AMBER, false)
 	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 1.6), 1.5, 0.5))

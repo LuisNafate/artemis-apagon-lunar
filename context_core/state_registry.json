@@ -1,5 +1,5 @@
 {
-  "revision": 24,
+  "revision": 25,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -990,6 +990,11 @@
         },
         "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
       }
+    },
+    "objective_guidance": {
+      "audit": "context_core/auditoria_objetivos_mvp.md",
+      "display": "Un objetivo táctil en superficie, con nombre y dirección; la acción contextual lo reemplaza al llegar.",
+      "binding": "Anclas de estación, puerta, depósito con existencias o caja con posición registrada."
     },
     "item_integration": {
       "audit": "context_core/auditoria_items_mvp.md",

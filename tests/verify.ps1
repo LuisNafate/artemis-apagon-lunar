@@ -50,6 +50,7 @@ try {
     Invoke-GodotCheck -Name 'Regresión campaña lunar' -GodotArguments @('--fixed-fps', '60', '--quit-after', '2400', 'res://tests/lunar_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión mundo abierto' -GodotArguments @('--fixed-fps', '60', '--quit-after', '60000', 'res://tests/open_world_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión MVP individual' -GodotArguments @('--fixed-fps', '60', '--quit-after', '200000', 'res://tests/mvp_suite.tscn')
+    Invoke-GodotCheck -Name 'Regresión navegación visible' -GodotArguments @('--fixed-fps', '60', '--quit-after', '24000', 'res://tests/mvp_suite.tscn', '--', '--mvp-one', '--mvp-guide')
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
