@@ -482,6 +482,7 @@
   },
   "audio_feedback": {
     "scope": "piloto local de la campaña; no modifica ni transmite el estado de simulación",
+    "startup": "antes del primer arranque de un clon, importar recursos con el editor Godot; conservar los metadatos y las texturas extraídas",
     "volume": "control local persistente, silencio al 0 %, efectos, alertas y recompensas ajustados juntos",
     "solar_alert": "una vez por evento: Parker Solar Probe para tormenta de partículas y sonificación SOHO para llamarada sin partículas; pitidos finales y efectos visuales acompañan la tormenta",
     "steps": "tres muestras alternadas según distancia recorrida, mínimo 0,35 s entre pasos; se excluyen saltos de posición de un metro o más",

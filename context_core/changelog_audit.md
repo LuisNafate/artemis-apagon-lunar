@@ -335,3 +335,8 @@
 - Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y las suites Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta 10/214 con 22 fallos de ruta. Una copia limpia de `origin/main` reprodujo exactamente los mismos 22 fallos. Pendiente revisar la ruta y las colisiones de Cresta incorporadas por main.
 - Prueba visible con perfil aislado y reloj adelantado: aviso SEP con sonido Parker, llegada de partículas, aviso sin partículas con sonido SOHO y ganancia SFX de ambos reproductores y pitidos. El arnés temporal notificó instancias y recursos sin liberar al cerrar. Prueba adicional headless: intro, selector, nueve bases, opción de sonido y música nocturna. Pendiente escuchar la mezcla en otros dispositivos.
 - Se ejecutaron por separado las regresiones restantes: Campaña 12/543, Mundo abierto 12/880, MVP 9/520, navegación 1/15 y DONKI 2/732, todas sin fallos.
+
+## 2026-11-15 · Reparación de arranque tras la integración
+
+- La limpieza posterior al merge eliminó por error metadatos de importación y texturas extraídas de recursos nuevos de main; el arranque directo falló al cargar GLB y PNG. Se regeneraron y conservaron los archivos de importación, UID y texturas.
+- Godot 4.7.2 Linux: importación headless y arranque headless durante 60 fotogramas sin errores; arranque gráfico Vulkan Forward+ durante 600 fotogramas sin errores. La primera importación registró avisos de UID ausentes y los regeneró; se conservan para próximos arranques. No se modificaron scripts ni escenas. En un clon nuevo Godot debe importar recursos antes de ejecutarlos.
