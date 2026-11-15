@@ -15,7 +15,8 @@
 - Godot 4.7.2. Compatibility en móvil y Forward+ en escritorio. Objetivo: 30 fps en ARM64.
 - Todos los números de juego se leen de `context_core/state_registry.json → campaign_2026.open_world`. Ningún valor de la spec va fijo en el código.
 - Valores de la spec: `world_size` 1024, `chunk_size` 16, `load_radius` 3, `unload_radius` 4, `chunks_per_frame` 2, `edge_band` 24, `gravity` 3.2, `jump_speed` 3.2, `jump_with_box` 0.7, `air_control` 4.0, `tether_soft` 34, `tether_max` 40, `tap_route_radius` 20, `deposit_refill_dawns` 2, `deposit_near_radius` 60, `deposit_near_factor` 2, `starter_deposit_range` [25, 40].
-- Rectángulo plano de la base: `Rect2(-15.45, -8.7, 30.9, 17.4)`, con 8 m de transición. No hay rocas ni depósitos dentro de `Rect2(-23.45, -16.7, 46.9, 33.4)`.
+- Rectángulo plano de la base (plano del equipo, 40 × 22 m): `Rect2(-20, -11, 40, 22)`, con `base_flat_transition` 24 m. No hay rocas ni depósitos dentro de `Rect2(-28, -19, 56, 38)`. *(Antes del 2026-11-15: `Rect2(-15.45, -8.7, 30.9, 17.4)` y `Rect2(-23.45, -16.7, 46.9, 33.4)`.)*
+- Decisiones del usuario del 2026-11-15: en la campaña, los chunks sustituyen a `superficie_lunar.glb`; los `deposito_hielo` salen de la base y su modelo es el aspecto de los depósitos de hielo del mundo.
 - `FieldPilot` mantiene por defecto gravedad 16, salto 6.4 y aceleración en aire 13. Las suites `field` y `crest` no cambian.
 - No se toca `crest/crest.tscn` ni los prototipos `field`, `outpost` y `src/mission.tscn`.
 - Textos de interfaz en español.
@@ -194,6 +195,24 @@ Añade `_advance_dawns(m, n)`: pone `elapsed = period - 0.1` y hace `tick(0.2, S
 
 ---
 
+### Task 2b: Reparar main y adaptar el generador al plano 40 × 22
+
+El plano del equipo (8e87411, ya fusionado) dejó rotas dos suites que antes pasaban, y cambió la plataforma de la que depende el generador.
+
+**Files:**
+- Modify: `tests/crest_suite.gd`: el caso de pilotos (líneas ~285-310) comprueba el esqueleto, los huesos y el `ShaderMaterial` del gato anterior, que ya no existen. Reescríbelo para el piloto actual: el modelo y el `AnimationPlayer` son distintos por piloto; existen los clips `Idle`, `Walk` y `Run` en bucle; cada piloto tiene su tinte (`CrestWorld.BLUE` / `CrestWorld.AMBER` mezclado con `TINT_STRENGTH`); al caminar suena `Walk` y en reposo `Idle`.
+- Modify: lo que haga falta para que `tests/lunar_suite.gd` vuelva a 0 fallos (17 fallos en `_solo` y `_network` desde 8e87411). Diagnostica la causa antes de cambiar nada. Si es un fallo real del juego (por ejemplo, el tutorial no se puede completar desde los nuevos puntos de salida), arréglalo en el juego. Si la prueba asume la distribución antigua, actualiza la prueba. Explica cuál fue en el informe.
+- Modify: `context_core/state_registry.json` y `lunar/open_world/chunk_generator.gd`: el rectángulo plano y el de exclusión pasan a los valores de Global Constraints (40 × 22). Si hoy están en el registro, solo cambian los números. Si están en el código, muévelos al registro.
+- Modify: `tests/open_world_suite.gd`: los rectángulos de las pruebas de exclusión, salida de la base y arranque siguen a los nuevos valores, leídos del registro y no copiados.
+
+- [ ] **Step 1: Ejecutar `verify.ps1 -Godot $G` y anotar los fallos actuales** (crest no carga; lunar 17 fallos).
+- [ ] **Step 2: Diagnosticar los fallos de `lunar_suite`** (causa raíz con evidencia) y reescribir el caso de pilotos de `crest_suite`.
+- [ ] **Step 3: Cambiar los rectángulos de la base en el registro y el generador, y adaptar las pruebas del mundo abierto.**
+- [ ] **Step 4: `verify.ps1 -Godot $G` en verde**, con todas las suites a 0 fallos.
+- [ ] **Step 5: Commit** `Reparar suites tras el plano 40x22 y adaptar el generador`
+
+---
+
 ### Task 3: ChunkStreamer y ChunkView
 
 **Files:**
@@ -207,7 +226,7 @@ Añade `_advance_dawns(m, n)`: pone `elapsed = period - 0.1` y hace `tick(0.2, S
     - `MeshInstance3D` con `PaperMaterial` facetado.
     - `StaticBody3D` en capa 1 con `HeightMapShape3D` a escala de 1 m.
     - `MultiMeshInstance3D` de rocas con `LunarCrater.rock_mesh`.
-    - Un marcador por depósito, con `func set_deposit(id: int, left: int) -> void` que alterna entre las formas vacía y llena.
+    - Un marcador por depósito, con `func set_deposit(id: int, left: int) -> void` que alterna entre las formas vacía y llena. El hielo usa `assets/props_luna/estaciones/deposito_hielo.glb` (`PaperMaterial.restyle(modelo, false)`); el vacío es el mismo modelo hundido y oscurecido. El mineral usa una pieza propia con `PaperMaterial`.
   - `class_name ChunkStreamer extends Node3D`:
     - `func configure(sim: LunarMission, settings: Dictionary, region: Dictionary, soil: Color) -> void`
     - `func update(focus_points: Array[Vector3]) -> void`: pide al pool lo que falta y añade como máximo `chunks_per_frame` por llamada.
@@ -271,7 +290,7 @@ func _streaming() -> void:
 ### Task 4: Integración en la campaña
 
 **Files:**
-- Modify: `crest/crest_world.gd`: en `build_lunar_workshop` (modo campaña), quitar `ice` y `ore` de `campaign_stations`, retirar los volúmenes de la cantera y no construir `CrateresLaterales` ni el detalle exterior. En la escena histórica de Cresta se mantienen.
+- Modify: `crest/crest_world.gd`: en modo campaña, quitar `ice` y `ore` de `campaign_stations`, no colocar los dos `deposito_hielo` de la base, no mostrar `superficie_lunar.glb` y no construir `CrateresLaterales` ni el detalle exterior. En la escena histórica de Cresta se mantienen.
 - Modify: `lunar/lunar_game.gd`:
   - Crear `ChunkStreamer` en `_ready`.
   - En `_prepare_base`, `configure(...)` y esperar `is_ready_at` de los spawns antes de mostrar el juego. La pantalla de carga ya existe.
@@ -337,7 +356,7 @@ func _campaign() -> void:
 
 **Files:**
 - Modify: `field/field_pilot.gd`: `var gravity := 16.0`, `var jump_speed := JUMP_SPEED` y `var air_acceleration := 13.0`, usadas en `drive`, más `var jump_scale := 1.0`.
-- Modify: `crest/crest_pilot.gd`: zancada más larga fuera de la base con `var lunar_gait := false`, polvo al despegar y aterrizar (`GPUParticles3D` corto; `CPUParticles3D` en Compatibility) y sombra circular bajo el piloto, colocada con un rayo hacia abajo.
+- Modify: `crest/crest_pilot.gd`: marcha lunar fuera de la base con `var lunar_gait := false` (el piloto anima con `AnimationPlayer`: baja `speed_scale` de `Walk` y añade rebote del cuerpo; durante el salto usa una pose fija o `Idle`), polvo al despegar y aterrizar (`GPUParticles3D` corto; `CPUParticles3D` en Compatibility) y sombra circular bajo el piloto, colocada con un rayo hacia abajo.
 - Modify: `lunar/lunar_game.gd`: fija los parámetros desde el registro en `_add_pilot` y pasa `jump` a `drive`. Con caja, `jump_scale = jump_with_box`. El invitado envía el salto en `_guest_move(axis, jump)`.
 - Modify: `lunar/lunar_interface.gd`: botón `"Saltar"` (`_button(buttons, "Saltar", "jump")`, mínimo 50 px). Espacio en teclado.
 - Test: `tests/open_world_suite.gd`
@@ -380,8 +399,8 @@ func _jump() -> void:
 ### Task 6: Cámara que sigue al piloto
 
 **Files:**
-- Modify: `lunar/lunar_game.gd`: `func _follow_camera(delta: float, player: int) -> void`, llamada en `_render`.
-  - Dentro del rectángulo de exclusión de la base, mezcla hacia `_surface_camera()` (ortográfica, `SURFACE_SIZE`).
+- Modify: `lunar/lunar_game.gd`: amplía el `_follow_camera(delta)` que ya existe (plano del equipo).
+  - Dentro del rectángulo de exclusión de la base, conserva el comportamiento actual (ortográfica, `PLAY_SIZE`, desplazamiento limitado a la plataforma).
   - Fuera, perspectiva con FOV 45 y la misma orientación (34° de elevación, vector `Vector2(0.228, 0.974)`), siguiendo al piloto con `lerp` suavizado. Nunca gira con el piloto.
   - Cada dispositivo sigue a su propio piloto.
 - Modify: `lunar/lunar_backdrop.gd`: que el cielo y el horizonte acompañen a la cámara en movimiento y en perspectiva.
@@ -396,6 +415,7 @@ func _camera() -> void:
 	var game := await _game_solo("mons_mouton_plateau")
 	await _frames(30)
 	_check(game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "orthographic inside base")
+	_check(is_equal_approx(game.camera.size, LunarGame.PLAY_SIZE), "team follow zoom kept in base")
 	var basis_home: Basis = game.camera.global_basis
 	game._set_positions([Vector3(60, 1, 40), Vector3.ZERO])
 	await _frames(180)

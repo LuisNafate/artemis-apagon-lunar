@@ -83,9 +83,11 @@ El perfil de región (`region_profile`) sale de las bases de `campaign_2026` y a
 
 ### Base central
 
-- Un rectángulo fijo alrededor de la cubierta actual (unos 31 × 17 m más un margen de transición de unos 8 m) se aplana a Y = 0. Ahí el ruido se mezcla suavemente hacia cero.
+- Un rectángulo fijo alrededor de la plataforma se aplana a Y = 0. Desde el plano del equipo del 2026-11-15 la plataforma mide 40 × 22 m (`CrestWorld.HALF_X` 20, `HALF_Z` 11). El ruido se mezcla hacia cero en una transición de `base_flat_transition` = 24 m. *(Se amplió de 8 a 24 m en la Tarea 1 para que ninguna región deje la base encerrada.)*
 - La base sigue construyéndose con `CrestWorld` y nunca se descarga. Los chunks que la cubren solo generan suelo y no colocan rocas ni depósitos dentro del rectángulo.
-- **Se quitan las estaciones fijas `ice` y `ore`** de `campaign_stations`. La refinadora y el resto de estaciones se quedan. Los volúmenes de colisión de la cantera se retiran.
+- **Se quitan las estaciones fijas `ice` y `ore`** de `campaign_stations`, incluidos los dos `deposito_hielo` que el plano del equipo colocó en la base. La refinadora y el resto de estaciones se quedan. *(Decisión del usuario, 2026-11-15.)*
+- **El modelo `superficie_lunar.glb`** (110 × 110 m) que el plano del equipo usa como terreno alrededor de la plataforma no se muestra en la campaña: el relieve de los chunks lo sustituye y copia su paleta y su `PaperMaterial`. *(Decisión del usuario, 2026-11-15.)*
+- **Aspecto de los depósitos:** el hielo usa `assets/props_luna/estaciones/deposito_hielo.glb` del equipo. El mineral usa una pieza propia con `PaperMaterial` hasta que haya modelo.
 - **Arranque garantizado:** cada mundo coloca siempre un depósito pequeño de hielo y uno de mineral a 25–40 m de la base, en posiciones derivadas de la semilla. Así nadie empieza atascado.
 
 ### Depósitos: probabilidad, minado y relleno
@@ -121,12 +123,12 @@ Más allá de `world_size / 2 - edge_band` (unos 24 m), el generador sube el rel
 - `FieldPilot` gana propiedades `gravity`, `jump_speed` y `air_control`, con valores por defecto iguales a los actuales, para que las suites `field` y `crest` no cambien.
 - En la campaña, `LunarGame` las fija desde el registro: `gravity` **3,2 m/s²** y `jump_speed` **3,2 m/s**, que dan unos 2 s en el aire y unos 1,6 m de altura. `air_control` es bajo: la aceleración en el aire baja de 13 a unos 4.
 - Se puede saltar con caja, pero a `jump_speed * 0.7`. No hay daño por caída.
-- Respuesta visual: polvo al despegar y al aterrizar, sombra del piloto siempre proyectada bajo él, y una zancada más larga y saltarina en `CrestPilot.animate_gait` fuera de la base.
+- Respuesta visual: polvo al despegar y al aterrizar, sombra del piloto siempre proyectada bajo él, y una marcha más lenta y saltarina fuera de la base. Desde el plano del equipo, `CrestPilot` anima con el `AnimationPlayer` del AstroCat (`Idle`, `Walk`, `Run`), así que la marcha lunar se consigue con `speed_scale` y el rebote del cuerpo, no con huesos.
 
 ### Cámara
 
-- Fuera de la base: `Camera3D` en perspectiva (FOV de unos 45°) que sigue a su propio piloto en cada dispositivo, alta y por detrás según el ángulo actual (34° de elevación, misma orientación). Sigue con suavizado y no gira con el piloto, para no marear.
-- Dentro del rectángulo de la base vuelve suavemente al encuadre ortográfico actual (`_surface_camera`), así que la base se ve como hoy.
+- Dentro de la base se mantiene la cámara de seguimiento ortográfica del plano del equipo (`_follow_camera`, `PLAY_SIZE` 9.8, desplazamiento limitado a la plataforma).
+- Fuera de la base: `Camera3D` en perspectiva (FOV de unos 45°) que sigue a su propio piloto en cada dispositivo, alta y por detrás según el ángulo actual (34° de elevación, misma orientación). Sigue con suavizado y no gira con el piloto, para no marear. Al cruzar el borde de la base se mezcla entre ambas.
 - `LunarBackdrop` (cielo y horizonte) debe seguir funcionando con la cámara en movimiento. Adaptarlo es parte del trabajo.
 
 ### Controles
