@@ -1,5 +1,5 @@
 {
-  "revision": 21,
+  "revision": 22,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -860,7 +860,10 @@
       "cap": 2,
       "share": 0.75,
       "mission_bonus": 150,
-      "role_price": 250
+      "role_price": 250,
+      "settlement": "Amanecer y primer regreso por base; el saldo visible solo incluye operaciones guardadas.",
+      "storage": "Perfil local v1, 10000 unidades por moneda y tope técnico de 1000000000 monedas.",
+      "coop_delivery": "Cola persistente de recibos, lotes de hasta 64 y acuse tras guardar en el invitado."
     },
     "roles": {
       "engineer": {

@@ -1,5 +1,5 @@
 {
-  "revision": 21,
+  "revision": 22,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -452,6 +452,12 @@
       "VAC-17",
       "VAC-18"
     ],
+    "wallet": {
+      "duplicate": "El mismo recibo acredita una vez, incluso tras reconexión o al alcanzar el tope.",
+      "write_failure": "La compra revierte saldo y propiedad. El punto de control y el abono se guardan juntos; si fallan se reintenta antes de avanzar.",
+      "guest_delivery": "El anfitrión conserva el recibo hasta el acuse del invitado. El invitado solo confirma tras guardar.",
+      "corrupt_profile": "El perfil inválido se protege frente a escritura. Los perfiles v1 válidos conservan ranuras y recibos."
+    },
     "pilot_pose": "La marcha y la carga modifican los huesos de cada piloto. Solo se tiñe el material del traje.",
     "opening": {
       "rule": "Saltar o completar ambos clips abre el menú de modos. Repetir intro vuelve a mostrar el viaje sin avanzar la misión.",

@@ -22,6 +22,7 @@ func _run() -> void:
 	_logistics()
 	_launch()
 	_profile()
+	_wallet_adversarial()
 	await _terrain()
 	await _solo()
 	await _network()
@@ -232,6 +233,87 @@ func _profile() -> void:
 	DirAccess.remove_absolute(path)
 
 
+func _wallet_adversarial() -> void:
+	_cases += 1
+	var rules := _mission().rules
+	var path := _temp_profile("wallet-errors")
+	var profile := LunarProfile.new(rules, path)
+	var guest_id := "0123456789abcdef0123456789abcdef"
+	var base := "mons_mouton_plateau"
+	_check(not profile.credit("negative", -1), "negative reward rejected")
+	_check(not profile.credit("", 100), "empty receipt rejected")
+	_check(
+		not profile.credit("overflow", LunarProfile.MAX_BALANCE + 1), "oversized reward rejected"
+	)
+	profile.pay_day(base, 33, 1, NAN, {})
+	profile.pay_day(base, 33, 1, INF, {})
+	profile.pay_day("invalid", 33, 1, 25.0, {})
+	profile.pay_day(base, 33, 0, 25.0, {})
+	_check(profile.data.balance == 0, "invalid dawn input never credits")
+	profile.pay_day(base, 33, 1, 25.0, {guest_id: 12.5})
+	profile.pay_day(base, 33, 1, 25.0, {guest_id: 18.75})
+	var receipt := "%s/%s/33/1" % [profile.data.id, base]
+	_check(profile.data.balance == 250000, "same dawn credited exactly once")
+	_check(profile.data.guest_awards[guest_id][receipt] == 125000, "guest award stays immutable")
+	_check(profile.valid_guest_award(receipt, 125000), "valid guest award")
+	_check(not profile.valid_guest_award(receipt, 99900000), "guest award bound by base")
+	_check(not profile.valid_guest_award(receipt, 125000.0), "wire award must be integer")
+	_check(
+		not profile.valid_guest_award("%s/%s/33/01" % [profile.data.id, base], 100),
+		"alias rejected"
+	)
+	_check(
+		not profile.valid_guest_award("lunar/mission/invalid", 1500000), "unknown mission rejected"
+	)
+	profile.pay_day(base, 33, 2, 37.5, {guest_id: 37.5000000001})
+	var capped_share := "%s/%s/33/2" % [profile.data.id, base]
+	_check(
+		profile.data.guest_awards[guest_id][capped_share] == 375000, "round-off at guest cap paid"
+	)
+	_check(profile.credit("seed", 500 * LunarProfile.SCALE) and profile.save(), "wallet saved")
+	var stale := LunarProfile.new(rules, path)
+	var before := int(profile.data.balance)
+	profile.path = path + "/missing/profile"
+	_check(not profile.buy("slater_plain", false), "failed write rejects purchase")
+	_check(
+		not profile.open_base("slater_plain") and profile.data.balance == before, "buy rolled back"
+	)
+	profile.path = path
+	_check(profile.buy("slater_plain", false), "purchase retry succeeds")
+	_check(not profile.buy("slater_plain", false), "double purchase rejected")
+	_check(
+		not stale.buy("engineer", true) and stale.save_error == ERR_BUSY, "stale writer rejected"
+	)
+	var reloaded := LunarProfile.new(rules, path)
+	_check(
+		(
+			reloaded.data.balance == before - 100 * LunarProfile.SCALE
+			and reloaded.open_base("slater_plain")
+		),
+		"disk keeps exact debit and unlock"
+	)
+	var staged := FileAccess.open(path + ".interrupted.tmp", FileAccess.WRITE)
+	staged.store_var({"version": 1, "balance": -1}, false)
+	staged.close()
+	reloaded = LunarProfile.new(rules, path)
+	_check(reloaded.data.balance == profile.data.balance, "interrupted staging file ignored")
+	_check(reloaded.credit("cap", LunarProfile.MAX_BALANCE), "valid large award reaches the cap")
+	_check(reloaded.credit("at-cap", 1), "receipt consumed at capacity")
+	_check(reloaded.data.balance == LunarProfile.MAX_BALANCE, "never exceeds capacity")
+	_check(not reloaded.credit("at-cap", 1), "capped awards cannot be replayed")
+	_check(reloaded.save(), "cap survives persistence")
+	var corrupt_path := _temp_profile("corrupt-wallet")
+	var file := FileAccess.open(corrupt_path, FileAccess.WRITE)
+	file.store_var({"version": 1, "balance": -10}, false)
+	file.close()
+	var corrupt := LunarProfile.new(rules, corrupt_path)
+	_check(
+		corrupt.error == ERR_FILE_CORRUPT and not corrupt.save(), "corrupt wallet stays protected"
+	)
+	for temporary in [path, path + ".interrupted.tmp", corrupt_path]:
+		DirAccess.remove_absolute(temporary)
+
+
 func _terrain() -> void:
 	_cases += 1
 	var player := _endpoint("Alignment")
@@ -330,7 +412,14 @@ func _solo() -> void:
 	var player := _endpoint("Solo")
 	var existing_peer: MultiplayerPeer = player.multiplayer.multiplayer_peer
 	var base_id := "mons_mouton_plateau"
-	player.profile.data.bases[base_id] = {"run": 12345}
+	var legacy_mission := _mission(base_id)
+	player.profile.data.bases[base_id] = {
+		"run": 12345,
+		"active": legacy_mission.state(),
+		"checkpoint": legacy_mission.checkpoint,
+		"positions": [Vector3.ZERO, Vector3.ZERO],
+		"checkpoint_positions": [Vector3.ZERO, Vector3.ZERO]
+	}
 	player.profile.data.erase("solo_bases")
 	player.profile.data.erase("recent_mode")
 	player.profile.save()
@@ -460,7 +549,8 @@ func _solo() -> void:
 	player.profile = LunarProfile.new(player.sim.rules, player.profile_path)
 	player.ui.lobby(player.profile, "")
 	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
-	_press_menu_button(player, "Continuar solo")
+	_press_menu_button(player, "Jugar solo · sin conexión")
+	_check(player.ui.globe.enter_base(base_id), "el selector ofrece continuar la base guardada")
 	await _until(func() -> bool: return not player._loading)
 	_check(
 		player.sim.returned and absf(player.sim.elapsed - elapsed) < 0.04,
@@ -543,17 +633,56 @@ func _network() -> void:
 	)
 	if _capture:
 		_capture_image(host)
+	var host_path: String = host.profile.path
+	var guest_path: String = guest.profile.path
+	host.profile.path = host_path + "/missing/profile"
+	guest.profile.path = guest_path + "/missing/profile"
 	host.sim.elapsed = 899.98
 	host._coins_by_guest[host.guest_id] = 18.75 * 899.98 / 900.0
 	for index in range(6):
 		await get_tree().physics_frame
+	_check(
+		host.profile.data.balance == 0 and not host._pending_reward.is_empty(),
+		"failed dawn leaves neither wallet nor checkpoint committed"
+	)
+	_check(host.profile.data.guest_awards.is_empty(), "failed dawn cannot release guest award")
+	_check(host.ui._wallet_balance.text == "0.00 monedas", "uncommitted reward is hidden from HUD")
+	host.profile.path = host_path
+	_check(host._commit_reward(), "dawn saved exactly once on retry")
+	_check(
+		host.ui._wallet_balance.text == host.profile.balance_text() + " monedas", "host HUD updated"
+	)
 	_check(host.profile.data.balance == 187500, "75 percent day reward for host")
+	for index in range(6):
+		OS.delay_msec(2)
+		await get_tree().physics_frame
+	_check(guest.profile.data.balance == 0, "failed guest write rolls back receipt and credit")
+	_check(host.profile.data.guest_awards.has(host.guest_id), "unconfirmed award kept by host")
+	guest.profile.path = guest_path
+	host._send_awards()
 	for index in range(40):
 		if guest.profile.data.balance == 187500:
 			break
 		OS.delay_msec(2)
 		await get_tree().physics_frame
 	_check(guest.profile.data.balance == 187500, "guest receives the same 75 percent at dawn")
+	_check(
+		guest.ui._wallet_balance.text == guest.profile.balance_text() + " monedas",
+		"guest HUD updated"
+	)
+	var reloaded := LunarProfile.new(guest.sim.rules, guest.profile_path)
+	_check(reloaded.data.balance == 187500, "guest persisted before acknowledgment")
+	for index in range(40):
+		if not host.profile.data.guest_awards.has(host.guest_id):
+			break
+		OS.delay_msec(2)
+		await get_tree().physics_frame
+	_check(not host.profile.data.guest_awards.has(host.guest_id), "confirmed award dequeued")
+	var duplicate: String = (
+		"%s/%s/%d/%d" % [host.profile.data.id, host.sim.base_id, host.saved_run, host.sim.days]
+	)
+	guest._award({duplicate: 187500, "lunar/mission/boo": 1, 42: 500})
+	_check(guest.profile.data.balance == 187500, "wire replay and malformed awards ignored")
 	guest._leave()
 	for index in range(100):
 		if host.guest_peer == 0:
@@ -571,6 +700,22 @@ func _network() -> void:
 	for index in range(12):
 		await get_tree().physics_frame
 	_check(guest.profile.data.balance == 187500, "receipt replay cannot duplicate guest coins")
+	var many := {}
+	var count := LunarProfile.AWARD_BATCH * 2 + 1
+	for day in range(1, count + 1):
+		var id := "%s/%s/99999/%d" % [host.profile.data.id, host.sim.base_id, day]
+		many[id] = 100
+	host.profile.data.guest_awards[host.guest_id] = many
+	_check(host.profile.save(), "backlog persisted")
+	host._send_awards()
+	for index in range(90):
+		if not host.profile.data.guest_awards.has(host.guest_id):
+			break
+		OS.delay_msec(2)
+		await get_tree().physics_frame
+	var final_balance := 187500 + count * 100
+	_check(guest.profile.data.balance == final_balance, "backlog paid in bounded batches")
+	_check(not host.profile.data.guest_awards.has(host.guest_id), "every batch acknowledged")
 	var when: float = host.sim.elapsed
 	host._leave()
 	var save: Dictionary = host.profile.data.bases.mons_mouton_plateau
@@ -582,11 +727,14 @@ func _network() -> void:
 		OS.delay_msec(2)
 		await get_tree().physics_frame
 	_check(
-		guest.net == &"lobby" and guest.profile.data.balance == 187500,
+		guest.net == &"lobby" and guest.profile.data.balance == final_balance,
 		"guest keeps confirmed coins after host exit"
 	)
 	DirAccess.remove_absolute(host.profile_path)
 	DirAccess.remove_absolute(guest.profile_path)
+	host.get_parent().queue_free()
+	guest.get_parent().queue_free()
+	await get_tree().process_frame
 
 
 ## La carga del terreno es asíncrona: espera con reloj real (20 s como máximo).

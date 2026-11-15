@@ -1,4 +1,4 @@
-# gdlint: disable=max-returns,max-public-methods
+# gdlint: disable=max-returns,max-public-methods,max-file-lines
 class_name LunarGame
 extends Node3D
 
@@ -63,6 +63,9 @@ var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
 var _cargo_templates: Dictionary = {}
 var _coins_by_guest: Dictionary = {}
+var _pending_reward: Dictionary = {}
+var _reward_retry := 0.0
+var _award_retry := 0.0
 var _science_index := 0
 var _science_from_session := false
 var _feedback := ""
@@ -74,6 +77,7 @@ var _replica_positions: Array = []
 var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
+var _reward_audio := AudioStreamPlayer.new()
 
 
 func _ready() -> void:
@@ -162,6 +166,14 @@ func _surface_camera() -> void:
 
 
 func _process(delta: float) -> void:
+	if not _pending_reward.is_empty():
+		_reward_retry -= delta
+		if _reward_retry <= 0.0:
+			_commit_reward()
+	if net == &"host" and guest_peer != 0:
+		_award_retry -= delta
+		if _award_retry <= 0.0:
+			_send_awards()
 	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
 
 
@@ -304,13 +316,16 @@ func _choose(action: String, argument: String) -> void:
 		"roles":
 			ui.roles(profile)
 		"buy_base":
-			if profile.buy(argument, false):
-				ui.bases(profile, _base_mode)
-			else:
-				ui.bases(profile, _base_mode, "No tienes suficientes monedas para abrir esa base.")
+			var bought := profile.buy(argument, false)
+			var message := "" if bought else "No puedes comprar esta base con tu saldo actual."
+			if profile.save_error != OK:
+				message = "No se pudo guardar la compra. Tu saldo sigue intacto."
+			ui.bases(profile, _base_mode, message)
 		"buy_role":
 			if profile.buy(argument, true):
 				ui.roles(profile)
+			elif profile.save_error != OK:
+				ui.lobby(profile, "No se pudo guardar la compra. Tu saldo sigue intacto.")
 			else:
 				ui.lobby(profile, "Reúne 250 monedas para desbloquear ese rol.")
 		"choose_role":
@@ -321,8 +336,8 @@ func _choose(action: String, argument: String) -> void:
 			ui.confirm_reset(sim.rules.bases[argument].name, argument)
 		"reset":
 			profile.saved_bases(_base_mode == "solo").erase(argument)
-			profile.save()
-			ui.bases(profile, _base_mode)
+			var saved := profile.save()
+			ui.bases(profile, _base_mode, "" if saved else "No se pudo guardar el reinicio.")
 		"solo", "host":
 			_load_base(argument, action == "solo")
 		"join":
@@ -389,6 +404,7 @@ func _terrain_ready() -> bool:
 
 
 func _show_session() -> void:
+	ui.show_balance(profile.balance_text())
 	if net == &"host" and not play_started:
 		ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
 	else:
@@ -524,7 +540,7 @@ func _save_base(exact: bool) -> bool:
 
 func _leave() -> void:
 	if net in [&"host", &"solo"]:
-		if not _save_base(true):
+		if not _commit_reward() or not _save_base(true):
 			if play_started or net == &"solo":
 				ui.session_menu(net, "El guardado falló. Inténtalo de nuevo.")
 			else:
@@ -598,6 +614,7 @@ func _accept_join(id: String, seed_value: int, active_roles: Array) -> void:
 	sim.roles = active_roles
 	sim.connected[1] = true
 	net = &"guest"
+	ui.show_balance(profile.balance_text())
 	ui.playing()
 
 
@@ -640,6 +657,9 @@ func _connection_failed() -> void:
 
 
 func _local_frame(delta: float) -> void:
+	if not _pending_reward.is_empty():
+		_render(delta, 0)
+		return
 	_vectors[0] = ui.joystick.axis if ui.play.visible else Vector2.ZERO
 	_inactivity += delta
 	if _inactivity > 0.45:
@@ -650,7 +670,7 @@ func _local_frame(delta: float) -> void:
 
 	if guest_peer != 0 and sim.phase not in [&"tutorial", &"flight"]:
 		var period := float(sim.rules.cycle.period)
-		var time := minf(delta, period - sim.elapsed)
+		var time := clampf(period - sim.elapsed, 0.0, delta)
 		_coins_by_guest[guest_id] = (
 			float(_coins_by_guest.get(guest_id, 0.0)) + sim.wallet_rate(true) * time / period
 		)
@@ -661,30 +681,51 @@ func _local_frame(delta: float) -> void:
 		_set_positions(positions_at_dawn)
 		_route[0].clear()
 		_route[1].clear()
-		_coins_by_guest.clear()
+		if not sim.dawn:
+			_coins_by_guest.clear()
 		_notice("Sin aire. Regreso al último amanecer.")
 	if sim.dawn:
 		positions_at_dawn = _positions()
-		profile.pay_day(sim.base_id, saved_run, sim.days, day_rate, _coins_by_guest)
-		_coins_by_guest.clear()
-		if _save_base(false):
-			_send_awards()
-			_notice("Amanecer. Progreso y monedas asegurados.")
-		else:
-			_notice("No se pudo guardar el amanecer.")
+		_pending_reward = {"day": sim.days, "amount": day_rate, "guests": _coins_by_guest}
+		_coins_by_guest = {}
+		_commit_reward()
 	if not had_returned and sim.returned:
-		profile.pay_mission(sim.base_id, int(sim.difficulty.coins), guest_id)
 		sim.checkpoint.returned = true
 		sim.checkpoint.earth_ok = false
 		sim.checkpoint.radio_left = 0.0
-		if _save_base(false):
-			_send_awards()
-		_notice("¡Misión de regreso a Tierra completada!")
+		_pending_reward = {"difficulty": int(sim.difficulty.coins), "guest": guest_id}
+		_commit_reward()
 	_render(delta, 0)
 	_sync_left -= delta
 	if _sync_left <= 0.0:
 		_sync_left = SAMPLE_RATE
 		_send_snapshot()
+
+
+func _commit_reward() -> bool:
+	if _pending_reward.is_empty():
+		return true
+	var before := int(profile.data.balance)
+	var daily := _pending_reward.has("day")
+	if daily:
+		profile.pay_day(
+			sim.base_id,
+			saved_run,
+			_pending_reward.day,
+			_pending_reward.amount,
+			_pending_reward.guests
+		)
+	else:
+		profile.pay_mission(sim.base_id, _pending_reward.difficulty, _pending_reward.guest)
+	if not _save_base(false):
+		_reward_retry = 1.0
+		_notice("No se guardaron las monedas. Se está reintentando…", false)
+		return false
+	_pending_reward.clear()
+	_send_awards()
+	var message := "Amanecer. Progreso asegurado." if daily else "¡Misión de regreso completada!"
+	_show_reward(int(profile.data.balance) - before, message)
+	return true
 
 
 func _guest_frame(delta: float) -> void:
@@ -714,6 +755,8 @@ func _guest_frame(delta: float) -> void:
 
 
 func _interact(player: int, release: bool) -> void:
+	if not _pending_reward.is_empty():
+		return
 	if sim.phase == &"flight":
 		return
 	var pilot := pilots[player]
@@ -904,6 +947,9 @@ func _build_alert_audio() -> void:
 	stream.data = buffer
 	_alert_audio.stream = stream
 	add_child(_alert_audio)
+	_reward_audio.stream = stream
+	_reward_audio.pitch_scale = 1.5
+	add_child(_reward_audio)
 
 
 func _send_snapshot() -> void:
@@ -950,10 +996,10 @@ func _guest_action(release: bool) -> void:
 		_interact(1, release)
 
 
-func _notice(message: String) -> void:
+func _notice(message: String, share: bool = true) -> void:
 	_feedback = message
 	_feedback_time = 3.1
-	if net == &"host" and guest_peer != 0:
+	if share and net == &"host" and guest_peer != 0:
 		_remote_notice.rpc_id(guest_peer, message)
 
 
@@ -963,19 +1009,66 @@ func _remote_notice(message: String) -> void:
 		_notice(message)
 
 
+func _show_reward(amount: int, message: String) -> void:
+	if amount > 0:
+		_reward_audio.play()
+		message += " +%.2f monedas" % (float(amount) / LunarProfile.SCALE)
+	ui.show_balance(profile.balance_text())
+	_notice(message, false)
+
+
 func _send_awards() -> void:
-	var awards: Dictionary = profile.data.guest_awards.get(guest_id, {})
-	if guest_peer != 0 and not awards.is_empty():
-		_award.rpc_id(guest_peer, awards)
+	_award_retry = 2.0
+	if guest_peer == 0:
+		return
+	var pending: Dictionary = profile.data.guest_awards.get(guest_id, {})
+	var batch := {}
+	for id: Variant in pending:
+		if profile.valid_guest_award(id, pending[id]):
+			batch[id] = pending[id]
+			if batch.size() == LunarProfile.AWARD_BATCH:
+				break
+	if not batch.is_empty():
+		_award.rpc_id(guest_peer, batch)
 
 
 @rpc("authority", "call_remote", "reliable")
 func _award(receipts: Dictionary) -> void:
-	if net != &"guest":
+	if net != &"guest" or receipts.size() > LunarProfile.AWARD_BATCH:
 		return
-	for id: String in receipts:
-		profile.credit(id, receipts[id])
-	profile.save()
+	var before := int(profile.data.balance)
+	var accepted := PackedStringArray()
+	var changed := false
+	for id: Variant in receipts:
+		var amount: Variant = receipts[id]
+		if profile.valid_guest_award(id, amount):
+			changed = profile.credit(id, amount) or changed
+			accepted.append(id)
+	if changed and not profile.save():
+		_notice("Tus monedas están pendientes de guardar. Se reintentará.", false)
+		return
+	if not accepted.is_empty():
+		_confirm_awards.rpc_id(1, accepted)
+	if changed:
+		_show_reward(int(profile.data.balance) - before, "Recompensa asegurada.")
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _confirm_awards(receipts: PackedStringArray) -> void:
+	if net != &"host" or guest_peer == 0 or multiplayer.get_remote_sender_id() != guest_peer:
+		return
+	if receipts.size() > LunarProfile.AWARD_BATCH:
+		return
+	var pending: Dictionary = profile.data.guest_awards.get(guest_id, {})
+	var changed := false
+	for id in receipts:
+		changed = pending.erase(id) or changed
+	if not changed:
+		return
+	if pending.is_empty():
+		profile.data.guest_awards.erase(guest_id)
+	if profile.save():
+		_send_awards()
 
 
 func _show_science(step: int) -> void:

@@ -191,3 +191,7 @@ CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por pi
 ## Paleta de AstroCat · revisión 21
 
 CrestPilot usa las texturas originales de AstroCat y aplica solo al traje el tinte suave por jugador. Convierte la misma marcha, reposo y carga a los ejes de reposo de los huesos importados.
+
+## Economía de campaña · revisión 22
+
+LunarMission calcula las recompensas existentes. LunarGame confirma conjuntamente el punto de control y los abonos en LunarProfile, y entrega los recibos cooperativos mediante ENet. LunarInterface muestra el saldo confirmado y el importe recién acreditado. Si el perfil no se puede escribir, el punto de control pendiente queda en espera de reintento y las compras fallidas se revierten.

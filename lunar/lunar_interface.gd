@@ -61,6 +61,7 @@ var _resources: GridContainer
 var _readouts: Array[Label] = []
 var _controls: HBoxContainer
 var _pause: Button
+var _wallet_balance: Label
 
 
 func build() -> void:
@@ -158,6 +159,12 @@ func _build_play(root: Control) -> void:
 	notes.offset_top = -120
 	notes.offset_bottom = -90
 	notes.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	feedback = _label(notes, "", 22)
+	feedback.hide()
+	feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_float_text(feedback)
+	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
@@ -172,6 +179,16 @@ func _build_play(root: Control) -> void:
 			if play.visible:
 				show_title()
 	)
+	_wallet_balance = _label(play, "", 20, TITLE)
+	_wallet_balance.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_wallet_balance.offset_left = -320
+	_wallet_balance.offset_right = -106
+	_wallet_balance.offset_top = 26
+	_wallet_balance.offset_bottom = 67
+	_wallet_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_wallet_balance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_float_text(_wallet_balance)
+	_wallet_balance.add_theme_color_override("font_color", Color("#ffda7a"))
 	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_pause.offset_left = -90
@@ -209,14 +226,6 @@ func _build_play(root: Control) -> void:
 	bottom.offset_bottom = -11
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(joystick)
-	feedback = _label(bottom, "", 23)
-	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	feedback.hide()
-	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	feedback.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	feedback.add_theme_color_override("font_outline_color", Color("#271e20"))
-	feedback.add_theme_constant_override("outline_size", 8)
 	_zone_panel = PanelContainer.new()
 	_zone_panel.add_theme_stylebox_override("panel", _style(FILL, EDGE))
 	play.add_child(_zone_panel)
@@ -344,6 +353,7 @@ func flight_status(phase: int, progress: float) -> void:
 	if flying:
 		_zone_panel.hide()
 	_pause.visible = not flying
+	_wallet_balance.visible = not flying
 	_resources.visible = not flying
 	details.visible = flying
 	if not flying:
@@ -385,10 +395,6 @@ func lobby(profile: LunarProfile, status: String) -> void:
 
 	var solo := _lobby_button(_list, "Jugar solo · sin conexión", "bases", "solo", true)
 	_lobby_button(_list, "Crear partida en línea", "bases", "host")
-	if not String(profile.data.recent).is_empty():
-		var mode: String = profile.data.recent_mode
-		var caption := "Continuar solo" if mode == "solo" else "Continuar en línea"
-		_lobby_button(_list, caption, mode, profile.data.recent)
 
 	var join_controls := HBoxContainer.new()
 	join_controls.add_theme_constant_override("separation", 8)
@@ -454,8 +460,17 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 	var title := "JUGAR SOLO" if single_player else "CREAR PARTIDA EN LÍNEA"
 	_prepare_menu(title, "%s monedas · Elige una base lunar." % profile.balance_text())
 	var spots: Array[Dictionary] = []
+	var focus := String(profile.data.recent)
+	if focus.is_empty() or not profile.open_base(focus):
+		focus = ""
+		for id: String in profile.rules.bases:
+			if profile.open_base(id):
+				focus = id
+				break
+	var order := 0
 	_button(_list, "Volver", "lobby")
 	for id: String in profile.rules.bases:
+		order += 1
 		var entry: Dictionary = profile.rules.bases[id]
 		var difficulty: String = profile.rules.difficulties[entry.difficulty].label
 		_label(_list, entry.terrain, 20).modulate = SOFT
@@ -468,11 +483,17 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 		_button(_list, caption, mode if owned else "buy_base", id)
 		if has_save:
 			_button(_list, "Reiniciar %s…" % entry.name, "reset_confirm", id)
-		var note := difficulty
+		var note := "%s · misión nueva" % difficulty
+		var resume := ""
+		if id == focus and owned and not has_save:
+			note = "%s · empieza aquí" % difficulty
 		if not owned:
 			note = "%s - %d" % [difficulty, entry.cost]
 		elif has_save:
+			var slot: Dictionary = profile.saved_bases(single_player)[id]
+			var day := int(slot.get("active", {}).get("days", 0)) + 1
 			note = "%s · guardada" % difficulty
+			resume = "Continuar día %d" % day
 		spots.append(
 			{
 				"id": id,
@@ -481,11 +502,15 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 				"owned": owned,
 				"priced": not owned,
 				"saved": owned and has_save,
+				"resume": resume,
+				"order": order,
+				"focus": id == focus,
 				"action": mode if owned else "buy_base"
 			}
 		)
 	menu.hide()
 	globe.show_bases(title, profile.balance_text(), spots, notice)
+	globe.face_base(focus)
 
 
 func roles(profile: LunarProfile) -> void:
@@ -539,6 +564,10 @@ func confirm_reset(base_name: String, id: String) -> void:
 	)
 	_button(_list, "Cancelar", "bases")
 	_button(_list, "Reiniciar base", "reset", id)
+
+
+func show_balance(balance: String) -> void:
+	_wallet_balance.text = "%s monedas" % balance
 
 
 func playing() -> void:
@@ -604,7 +633,7 @@ func sync(
 	var deposit := String(spot).begins_with("dep:")
 	var named: StringName = mission.deposit_kind(spot) if deposit else spot
 	feedback.text = message
-	feedback.visible = not message.is_empty()
+	feedback.visible = not message.is_empty() and mission.phase != &"flight"
 	var carrying: bool = mission.pilots[player].cargo != 0
 	var seated: bool = mission.pilots[player].seated
 	var spot_name := String(CrestWorld.NAMES.get(named, ""))
