@@ -207,7 +207,7 @@ El rover de la antena (`assets/props_luna/estaciones/antena_rover.glb`, junto a 
 
 **Decisiones del usuario**
 
-- **Bloqueado:** funciona como ahora, como la radio para enviar la lista de vuelo. Junto a él, **Acción** = "Enviar a Tierra" (la acción actual de radio).
+- **Bloqueado:** funciona como ahora, como la radio para enviar la lista de vuelo. Junto a él, **Acción** = "Enviar lista de vuelo" (la acción actual de radio).
 - **Desbloqueo:** hay que entregarle **3 cajas de mineral y 3 cajas de hielo**. Se entregan caja a caja con **Entregar** cuando se lleva una caja de ese tipo junto al rover. Son cajas traídas a mano, no el mineral guardado. El panel muestra "Mineral x/3 · Hielo y/3". Al completarse queda desbloqueado para siempre en esa base: se guarda con la partida y en cooperativo vale para los dos.
 - **Carga:** el rover lleva cajas en una bandeja trasera.
 - **Radio tras el desbloqueo:** solo funciona con el rover aparcado en su sitio de la base, dentro del radio de aparcamiento. Si está fuera, junto a su sitio el panel indica que hay que traer el rover para usar la radio.

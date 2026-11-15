@@ -33,6 +33,18 @@ func _locked_radio() -> void:
 		"the rover starts at its parking spot"
 	)
 	_suite._check(not game.sim.rover.unlocked, "the rover starts locked")
+	var footprint := CylinderShape3D.new()
+	footprint.radius = float(RoverSpec.data.collision_radius) + 0.05
+	footprint.height = 1.0
+	var probe := PhysicsShapeQueryParameters3D.new()
+	probe.shape = footprint
+	probe.collision_mask = 1
+	probe.exclude = [game.rover.body.get_rid()]
+	probe.transform = Transform3D(Basis.IDENTITY, RoverSpec.park_point() + Vector3(0, 0.6, 0))
+	var overlaps: Array = game.get_world_3d().direct_space_state.intersect_shape(probe, 8)
+	_suite._check(
+		overlaps.is_empty(), "nothing solid overlaps the parked rover (%d)" % overlaps.size()
+	)
 	await _stand_by(game)
 	_suite._check(game._spots[0] == &"radio", "next to the locked rover the spot is the radio")
 	_suite._check(ui.action_button.text == "Enviar lista de vuelo", "Action is the radio")

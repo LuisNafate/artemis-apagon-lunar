@@ -301,7 +301,7 @@ func _build_play(root: Control) -> void:
 	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
 	release_button.custom_minimum_size = Vector2(200, 50)
-	radio_button = _button(buttons, "Enviar a Tierra", "radio")
+	radio_button = _button(buttons, "Enviar lista de vuelo", "radio")
 	radio_button.custom_minimum_size = Vector2(200, 50)
 	jump_button = _button(play, "Saltar", "jump")
 	jump_button.custom_minimum_size = Vector2(110, 56)

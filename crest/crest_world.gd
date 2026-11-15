@@ -621,7 +621,11 @@ func _stations() -> void:
 	if campaign_layout:
 		_build_fuel_cabinet(fuel_cabinet)
 	_equipment.append(fuel_cabinet)
-	_console(&"radio", PURPLE, false)
+	if campaign_layout:
+		# El rover aparcado ocupa el sitio de la antigua consola de radio: solo queda el marcador.
+		_marker(&"radio", PURPLE)
+	else:
+		_console(&"radio", PURPLE, false)
 	if campaign_layout:
 		_marker(&"pad", AMBER)
 	else:
