@@ -557,3 +557,28 @@ func _budget() -> void:
 - [ ] **Step 4: Ejecutar `verify.ps1 -Godot $G` completo y exportar Windows x64** (`& $G --headless --path . --export-release "Windows Desktop" dist/Artemis-Ultima-Ventana.exe`). Lanzar el ejecutable y comprobar que sale con código 0.
 - [ ] **Step 5: Registrar en `changelog_audit.md` las cifras reales** (casos y comprobaciones de cada suite y el peor frame).
 - [ ] **Step 6: Commit** `Cerrar el corte del mundo abierto y actualizar context_core`
+
+---
+
+### Task 4b: Muro, puerta y flecha a la base
+
+Cambio aprobado por el usuario el 2026-11-15. Ver la sección "Muro, puerta y flecha a la base" de la spec.
+
+**Files:**
+- Create: `lunar/base_enclosure.gd`: construye el muro, el cristal del lado sur y la puerta corredera. Expone `func door_point() -> Vector3` (centro del hueco, Y = 0), `func outside_point() -> Vector3` (unos 2 m fuera de la puerta) y `func update_door(pilots: Array[Vector3]) -> void` (abre y cierra la puerta). Todos los valores salen del registro.
+- Create: `lunar/base_arrow.gd`: flecha plana en el suelo y `Label3D` con los metros. `func point_to(pilot: Vector3, target: Vector3, visible_outside: bool) -> void`.
+- Modify: `crest/crest_world.gd` (solo en modo campaña) y/o `lunar/lunar_game.gd`: instancian y actualizan ambos. `lunar_game.gd` debe seguir con 1000 líneas o menos: la lógica va en los archivos nuevos.
+- Modify: `lunar/open_world/route_planner.gd`: las rutas compuestas cruzan por `door_point()` y no por el borde más cercano.
+- Modify: `context_core/state_registry.json` (`campaign_2026.open_world.base_wall`: altura 2.4, altura del murete sur 1.0, ancho de la puerta 3.0, distancia de apertura 3.0, centro de la puerta).
+- Test: `tests/open_world_suite.gd` (caso `_enclosure`). Adapta lo que haga falta en `tests/lunar_suite.gd`, por ejemplo la ruta de la cantera al refugio, que ahora entra por la puerta.
+
+- [ ] **Step 1: Escribir las pruebas que fallan.**
+  - En cada lado y en varios puntos del muro, un piloto que camina hacia fuera, o que salta contra él, no termina fuera de `Rect2(-20, -11, 40, 22)`.
+  - Desde `SPAWNS[0]`, caminando hacia `outside_point()` por la ruta, el piloto acaba fuera. Desde fuera vuelve a entrar por la puerta.
+  - La puerta se abre con un piloto a menos de 3 m y se cierra lejos.
+  - Desde 5 puntos del mapa (incluido uno a más de 200 m), la flecha es visible fuera, su dirección en XZ forma con `door_point() - piloto` un ángulo menor de 3° y la etiqueta muestra los metros redondeados. Dentro de la base no se ve.
+  - Una ruta al tocar desde dentro a un punto a 10 m fuera de la puerta, y la inversa, no tiene ningún tramo que cruce el muro.
+- [ ] **Step 2: Ejecutarlas y verlas fallar** (anota la salida RED).
+- [ ] **Step 3: Implementar.**
+- [ ] **Step 4: `verify.ps1 -Godot $G` en verde**, con todas las suites a 0 fallos y sin avisos.
+- [ ] **Step 5: Commit** `Muro con puerta en la base y flecha de regreso` (en español, sin líneas de atribución).

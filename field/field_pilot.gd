@@ -9,6 +9,10 @@ var rig: Node3D
 var feet: Array[Node3D] = []
 var carrying: Node3D
 var direction := Vector3.FORWARD
+var gravity := 16.0
+var jump_speed := JUMP_SPEED
+var air_acceleration := 13.0
+var jump_scale := 1.0
 var dash_left := 0.0
 var dash_cooldown := 0.0
 var _stride := 0.0
@@ -66,16 +70,16 @@ func drive(delta: float, axis: Vector2, jump: bool, dash: bool) -> void:
 		dash_cooldown = 1.25
 	if is_on_floor():
 		if jump:
-			velocity.y = JUMP_SPEED
+			velocity.y = jump_speed * jump_scale
 	else:
-		velocity.y -= 16.0 * delta
+		velocity.y -= gravity * delta
 	var desired := heading * WALK_SPEED
 	if dash_left > 0.0:
 		desired = direction * DASH_SPEED
 		velocity.x = desired.x
 		velocity.z = desired.z
 	else:
-		var acceleration := 35.0 if is_on_floor() else 13.0
+		var acceleration := 35.0 if is_on_floor() else air_acceleration
 		velocity.x = move_toward(velocity.x, desired.x, delta * acceleration)
 		velocity.z = move_toward(velocity.z, desired.z, delta * acceleration)
 	dash_left = maxf(0.0, dash_left - delta)

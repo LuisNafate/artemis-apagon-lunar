@@ -25,6 +25,9 @@ func _run() -> void:
 	await _streaming_limits()
 	await _campaign()
 	await _camera()
+	await _jump()
+	await _open_routes()
+	await EnclosureCases.new(self).run()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -534,6 +537,188 @@ func _camera() -> void:
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame
+
+
+## Salto lunar: gravedad y velocidad del registro, ~2 s en el aire y ~1,6 m de altura.
+func _jump() -> void:
+	_cases += 1
+	var game := await _game_solo("mons_mouton_plateau")
+	var pilot: CrestPilot = game.pilots[0]
+	var s: Dictionary = game.sim.rules.open_world
+	_check(
+		(
+			is_equal_approx(pilot.gravity, float(s.gravity))
+			and is_equal_approx(pilot.jump_speed, float(s.jump_speed))
+			and is_equal_approx(pilot.air_acceleration, float(s.air_control))
+		),
+		"lunar jump from registry"
+	)
+	# Punto abierto y sin techo (el arranque está dentro del refugio).
+	var open_point := Vector3(60, 1, 40)
+	game._set_positions([open_point, Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(open_point))
+	await _until(func() -> bool: return pilot.is_on_floor())
+	await _frames(30)
+	var above := PhysicsRayQueryParameters3D.create(
+		pilot.global_position + Vector3.UP, pilot.global_position + Vector3.UP * 5.0
+	)
+	above.collision_mask = 1
+	_check(game.get_world_3d().direct_space_state.intersect_ray(above).is_empty(), "no ceiling")
+	_check(pilot.is_on_floor(), "standing before the jump")
+	var ground := pilot.position.y
+	game._jump[0] = true
+	await _frames(2)
+	var airborne := 2
+	var apex := 0.0
+	while not pilot.is_on_floor() and airborne < 400:
+		airborne += 1
+		apex = maxf(apex, pilot.position.y - ground)
+		await get_tree().physics_frame
+	_check(absf(airborne / 60.0 - 2.0) < 0.15, "about 2 s airborne (%.2f)" % (airborne / 60.0))
+	_check(absf(apex - 1.6) < 0.12, "about 1.6 m apex (%.2f)" % apex)
+	_check(not game._jump[0], "jump press consumed")
+	game.sim._create_cargo(0, &"ice")
+	await _frames(2)
+	_check(is_equal_approx(pilot.jump_scale, float(s.jump_with_box)), "box scales the jump")
+	game.sim.crates.erase(game.sim.pilots[0].cargo)
+	game.sim.pilots[0].cargo = 0
+	# Sin chunk listo no hay salto ni gravedad.
+	var unloaded := Vector3(400, 5, 400)
+	game._set_positions([unloaded, Vector3.ZERO])
+	game._jump[0] = true
+	await _frames(3)
+	_check(pilot.position == unloaded and not game._jump[0], "no jump while the chunk loads")
+	var plain := FieldPilot.new()
+	_check(
+		plain.gravity == 16.0 and plain.jump_speed == FieldPilot.JUMP_SPEED,
+		"legacy pilot unchanged"
+	)
+	plain.free()
+	DirAccess.remove_absolute(game.profile_path)
+	game.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## Rutas al tocar: A* sobre chunks cargados fuera de la base, recta si es lejos, mixta en el borde.
+func _open_routes() -> void:
+	_cases += 1
+	var game := await _game_solo("mons_mouton_plateau")
+	game._set_positions([Vector3(80, 1, 60), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.loaded_coords().size() == 49)
+	await _frames(240)
+	_check(game._planner.open.rebuilds == 0, "streaming without taps never rebuilds the route grid")
+	game._set_positions([Vector3(200, 1, 60), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(Vector3(200, 1, 60)))
+	await _frames(120)
+	game._set_positions([Vector3(80, 1, 60), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.loaded_coords().size() == 49)
+	await _frames(120)
+	_check(game._planner.open.rebuilds == 0, "moving across chunks never rebuilds the route grid")
+	var routes := OpenRoutes.new()
+	var began := Time.get_ticks_usec()
+	routes.rebuild(game.streamer)
+	print("OPEN ROUTES rebuild 49 chunks: %.1f ms" % [(Time.get_ticks_usec() - began) / 1000.0])
+	var start: Vector3 = game.pilots[0].position
+	var path := routes.path(start, start + Vector3(12, 0, 6))
+	_check(path.size() >= 2, "short open route exists")
+	for p in path:
+		var c := ChunkGenerator.coord_of(Vector3(p.x, 0, p.y), 16.0)
+		var data: ChunkData = game.streamer.data_at(c)
+		var cell := Vector2i(((Vector2(p.x, p.y) - Vector2(c) * 16.0) / 0.5).floor())
+		_check(data.walkable[cell.y * 32 + cell.x] == 1, "route only on walkable cells")
+	var tap := start + Vector3(12, 0, 6)
+	var tapped := Time.get_ticks_usec()
+	game._set_destination(0, tap)
+	print(
+		(
+			"OPEN ROUTES on-demand rebuild + path: %.1f ms"
+			% [(Time.get_ticks_usec() - tapped) / 1000.0]
+		)
+	)
+	_check(game._planner.open.rebuilds == 1, "the first tap rebuilds once")
+	game._set_destination(0, tap)
+	_check(game._planner.open.rebuilds == 1, "a second tap in the same window reuses the grid")
+	_check(game._route[0].size() >= 2, "tap within radius follows the open route")
+	game._set_destination(0, start + Vector3(35, 0, 0))
+	_check(game._route[0].size() == 1, "far tap walks straight")
+	# Cruzar el borde plano: un extremo dentro y otro fuera dan una ruta continua.
+	var flat := _rect(game.sim.rules.open_world.base_flat_rect)
+	var inside := Vector3(flat.end.x - 3.0, 0.0, 0.0)
+	var outside := Vector3(flat.end.x + 8.0, 0.0, 0.0)
+	game._set_positions([inside, Vector3.ZERO])
+	await _frames(30)
+	game._set_destination(0, outside)
+	var out_route: PackedVector2Array = game._route[0]
+	_check(out_route.size() >= 2, "base to outside has a route")
+	_check(
+		out_route[out_route.size() - 1].distance_to(Vector2(outside.x, outside.z)) < 1.0,
+		"outbound ends at the tap"
+	)
+	game._set_positions([outside, Vector3.ZERO])
+	await _frames(30)
+	game._set_destination(0, inside)
+	var in_route: PackedVector2Array = game._route[0]
+	_check(in_route.size() >= 2, "outside to base has a route")
+	_check(
+		in_route[in_route.size() - 1].distance_to(Vector2(inside.x, inside.z)) < 1.0,
+		"inbound ends at the tap"
+	)
+	_obstacle_detour(game)
+	DirAccess.remove_absolute(game.profile_path)
+	game.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## Una celda de 0,5 m (indice global) es transitable en los chunks cargados.
+func _walkable_cell(streamer: ChunkStreamer, cell: Vector2i) -> bool:
+	var chunk := Vector2i((Vector2(cell) / 32.0).floor())
+	var data: ChunkData = streamer.data_at(chunk)
+	if data == null:
+		return false
+	var local := cell - chunk * 32
+	return data.walkable[local.y * 32 + local.x] == 1
+
+
+## Con un obstaculo entre origen y destino, la ruta lo rodea; sin chunk cargado, recta.
+func _obstacle_detour(game: Node) -> void:
+	var streamer: ChunkStreamer = game.streamer
+	var block := Vector2i.ZERO
+	var found := false
+	for chunk in streamer.loaded_coords():
+		for index in range(1024):
+			var cell := chunk * 32 + Vector2i(index % 32, index / 32)
+			if found or _walkable_cell(streamer, cell):
+				continue
+			found = true
+			for k in range(-6, 7):
+				found = found and (k == 0 or _walkable_cell(streamer, cell + Vector2i(k, 0)))
+			block = cell
+	_check(found, "loaded terrain has an isolated blocked cell in a walkable row")
+	if not found:
+		return
+	var from := Vector3((block.x - 6 + 0.5) * 0.5, 0.0, (block.y + 0.5) * 0.5)
+	var to := Vector3((block.x + 6 + 0.5) * 0.5, 0.0, (block.y + 0.5) * 0.5)
+	var routes := OpenRoutes.new()
+	routes.rebuild(streamer)
+	var path := routes.path(from, to)
+	var length := 0.0
+	for index in range(path.size()):
+		var p := path[index]
+		_check(
+			_walkable_cell(streamer, Vector2i((p / 0.5).floor())),
+			"detour waypoint %d is on a walkable cell" % index
+		)
+		if index > 0:
+			length += path[index].distance_to(path[index - 1])
+	_check(path.size() >= 3, "obstacle forces intermediate waypoints")
+	_check(length > 6.0 + 0.1, "route is longer than the blocked straight line")
+	# Sin chunks cargados el destino queda fuera de la rejilla: recta de un punto.
+	var planner := RoutePlanner.new()
+	streamer.clear()
+	planner.update(streamer)
+	var rules: Dictionary = game.sim.rules.open_world
+	var plan := planner.plan(game._routes, from, from + Vector3(10, 0, 0), rules)
+	_check(plan.size() == 1, "target in an unloaded chunk walks straight")
 
 
 ## El piloto 0 no está por debajo del relieve (el terreno lejano puede estar bajo Y = 0).
