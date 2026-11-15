@@ -97,7 +97,7 @@ func _build_play(root: Control) -> void:
 	header.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var content := VBoxContainer.new()
 	header.add_child(content)
-	location = _label(content, "", 23, TITLE)
+	location = _label(content, "", 29, TITLE)
 	_float_text(location)
 	_resources = GridContainer.new()
 	_resources.columns = 5
@@ -157,10 +157,10 @@ func _build_play(root: Control) -> void:
 	)
 	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_pause.offset_left = -76
+	_pause.offset_left = -90
 	_pause.offset_top = 14
 	_pause.offset_right = -18
-	_pause.offset_bottom = 66
+	_pause.offset_bottom = 76
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		_pause.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	var middle := CenterContainer.new()
@@ -169,7 +169,7 @@ func _build_play(root: Control) -> void:
 	middle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bars := VBoxContainer.new()
 	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bars.add_theme_constant_override("separation", 3)
+	bars.add_theme_constant_override("separation", 4)
 	middle.add_child(bars)
 	for bar_index in range(3):
 		var bar := Panel.new()
@@ -179,7 +179,7 @@ func _build_play(root: Control) -> void:
 		bar_style.set_border_width_all(2)
 		bar_style.set_corner_radius_all(3)
 		bar.add_theme_stylebox_override("panel", bar_style)
-		bar.custom_minimum_size = Vector2(30, 9)
+		bar.custom_minimum_size = Vector2(40, 11)
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bars.add_child(bar)
 	var bottom := HBoxContainer.new()
