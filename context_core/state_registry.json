@@ -778,6 +778,29 @@
         }
       }
     },
+    "rover": {
+      "note": "Rover de la base (antena_rover.glb). Bloqueado es la radio; 3 cajas de mineral y 3 de hielo lo desbloquean para conducirlo (cinematico). Desbloqueado, la radio solo funciona con el rover aparcado.",
+      "unlock": {"ore": 3, "ice": 3},
+      "speed": 12.0,
+      "acceleration": 30.0,
+      "turn_rate": 5.0,
+      "gravity": 16.0,
+      "reach": 2.0,
+      "park_point": [7.8, 0.04, -4.9],
+      "park_yaw_degrees": -90.0,
+      "park_radius": 2.0,
+      "stand_offset": [1.8, 0.0],
+      "tray_capacity": 2,
+      "model_scale": 2.7,
+      "model_half_height": 0.33,
+      "model_yaw_degrees": 0.0,
+      "collision_radius": 1.0,
+      "collision_height": 1.2,
+      "tilt_sample": 1.2,
+      "tilt_rate": 6.0,
+      "dismount_gap": 0.9,
+      "replica_rate": 12.0
+    },
     "open_world": {
       "note": "Mundo abierto por chunks. Los valores de generacion y de jugador salen de aqui.",
       "world_size": 1024,

@@ -526,7 +526,7 @@ func _solo() -> void:
 		player.sim.fuel_loaded == 3 and player.sim.food_loaded == 2,
 		"solo loads normal cargo targets"
 	)
-	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
+	var radio: Vector3 = CrestWorld.campaign_stations[&"radio"]
 	player._set_positions([radio, Vector3.ZERO])
 	await get_tree().physics_frame
 	await get_tree().physics_frame

@@ -19,12 +19,16 @@ static func delivers(mission: LunarMission, player: int, spot: StringName) -> bo
 			return cargo in [&"ice", &"ore"]
 		&"pad":
 			return cargo in [&"fuel", &"food"]
+		&"radio":
+			return RoverContext.delivers(mission, player)
 	return false
 
 
 static func at(mission: LunarMission, player: int, spot: StringName, pickup: StringName) -> Array:
 	if mission.pilots[player].seated:
 		return ["Bajar de la nave", "", false]
+	if mission.driving(player):
+		return RoverContext.at(mission, player, spot)
 	if pickup != &"":
 		return ["Recoger %s" % LOAD_NAMES[pickup], "Añade la carga a tu traje.", false]
 	if String(spot).begins_with("dep:"):
@@ -44,8 +48,8 @@ static func at(mission: LunarMission, player: int, spot: StringName, pickup: Str
 			return ["Priorizar %s" % other, "Prioridad actual tras el aire: %s." % current, false]
 		&"life":
 			return _shelter(mission, player)
-		&"radio":
-			return _radio(mission)
+		&"radio", &"rover":
+			return RoverContext.at(mission, player, spot)
 		&"pad":
 			return _lander(mission, player)
 	return ["", "", true]
@@ -175,7 +179,7 @@ static func _shelter(mission: LunarMission, player: int) -> Array:
 	]
 
 
-static func _radio(mission: LunarMission) -> Array:
+static func radio(mission: LunarMission) -> Array:
 	if mission.returned or mission.earth_ok:
 		return ["Lista confirmada", "Tierra recibió la lista de vuelo.", true]
 	if mission.radio_left > 0.0:

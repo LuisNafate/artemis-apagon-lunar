@@ -327,7 +327,7 @@ func _refill() -> bool:
 
 
 func _station(spot: StringName) -> bool:
-	return await _walk(CrestWorld.STATIONS[spot], spot)
+	return await _walk(CrestWorld.campaign_stations.get(spot, CrestWorld.STATIONS[spot]), spot)
 
 
 func _walk(point: Vector3, spot: StringName) -> bool:

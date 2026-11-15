@@ -17,15 +17,7 @@ const DEPOSIT_REACH := 1.63
 const LOOKAHEAD_FRAMES := 4.0
 const SINK_TOLERANCE := 0.25
 const TERRAIN_WAIT_MSEC := 8000
-const CARGO_MODELS := {&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62]}
 const ROUTES := preload("res://lunar/lunar_routes.gd")
-const MATCOLORS := {
-	&"sample": CrestWorld.BLUE,
-	&"ice": CrestWorld.BLUE,
-	&"ore": CrestWorld.PURPLE,
-	&"fuel": CrestWorld.AMBER,
-	&"food": CrestWorld.LIME
-}
 
 var sim := LunarMission.new()
 var profile: LunarProfile
@@ -36,6 +28,7 @@ var ui := LunarInterface.new()
 var sky := LunarBackdrop.new()
 var flight := LunarFlightView.new()
 var streamer := ChunkStreamer.new()
+var rover := RoverControl.new(self)
 var pilots: Array[CrestPilot] = []
 var net := &"lobby"
 var guest_peer := 0
@@ -101,6 +94,7 @@ func _ready() -> void:
 	for station: Node3D in world.markers.values():
 		station.hide()
 	add_child(streamer)
+	add_child(rover)
 	_configure_streamer(starting_id)
 	sky.configure(starting_id, initial.horizon)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -246,6 +240,7 @@ func _objective_target(key: StringName, here: Vector3) -> Dictionary:
 	var name := String(CrestWorld.NAMES[key])
 	var title := name.left(1) + name.substr(1).to_lower()
 	var reached := _spots[0] == key or (key == &"life" and world.sheltered(here))
+	reached = reached or (key == &"radio" and _spots[0] == &"rover")
 	return _target_at(location, title, reached)
 
 
@@ -417,6 +412,8 @@ func _choose(action: String, argument: String) -> void:
 			ui.session_menu(net)
 		"back_to_play":
 			ui.playing()
+		"radio":
+			rover.press_radio()
 		"action", "release":
 			if net in [&"host", &"solo"]:
 				_interact(0, action == "release")
@@ -576,7 +573,9 @@ func _focus_points() -> Array[Vector3]:
 ## Estación de la base al alcance o, si no hay, el depósito del mundo más cercano.
 func _spot_at(point: Vector3) -> StringName:
 	var tutorial := sim.phase == &"tutorial"
-	var spot := world.nearest(point, tutorial)
+	var spot := rover.spot_at(point)
+	if spot == &"":
+		spot = world.nearest(point, tutorial)
 	if spot == &"" and not tutorial:
 		spot = streamer.nearest_deposit(point, DEPOSIT_REACH)
 	return spot
@@ -733,6 +732,7 @@ func _local_frame(delta: float) -> void:
 	_inactivity += delta
 	if _inactivity > 0.45:
 		_vectors[1] = Vector2.ZERO
+	rover.step(delta)
 	for index in range(2):
 		_move_pilot(index, delta)
 		_spots[index] = _spot_at(pilots[index].position)
@@ -826,6 +826,7 @@ func _guest_frame(delta: float) -> void:
 		_jump[0] = false
 	if _replica_positions.is_empty():
 		return
+	rover.replicate(delta)
 	for index in range(2):
 		var pilot := pilots[index]
 		var target: Vector3 = _replica_positions[index]
@@ -857,7 +858,7 @@ func _interact(player: int, release: bool) -> void:
 	var was_tutorial := sim.phase == &"tutorial"
 	if release:
 		if LunarItemContext.delivers(sim, player, spot):
-			message = sim.use_station(player, spot)
+			message = sim.deliver(player, spot)
 		else:
 			var other := 1 - player
 			var near: bool = (
@@ -897,7 +898,7 @@ func _cargo_ground(point: Vector3) -> Variant:
 
 
 func _pickup_at(player: int) -> int:
-	if sim.cargo_kind(player) != &"" or sim.pilots[player].seated:
+	if sim.cargo_kind(player) != &"" or sim.pilots[player].seated or sim.driving(player):
 		return 0
 	return _closest_box(pilots[player].position)
 
@@ -915,7 +916,7 @@ func _closest_box(point: Vector3) -> int:
 
 
 func _set_destination(player: int, point: Vector3) -> void:
-	if point.is_finite():
+	if point.is_finite() and not sim.driving(player):
 		_route[player] = _planner.plan(
 			_routes, pilots[player].position, point, sim.rules.open_world
 		)
@@ -925,7 +926,7 @@ func _move_pilot(index: int, delta: float) -> void:
 	var pilot := pilots[index]
 	var jump := _jump[index]
 	_jump[index] = false
-	if sim.phase == &"flight" or not sim.connected[index] or sim.pilots[index].seated:
+	if sim.phase == &"flight" or not sim.connected[index] or _riding(index):
 		pilot.velocity = Vector3.ZERO
 		return
 	# Sin colision bajo los pies el piloto espera quieto a que llegue su chunk.
@@ -944,9 +945,7 @@ func _move_pilot(index: int, delta: float) -> void:
 	var direction := Vector2.ZERO
 	if input.length_squared() > 0.012:
 		_route[index].clear()
-		var right := Vector2(camera.basis.x.x, camera.basis.x.z).normalized()
-		var back := Vector2(camera.basis.z.x, camera.basis.z.z).normalized()
-		direction = (right * input.x + back * input.y).limit_length(input.length())
+		direction = LunarSteer.direction(camera, input)
 	else:
 		direction = _follow_path(index, pilot.position)
 	var heading := Vector3(direction.x, 0.0, direction.y) * FieldPilot.WALK_SPEED
@@ -976,16 +975,23 @@ func _follow_path(index: int, point: Vector3) -> Vector2:
 	return Vector2.ZERO
 
 
+## Sentado en la nave o al volante del rover: el piloto no se mueve por su cuenta.
+func _riding(index: int) -> bool:
+	return sim.pilots[index].seated or sim.driving(index)
+
+
 func _sheltered() -> Array[bool]:
 	return [
-		world.sheltered(pilots[0].position) or sim.pilots[0].seated,
-		world.sheltered(pilots[1].position) or sim.pilots[1].seated
+		(world.sheltered(pilots[0].position) and not sim.driving(0)) or sim.pilots[0].seated,
+		(world.sheltered(pilots[1].position) and not sim.driving(1)) or sim.pilots[1].seated
 	]
 
 
 func _render(delta: float, player: int) -> void:
 	for index in range(2):
-		pilots[index].visible = sim.connected[index] and sim.phase != &"flight"
+		pilots[index].visible = (
+			sim.connected[index] and sim.phase != &"flight" and not sim.driving(index)
+		)
 	for id: int in _boxes.keys():
 		if not sim.crates.has(id):
 			_boxes[id].queue_free()
@@ -994,7 +1000,7 @@ func _render(delta: float, player: int) -> void:
 		var crate: Dictionary = sim.crates[id]
 		if not _boxes.has(id):
 			var box := Node3D.new()
-			_build_cargo_visual(box, crate.kind)
+			LunarCargoVisual.build(self, _cargo_templates, box, crate.kind)
 			add_child(box)
 			_boxes[id] = box
 		var mesh: Node3D = _boxes[id]
@@ -1030,43 +1036,6 @@ func _render(delta: float, player: int) -> void:
 		ui.show_objective("")
 		_objective_destination = Vector3.INF
 	_alert_if_changed()
-
-
-func _build_cargo_visual(box: Node3D, kind: StringName) -> void:
-	match kind:
-		&"ice":
-			box.add_child(_cargo_model(kind))
-		&"food":
-			FieldWorld.box(box, Vector3(0, -0.08, 0), Vector3(0.52, 0.29, 0.40), Color("#e8d9b5"))
-			FieldWorld.box(box, Vector3(0, 0.077, 0), Vector3(0.24, 0.026, 0.34), CrestWorld.LIME)
-			FieldWorld.box(box, Vector3(0, 0.094, 0), Vector3(0.16, 0.013, 0.05), CrestWorld.FRAME)
-		&"fuel":
-			FieldWorld.box(box, Vector3.ZERO, Vector3(0.45, 0.47, 0.37), CrestWorld.AMBER)
-			FieldWorld.box(
-				box, Vector3(0.11, 0.261, 0), Vector3(0.14, 0.052, 0.18), CrestWorld.FRAME
-			)
-			FieldWorld.box(
-				box, Vector3(0, -0.12, 0.188), Vector3(0.32, 0.08, 0.015), CrestWorld.FRAME
-			)
-		_:
-			FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[kind])
-			FieldWorld.box(box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME)
-
-
-## Copia del modelo de carga. Las copias comparten los materiales de una plantilla oculta:
-## liberar una caja con materiales propios deja errores del servidor de render (headless).
-func _cargo_model(kind: StringName) -> Node3D:
-	if not _cargo_templates.has(kind):
-		var info: Array = CARGO_MODELS[kind]
-		var template: Node3D = (info[0] as PackedScene).instantiate()
-		PaperMaterial.restyle(template, false)
-		template.scale = Vector3.ONE * float(info[1])
-		template.hide()
-		add_child(template)
-		_cargo_templates[kind] = template
-	var model: Node3D = (_cargo_templates[kind] as Node3D).duplicate()
-	model.show()
-	return model
 
 
 func _alert_if_changed() -> void:

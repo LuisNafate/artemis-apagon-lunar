@@ -29,6 +29,7 @@ func _run() -> void:
 	await _open_routes()
 	await EnclosureCases.new(self).run()
 	await PickupCases.new(self).run()
+	await RoverCases.new(self).run()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 

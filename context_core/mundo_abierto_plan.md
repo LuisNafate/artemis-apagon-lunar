@@ -597,7 +597,7 @@ Cambio aprobado por el usuario el 2026-11-16. Ver la sección "Rover manejable" 
 - Modify: `lunar/lunar_item_context.gd` y/o `lunar/lunar_interface.gd`: textos de Acción y Entregar ("Enviar a Tierra", "Entregar al rover", "Subir al rover", "Bajar") y el detalle "Mineral x/3 · Hielo y/3".
 - Test: casos nuevos en un archivo aparte (`tests/rover_cases.gd`) enganchado a `open_world_suite`. Hay que actualizar lo que dependa de la posición de la radio en las demás suites.
 
-- [ ] **Step 1: Escribir las pruebas que fallan** (y anotar la salida RED):
+- [x] **Step 1: Escribir las pruebas que fallan** (y anotar la salida RED):
   - Bloqueado, junto al rover: Acción es la radio y enviar la lista funciona como ahora.
   - Con caja de hielo o mineral, Entregar suma 1/3. Cajas de otro tipo no cuentan.
   - Al llegar a 3/3 y 3/3 queda desbloqueado, y sigue desbloqueado tras guardar y continuar.
@@ -605,10 +605,10 @@ Cambio aprobado por el usuario el 2026-11-16. Ver la sección "Rover manejable" 
   - Desbloqueado y fuera de su sitio: la radio no envía. Aparcado dentro de `park_radius`: envía.
   - Si se agota el aire, el rover vuelve a su posición del amanecer.
   - Cooperativo (dos pares ENet locales): el invitado ve al anfitrión conducir. Solo uno conduce a la vez.
-- [ ] **Step 2: Verlas fallar.**
-- [ ] **Step 3: Implementar.**
+- [x] **Step 2: Verlas fallar.**
+- [x] **Step 3: Implementar.**
 - [ ] **Step 4: `verify.ps1` en verde** (todas las suites a 0 fallos, salvo los fallos que ya trae `main`, que se anotan aparte con sus nombres).
-- [ ] **Step 5: Commit** `Rover manejable: radio, desbloqueo y conducción` (en español, sin atribución).
+- [x] **Step 5: Commit** `Rover manejable: radio, desbloqueo y conducción` (en español, sin atribución).
 
 ---
 

@@ -72,6 +72,7 @@ const NAMES := {
 	&"crop": "CULTIVOS",
 	&"fuel": "PROPELENTE",
 	&"radio": "RADIO",
+	&"rover": "ROVER",
 	&"pad": "NAVE",
 	&"solar": "REFUERZO SOLAR",
 	&"irrigation": "RIEGO"
@@ -121,6 +122,7 @@ static func _campaign_station_map() -> Dictionary:
 	var stations := STATIONS.merged(WORKSHOP)
 	for unused in [&"ice", &"ore", &"solar", &"supply"]:
 		stations.erase(unused)
+	stations[&"radio"] = RoverSpec.stand_point()
 	return stations
 
 
@@ -627,11 +629,13 @@ func _stations() -> void:
 	_equipment.append(_console(&"life", BLUE, false))
 	_marker(&"crop", LIME)
 	_marker(&"power", AMBER)
-	var radio: Vector3 = STATIONS[&"radio"]
-	_equipment.append(
-		station_prop(self, MODEL_ROVER_ANTENNA, radio + Vector3(0, 0.05, -1.6), 2.7, 0.33, 90.0)
-	)
-	_solid(radio + Vector3(0, 0.45, -1.6), Vector3(2.6, 0.9, 1.5))
+	if not campaign_layout:
+		# En la campaña el rover es un cuerpo propio (`RoverBody`) y no una decoración.
+		var radio: Vector3 = STATIONS[&"radio"]
+		_equipment.append(
+			station_prop(self, MODEL_ROVER_ANTENNA, radio + Vector3(0, 0.05, -1.6), 2.7, 0.33, 90.0)
+		)
+		_solid(radio + Vector3(0, 0.45, -1.6), Vector3(2.6, 0.9, 1.5))
 	var refine: Vector3 = STATIONS[&"refinery"]
 	_equipment.append(_water_machine(refine + Vector3(0, 0, 2.0)))
 	_solid(refine + Vector3(0, 0.75, 2.0), Vector3(2.5, 1.5, 2.5))

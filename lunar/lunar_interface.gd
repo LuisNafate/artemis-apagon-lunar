@@ -47,6 +47,7 @@ var menu: PanelContainer
 var address: LineEdit
 var action_button: Button
 var release_button: Button
+var radio_button: Button
 var jump_button: Button
 var details: Label
 var location: Label
@@ -300,6 +301,8 @@ func _build_play(root: Control) -> void:
 	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
 	release_button.custom_minimum_size = Vector2(200, 50)
+	radio_button = _button(buttons, "Enviar a Tierra", "radio")
+	radio_button.custom_minimum_size = Vector2(200, 50)
 	jump_button = _button(play, "Saltar", "jump")
 	jump_button.custom_minimum_size = Vector2(110, 56)
 	_emphasize(jump_button)
@@ -977,10 +980,19 @@ func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: S
 	if cargo != &"":
 		var name: String = LunarItemContext.LOAD_NAMES[cargo]
 		if LunarItemContext.delivers(mission, player, spot):
-			release_button.text = "Entregar %s" % name
+			release_button.text = (
+				RoverContext.deliver_caption(name) if spot == &"radio" else "Entregar %s" % name
+			)
 		else:
 			release_button.text = "Soltar %s" % name if mission.solo else "Soltar / pasar"
-	_zone_buttons.visible = action_button.visible or release_button.visible
+	jump_button.visible = not mission.driving(player)
+	var radio := RoverContext.radio_button(mission, player, spot)
+	radio_button.visible = not String(radio[0]).is_empty()
+	radio_button.text = radio[0]
+	radio_button.disabled = radio[2]
+	_zone_buttons.visible = (
+		action_button.visible or release_button.visible or radio_button.visible
+	)
 	_zone_detail.text = context[1]
 	_zone_detail.visible = not _zone_detail.text.is_empty()
 	_zone_panel.visible = (

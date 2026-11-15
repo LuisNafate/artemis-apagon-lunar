@@ -42,7 +42,8 @@ const SAVE_FIELDS := [
 	"deliveries",
 	"tutorial_step",
 	"crew_briefed",
-	"world_deltas"
+	"world_deltas",
+	"rover"
 ]
 
 var rules: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH)).campaign_2026
@@ -69,6 +70,7 @@ var refining: Array = []
 var installing: Dictionary = {}
 var paid_jobs := {&"crop": false, &"fuel": false}
 var world_deltas: Dictionary = {}
+var rover: Dictionary = RoverState.fresh()
 var world_seed := 0
 var _known_deposits: Dictionary = {}
 
@@ -115,6 +117,8 @@ func restore(saved: Dictionary) -> void:
 	withdrew = false
 	if not saved.has("world_deltas"):
 		world_deltas = {}
+	if not saved.has("rover"):
+		rover = RoverState.fresh()
 	if returned:
 		phase = &"active"
 		countdown = 0.0
@@ -310,6 +314,8 @@ func set_guest(present: bool, point: Vector3) -> void:
 		release(1, point, false)
 		pilots[1].seated = false
 		pilots[1].mine = &""
+		if RoverState.driving(self, 1):
+			RoverState.release_driver(self)
 		_cancel_launch()
 		if phase == &"tutorial":
 			finish_tutorial()
@@ -338,6 +344,8 @@ func use_station(player: int, station: StringName) -> String:
 		if phase == &"active":
 			finish_tutorial()
 		return message
+	if RoverState.driving(self, player) or station == &"rover":
+		return RoverState.use(self, player)
 	if pilots[player].seated:
 		return _embark(player)
 	if String(station).begins_with("dep:"):
@@ -364,6 +372,8 @@ func use_station(player: int, station: StringName) -> String:
 		&"life":
 			return _eat(player)
 		&"radio":
+			if not radio_available():
+				return "Trae el rover a su sitio para usar la radio"
 			if returned:
 				return "Regreso a Tierra completado"
 			if radio_cut():
@@ -372,6 +382,19 @@ func use_station(player: int, station: StringName) -> String:
 		&"pad":
 			return "Misión completada. Sigue explorando la base." if returned else _pad(player)
 	return ""
+
+
+## Entrega la carga en mano a la estación (el rover bloqueado o cualquier otra).
+func deliver(player: int, spot: StringName) -> String:
+	return RoverState.deliver(self, player) if spot == &"radio" else use_station(player, spot)
+
+
+func radio_available() -> bool:
+	return RoverState.radio_available(self)
+
+
+func driving(player: int) -> bool:
+	return RoverState.driving(self, player)
 
 
 func _tutorial_use(player: int, station: StringName) -> String:
@@ -680,6 +703,7 @@ func _tick_crew(delta: float, sheltered: Array[bool]) -> void:
 			earth_ok = false
 			pilots[0].seated = false
 			pilots[1].seated = false
+			RoverState.release_driver(self)
 			_cancel_launch()
 			withdrew = true
 			return
