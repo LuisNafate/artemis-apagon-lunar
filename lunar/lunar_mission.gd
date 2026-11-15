@@ -266,16 +266,8 @@ func flare_lead(record: Dictionary) -> String:
 
 
 func science_text(record: Dictionary) -> String:
-	if String(record.id) != "donki_sep_20240510" or flares.is_empty():
-		return super(record)
-	return (
-		"La NASA anota las explosiones del Sol, llamadas llamaradas, en una lista que se llama "
-		+ "DONKI. Cada tormenta de este juego usa una llamarada real de esa lista, con su fecha. "
-		+ "Algunas lanzan partículas peligrosas y otras no: entre mayo y junio de 2024 hubo 243 "
-		+ "llamaradas y solo 16 lanzaron partículas. Si en la vida real las partículas llegaron "
-		+ "rápido, en el juego tienes poco tiempo para correr al refugio. En el juego todo pasa "
-		+ "más rápido que en la realidad."
-	)
+	var text := LunarScienceCards.text(record, not flares.is_empty())
+	return text if not text.is_empty() else super(record)
 
 
 ## Clave del aviso solar que se está mostrando: cambia cuando empieza una llamarada nueva.
