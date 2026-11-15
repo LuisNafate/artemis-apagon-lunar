@@ -58,7 +58,7 @@ func build(profile: LunarProfile) -> void:
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var sheet := PanelContainer.new()
-	sheet.add_theme_stylebox_override("panel", _paper_style())
+	sheet.add_theme_stylebox_override("panel", paper_style())
 	add_child(sheet)
 	sheet.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	sheet.offset_left = -400.0
@@ -67,7 +67,7 @@ func build(profile: LunarProfile) -> void:
 	sheet.offset_bottom = 285.0
 	for edge in [-353.0, 277.0]:
 		var tab := Panel.new()
-		tab.add_theme_stylebox_override("panel", _plate(ORANGE, Color("#8a4a0c"), 6))
+		tab.add_theme_stylebox_override("panel", plate(ORANGE, Color("#8a4a0c"), 6))
 		add_child(tab)
 		tab.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 		tab.offset_left = -80.0
@@ -100,18 +100,18 @@ func build(profile: LunarProfile) -> void:
 
 
 func _masthead(page: VBoxContainer) -> void:
-	var top := _label(page, "ARTEMIS · ÚLTIMA VENTANA", 18, BODY, SLATE)
+	var top := label(page, "ARTEMIS · ÚLTIMA VENTANA", 18, BODY, SLATE)
 	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var banner := PanelContainer.new()
-	banner.add_theme_stylebox_override("panel", _plate(TEAL, Color("#102a30"), 12))
+	banner.add_theme_stylebox_override("panel", plate(TEAL, Color("#102a30"), 12))
 	page.add_child(banner)
-	var title := _label(banner, "EXPEDIENTE CIENTÍFICO", 40, TITLE, CREAM)
+	var title := label(banner, "EXPEDIENTE CIENTÍFICO", 40, TITLE, CREAM)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 func _header_row(page: VBoxContainer) -> void:
 	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", _outline(12, Color.TRANSPARENT, 8))
+	frame.add_theme_stylebox_override("panel", outline(12, Color.TRANSPARENT, 8))
 	page.add_child(frame)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -119,7 +119,7 @@ func _header_row(page: VBoxContainer) -> void:
 	for entry: Array in HEADER_FIELDS:
 		if row.get_child_count() > 0:
 			row.add_child(VSeparator.new())
-		_label(row, entry[0], 19, BODY, SLATE)
+		label(row, entry[0], 19, BODY, SLATE)
 		var field := _line(entry[2] as String)
 		field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(field)
@@ -127,7 +127,7 @@ func _header_row(page: VBoxContainer) -> void:
 
 
 func _notes(page: VBoxContainer) -> void:
-	var body := _section(page, "NOTAS")
+	var body := section(page, "NOTAS")
 	var notes := RuledText.new()
 	_style_text(notes)
 	notes.custom_minimum_size = Vector2(0.0, 220.0)
@@ -137,7 +137,7 @@ func _notes(page: VBoxContainer) -> void:
 
 
 func _observations(page: VBoxContainer) -> void:
-	var body := _section(page, "OBSERVACIONES")
+	var body := section(page, "OBSERVACIONES")
 	var seen := TextEdit.new()
 	_style_text(seen)
 	seen.custom_minimum_size = Vector2(0.0, 96.0)
@@ -147,7 +147,7 @@ func _observations(page: VBoxContainer) -> void:
 
 
 func _data_table(page: VBoxContainer) -> void:
-	var body := _section(page, "DATOS")
+	var body := section(page, "DATOS")
 	var grid := GridContainer.new()
 	grid.columns = COLUMNS
 	grid.add_theme_constant_override("h_separation", 0)
@@ -167,7 +167,7 @@ func _data_table(page: VBoxContainer) -> void:
 
 
 func _signature(page: VBoxContainer) -> void:
-	var body := _section(page, "FIRMA")
+	var body := section(page, "FIRMA")
 	var sign := _line("")
 	sign.placeholder_text = "Nombre del cadete"
 	body.add_child(sign)
@@ -200,26 +200,26 @@ func _buttons() -> void:
 	LunarButtonKit.apply(save, &"construir")
 	save.pressed.connect(_save)
 	bar.add_child(save)
-	_status = _label(bar, "", 18, BODY, CREAM)
+	_status = label(bar, "", 18, BODY, CREAM)
 	_status.custom_minimum_size.x = 200.0
 
 
-func _section(page: VBoxContainer, caption: String) -> PanelContainer:
+static func section(page: VBoxContainer, caption: String) -> PanelContainer:
 	var block := VBoxContainer.new()
 	block.add_theme_constant_override("separation", 0)
 	page.add_child(block)
 	var tab := PanelContainer.new()
 	tab.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var tab_style := _plate(SLATE, Color("#2f3f4a"), 10)
+	var tab_style := plate(SLATE, Color("#2f3f4a"), 10)
 	tab_style.set_corner_radius_all(2)
 	tab_style.corner_radius_top_right = 14
 	tab_style.corner_radius_top_left = 8
 	tab_style.corner_detail = 1
 	tab.add_theme_stylebox_override("panel", tab_style)
 	block.add_child(tab)
-	_label(tab, caption, 18, BODY, CREAM)
+	label(tab, caption, 18, BODY, CREAM)
 	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", _outline(14, Color.TRANSPARENT, 10))
+	body.add_theme_stylebox_override("panel", outline(14, Color.TRANSPARENT, 10))
 	block.add_child(body)
 	return body
 
@@ -274,18 +274,18 @@ func _style_text(box: TextEdit) -> void:
 	)
 
 
-func _label(parent: Control, caption: String, size: int, font: Font, color: Color) -> Label:
-	var label := Label.new()
-	label.text = caption
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", color)
-	parent.add_child(label)
-	return label
+static func label(parent: Control, caption: String, size: int, font: Font, color: Color) -> Label:
+	var text := Label.new()
+	text.text = caption
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text.add_theme_font_override("font", font)
+	text.add_theme_font_size_override("font_size", size)
+	text.add_theme_color_override("font_color", color)
+	parent.add_child(text)
+	return text
 
 
-func _paper_style() -> StyleBoxFlat:
+static func paper_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = PAPER
 	style.border_color = PAPER_EDGE
@@ -297,7 +297,7 @@ func _paper_style() -> StyleBoxFlat:
 	return style
 
 
-func _plate(fill: Color, edge: Color, radius: int) -> StyleBoxFlat:
+static func plate(fill: Color, edge: Color, radius: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill
 	style.border_color = edge
@@ -311,7 +311,7 @@ func _plate(fill: Color, edge: Color, radius: int) -> StyleBoxFlat:
 	return style
 
 
-func _outline(radius: int, fill: Color, pad: int) -> StyleBoxFlat:
+static func outline(radius: int, fill: Color, pad: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill
 	style.border_color = LINE
