@@ -9,25 +9,22 @@ extends RefCounted
 ## - Destino mas lejos (o sin ruta): linea recta, un unico punto; si el destino esta en la base,
 ##   LunarRoutes como siempre (el piloto cruza en recta hasta la rejilla y sigue la ruta).
 
-const REBUILD_INTERVAL := 0.5
-
 var open := OpenRoutes.new()
-var _signature := ""
-var _since := REBUILD_INTERVAL
+var _streamer: ChunkStreamer
+var _loaded_hash := 0
+var _dirty := true
 
 
-## Reconstruye OpenRoutes si cambiaron los chunks cargados, como mucho cada REBUILD_INTERVAL s.
-func update(streamer: ChunkStreamer, delta: float) -> void:
-	_since += delta
-	if _since < REBUILD_INTERVAL:
-		return
+## Solo anota que cambiaron los chunks cargados; la rejilla se reconstruye al tocar (`plan`),
+## nunca mientras se camina.
+func update(streamer: ChunkStreamer) -> void:
+	_streamer = streamer
 	var coords := streamer.loaded_coords()
 	coords.sort()
-	var signature := str(coords)
-	if signature != _signature:
-		_signature = signature
-		_since = 0.0
-		open.rebuild(streamer)
+	var loaded_hash := coords.hash()
+	if loaded_hash != _loaded_hash:
+		_loaded_hash = loaded_hash
+		_dirty = true
 
 
 func plan(
@@ -44,6 +41,10 @@ func plan(
 	var radius := float(settings.tap_route_radius)
 	if Vector2(end.x - start.x, end.z - start.z).length() > radius:
 		return straight
+	if _streamer == null:
+		return straight
+	open.prepare(_streamer, start, radius, float(settings.chunk_size), _dirty)
+	_dirty = false
 	if not (open.covers(start) and open.covers(end)):
 		return straight
 	var result := PackedVector2Array()

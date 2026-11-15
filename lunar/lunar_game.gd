@@ -177,7 +177,7 @@ func _physics_process(delta: float) -> void:
 		_routes.build(get_world_3d().direct_space_state)
 		_routes_ready = true
 	streamer.update(_focus_points())
-	_planner.update(streamer, delta)
+	_planner.update(streamer)
 	if net == &"host" and play_started:
 		_local_frame(delta)
 	elif net == &"solo" and ui.play.visible:

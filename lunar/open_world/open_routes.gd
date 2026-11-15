@@ -7,21 +7,38 @@ extends RefCounted
 
 const SEARCH := 3
 
+## Cuantas veces se ha reconstruido la rejilla (las pruebas comprueban que caminar no cuesta).
+var rebuilds := 0
 var _grid := AStarGrid2D.new()
 var _cell := 0.5
 var _built := false
+var _window := Rect2i()
 
 
-## Reconstruye la rejilla con los chunks cargados ahora mismo (bounding box de sus coordenadas).
-func rebuild(streamer: ChunkStreamer) -> void:
+## Reconstruye solo si hace falta: `force` (cambiaron los chunks cargados) o la ventana de
+## `around` +- `reach` ya no es la de la rejilla actual.
+func prepare(
+	streamer: ChunkStreamer, around: Vector3, reach: float, chunk_size: float, force: bool
+) -> void:
+	if force or _window != _window_of(around, reach, chunk_size):
+		rebuild(streamer, around, reach, chunk_size)
+
+
+## Reconstruye la rejilla con los chunks cargados que solapan `around` +- `reach` (todos los
+## cargados si no se da `around`), sin ocupar mas que los chunks que una ruta corta puede usar.
+func rebuild(
+	streamer: ChunkStreamer, around := Vector3.INF, reach := 0.0, chunk_size := 16.0
+) -> void:
 	_built = false
+	rebuilds += 1
+	_window = _window_of(around, reach, chunk_size)
 	var coords := streamer.loaded_coords()
-	if coords.is_empty():
-		return
-	var low := coords[0]
-	var high := coords[0]
+	var low := Vector2i(2147483647, 2147483647)
+	var high := Vector2i(-2147483648, -2147483648)
 	var datas: Array[ChunkData] = []
 	for coord in coords:
+		if around.is_finite() and not _window.has_point(coord):
+			continue
 		low = Vector2i(mini(low.x, coord.x), mini(low.y, coord.y))
 		high = Vector2i(maxi(high.x, coord.x), maxi(high.y, coord.y))
 		var data := streamer.data_at(coord)
@@ -85,3 +102,13 @@ func _near_cell(point: Vector3) -> Vector2i:
 					best_distance = distance
 					best = candidate
 	return best
+
+
+## Rectangulo de coordenadas de chunk que cubre `around` +- (`reach` + 2 m); vacio sin `around`.
+func _window_of(around: Vector3, reach: float, chunk_size: float) -> Rect2i:
+	if not around.is_finite():
+		return Rect2i()
+	var margin := Vector3(reach + 2.0, 0.0, reach + 2.0)
+	var low := ChunkGenerator.coord_of(around - margin, chunk_size)
+	var high := ChunkGenerator.coord_of(around + margin, chunk_size)
+	return Rect2i(low, high - low + Vector2i.ONE)

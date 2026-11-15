@@ -605,6 +605,14 @@ func _open_routes() -> void:
 	game._set_positions([Vector3(80, 1, 60), Vector3.ZERO])
 	await _until(func() -> bool: return game.streamer.loaded_coords().size() == 49)
 	await _frames(240)
+	_check(game._planner.open.rebuilds == 0, "streaming without taps never rebuilds the route grid")
+	game._set_positions([Vector3(200, 1, 60), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(Vector3(200, 1, 60)))
+	await _frames(120)
+	game._set_positions([Vector3(80, 1, 60), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.loaded_coords().size() == 49)
+	await _frames(120)
+	_check(game._planner.open.rebuilds == 0, "moving across chunks never rebuilds the route grid")
 	var routes := OpenRoutes.new()
 	var began := Time.get_ticks_usec()
 	routes.rebuild(game.streamer)
@@ -617,7 +625,18 @@ func _open_routes() -> void:
 		var data: ChunkData = game.streamer.data_at(c)
 		var cell := Vector2i(((Vector2(p.x, p.y) - Vector2(c) * 16.0) / 0.5).floor())
 		_check(data.walkable[cell.y * 32 + cell.x] == 1, "route only on walkable cells")
-	game._set_destination(0, start + Vector3(12, 0, 6))
+	var tap := start + Vector3(12, 0, 6)
+	var tapped := Time.get_ticks_usec()
+	game._set_destination(0, tap)
+	print(
+		(
+			"OPEN ROUTES on-demand rebuild + path: %.1f ms"
+			% [(Time.get_ticks_usec() - tapped) / 1000.0]
+		)
+	)
+	_check(game._planner.open.rebuilds == 1, "the first tap rebuilds once")
+	game._set_destination(0, tap)
+	_check(game._planner.open.rebuilds == 1, "a second tap in the same window reuses the grid")
 	_check(game._route[0].size() >= 2, "tap within radius follows the open route")
 	game._set_destination(0, start + Vector3(35, 0, 0))
 	_check(game._route[0].size() == 1, "far tap walks straight")
@@ -627,7 +646,6 @@ func _open_routes() -> void:
 	var outside := Vector3(flat.end.x + 8.0, 0.0, 0.0)
 	game._set_positions([inside, Vector3.ZERO])
 	await _frames(30)
-	game._planner.open.rebuild(game.streamer)
 	game._set_destination(0, outside)
 	var out_route: PackedVector2Array = game._route[0]
 	_check(out_route.size() >= 2, "base to outside has a route")
@@ -644,9 +662,62 @@ func _open_routes() -> void:
 		in_route[in_route.size() - 1].distance_to(Vector2(inside.x, inside.z)) < 1.0,
 		"inbound ends at the tap"
 	)
+	_obstacle_detour(game)
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame
+
+
+## Una celda de 0,5 m (indice global) es transitable en los chunks cargados.
+func _walkable_cell(streamer: ChunkStreamer, cell: Vector2i) -> bool:
+	var chunk := Vector2i((Vector2(cell) / 32.0).floor())
+	var data: ChunkData = streamer.data_at(chunk)
+	if data == null:
+		return false
+	var local := cell - chunk * 32
+	return data.walkable[local.y * 32 + local.x] == 1
+
+
+## Con un obstaculo entre origen y destino, la ruta lo rodea; sin chunk cargado, recta.
+func _obstacle_detour(game: Node) -> void:
+	var streamer: ChunkStreamer = game.streamer
+	var block := Vector2i.ZERO
+	var found := false
+	for chunk in streamer.loaded_coords():
+		for index in range(1024):
+			var cell := chunk * 32 + Vector2i(index % 32, index / 32)
+			if found or _walkable_cell(streamer, cell):
+				continue
+			found = true
+			for k in range(-6, 7):
+				found = found and (k == 0 or _walkable_cell(streamer, cell + Vector2i(k, 0)))
+			block = cell
+	_check(found, "loaded terrain has an isolated blocked cell in a walkable row")
+	if not found:
+		return
+	var from := Vector3((block.x - 6 + 0.5) * 0.5, 0.0, (block.y + 0.5) * 0.5)
+	var to := Vector3((block.x + 6 + 0.5) * 0.5, 0.0, (block.y + 0.5) * 0.5)
+	var routes := OpenRoutes.new()
+	routes.rebuild(streamer)
+	var path := routes.path(from, to)
+	var length := 0.0
+	for index in range(path.size()):
+		var p := path[index]
+		_check(
+			_walkable_cell(streamer, Vector2i((p / 0.5).floor())),
+			"detour waypoint %d is on a walkable cell" % index
+		)
+		if index > 0:
+			length += path[index].distance_to(path[index - 1])
+	_check(path.size() >= 3, "obstacle forces intermediate waypoints")
+	_check(length > 6.0 + 0.1, "route is longer than the blocked straight line")
+	# Sin chunks cargados el destino queda fuera de la rejilla: recta de un punto.
+	var planner := RoutePlanner.new()
+	streamer.clear()
+	planner.update(streamer)
+	var rules: Dictionary = game.sim.rules.open_world
+	var plan := planner.plan(game._routes, from, from + Vector3(10, 0, 0), rules)
+	_check(plan.size() == 1, "target in an unloaded chunk walks straight")
 
 
 ## El piloto 0 no está por debajo del relieve (el terreno lejano puede estar bajo Y = 0).
