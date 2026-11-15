@@ -237,4 +237,5 @@ const TEXT := {
 	"ECLSS · Aire, agua y comida": "ECLSS · Air, water and food",
 	"Radio · Hablar con la Tierra": "Radio · Talking to Earth",
 	"LRO · Cartografiar la Luna": "LRO · Mapping the Moon",
+	"Cerrar": "Close",
 }

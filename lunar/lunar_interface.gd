@@ -15,6 +15,7 @@ const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
 const LOGO := preload("res://assets/ui/titulo_artemis_gato.png")
 const JUMP_ICON := preload("res://assets/ui/hud/saltar.png")
+const LOADING_ROCKET := preload("res://assets/ui/hud/cohete_carga.png")
 const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
 const ROLE_CARDS := {
@@ -60,6 +61,10 @@ var next_step: Label
 var feedback: Label
 var _objective_hint: Label
 var _drop_body: VBoxContainer
+var _close_button: Button
+var _close_action := ""
+var _close_argument := ""
+var _loading_last := 0.0
 var _objective_marker: Button
 var _title_tween: Tween
 var _zone_panel: PanelContainer
@@ -119,6 +124,7 @@ func build() -> void:
 	globe.hide()
 	_build_lobby_backdrop(root)
 	_build_menu(root)
+	_build_close(root)
 
 
 func _build_play(root: Control) -> void:
@@ -463,7 +469,38 @@ func _build_lobby_backdrop(root: Control) -> void:
 	_lobby_backdrop.hide()
 
 
+func _build_close(root: Control) -> void:
+	_close_button = Button.new()
+	_close_button.text = "X"
+	_close_button.focus_mode = Control.FOCUS_NONE
+	_close_button.custom_minimum_size = Vector2(60.0, 60.0)
+	_close_button.tooltip_text = "Cerrar"
+	LunarButtonKit.apply(_close_button, &"cancelar", 24)
+	root.add_child(_close_button)
+	_close_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_close_button.offset_left = -78.0
+	_close_button.offset_right = -18.0
+	_close_button.offset_top = 18.0
+	_close_button.offset_bottom = 78.0
+	_close_button.pressed.connect(func() -> void: selected.emit(_close_action, _close_argument))
+	_close_button.hide()
+
+
+## Muestra la X de cerrar arriba a la derecha; al tocarla emite la accion indicada.
+func _set_close(action: String, argument := "") -> void:
+	_close_action = action
+	_close_argument = argument
+	_close_button.show()
+	_close_button.get_parent().move_child(_close_button, -1)
+
+
+func has_close() -> bool:
+	return _close_button != null and _close_button.visible
+
+
 func hide_lobby() -> void:
+	_hide_close()
+	_loading_last = 0.0
 	_close_dossier()
 	_lobby_backdrop.hide()
 	menu.hide()
@@ -477,6 +514,14 @@ func dossier(profile: LunarProfile) -> void:
 	sheet.build(profile)
 	sheet.closed.connect(func() -> void: selected.emit("close_dossier", ""))
 	_paper = sheet
+	_set_close("close_dossier")
+
+
+func _hide_close() -> void:
+	if _close_button != null:
+		_close_button.hide()
+	_close_action = ""
+	_close_argument = ""
 
 
 func _close_dossier() -> void:
@@ -487,16 +532,37 @@ func _close_dossier() -> void:
 
 func loading(base_name: String, status: String, progress: float) -> void:
 	_prepare_menu(base_name, status)
-	menu.offset_top = -106
-	menu.offset_bottom = 109
-	var bar := ProgressBar.new()
-	bar.custom_minimum_size.y = 34
-	bar.show_percentage = false
-	bar.max_value = 1.0
-	bar.value = progress
-	bar.add_theme_stylebox_override("background", _style(Color("#c09a7c"), EDGE))
-	bar.add_theme_stylebox_override("fill", _style(TEAL, Color("#18443e")))
+	menu.offset_top = -172
+	menu.offset_bottom = 176
+	var rocket := TextureRect.new()
+	rocket.texture = LOADING_ROCKET
+	rocket.custom_minimum_size = Vector2(96.0, 96.0)
+	rocket.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rocket.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rocket.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rocket.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rocket.pivot_offset = Vector2(48.0, 48.0)
+	rocket.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_list.add_child(rocket)
+	var sway := rocket.create_tween().set_loops()
+	sway.tween_property(rocket, "rotation", 0.14, 0.45).set_trans(Tween.TRANS_SINE)
+	sway.tween_property(rocket, "rotation", -0.14, 0.45).set_trans(Tween.TRANS_SINE)
+	var bar := LunarLoadingBar.new()
+	bar.value = _loading_last
 	_list.add_child(bar)
+	var percent := _label(_list, "", 26, TITLE)
+	percent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	percent.add_theme_color_override("font_color", Color("#a85b0e"))
+	var fill := bar.create_tween()
+	fill.tween_method(
+		func(amount: float) -> void:
+			bar.value = amount
+			percent.text = "%d %%" % roundi(amount * 100.0),
+		_loading_last,
+		progress,
+		0.35
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_loading_last = progress
 
 
 func flight_status(phase: int, progress: float) -> void:
@@ -932,6 +998,7 @@ func show_science(record_title: String, description: String, index: int, count: 
 	archive.build(record_title, description, index, count)
 	archive.chosen.connect(func(action: String) -> void: selected.emit(action, ""))
 	_paper = archive
+	_set_close("close_science")
 
 
 func confirm_reset(base_name: String, id: String) -> void:
@@ -948,6 +1015,8 @@ func show_balance(balance: String) -> void:
 
 
 func playing() -> void:
+	_hide_close()
+	_loading_last = 0.0
 	hide_lobby()
 	if globe != null:
 		globe.hide()
@@ -1163,6 +1232,7 @@ func _show_alert(mission: LunarMission, safe: bool) -> void:
 
 
 func _prepare_menu(title: String, status: String) -> void:
+	_hide_close()
 	_close_dossier()
 	for tween in _lobby_tweens:
 		tween.kill()
@@ -1208,6 +1278,8 @@ func _button(parent: Control, caption: String, action: String, argument: String 
 	LunarButtonKit.apply(button, LunarButtonKit.kind_for(caption))
 	parent.add_child(button)
 	button.pressed.connect(func() -> void: selected.emit(action, argument))
+	if parent == _list and _close_action.is_empty() and (caption.begins_with("Volver") or caption.begins_with("Cancelar")):
+		_set_close(action, argument)
 	return button
 
 

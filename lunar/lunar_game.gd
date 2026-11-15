@@ -200,7 +200,7 @@ func _language_changed() -> void:
 
 func _process(delta: float) -> void:
 	if _language_layer != null:
-		_language_layer.visible = net == &"title" or net == &"lobby"
+		_language_layer.visible = net == &"title" or (net == &"lobby" and not ui.has_close())
 	if not _pending_reward.is_empty():
 		_reward_retry -= delta
 		if _reward_retry <= 0.0:
