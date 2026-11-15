@@ -62,6 +62,7 @@ var feedback: Label
 var _objective_hint: Label
 var _drop_body: VBoxContainer
 var _close_button: Button
+var _close_in_menu := false
 var _close_action := ""
 var _close_argument := ""
 var _loading_last := 0.0
@@ -492,7 +493,7 @@ func _set_close(action: String, argument := "") -> void:
 
 ## Dentro de la esquina del recuadro del menu; en pantallas completas, en la esquina de la pantalla.
 func _place_close() -> void:
-	if menu.visible:
+	if _close_in_menu and menu.visible:
 		await get_tree().process_frame
 		if not menu.visible or not has_close():
 			return
@@ -501,7 +502,10 @@ func _place_close() -> void:
 		_close_button.size = Vector2(56.0, 56.0)
 		_close_button.position = Vector2(rect.end.x - 56.0 - 14.0, rect.position.y + 14.0)
 	else:
-		_close_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		_close_button.anchor_left = 1.0
+		_close_button.anchor_right = 1.0
+		_close_button.anchor_top = 0.0
+		_close_button.anchor_bottom = 0.0
 		_close_button.offset_left = -76.0
 		_close_button.offset_right = -20.0
 		_close_button.offset_top = 20.0
@@ -998,6 +1002,7 @@ func _compact_menu(width: float = 520.0) -> void:
 	menu.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_close_in_menu = true
 	_place_close()
 
 
@@ -1292,6 +1297,7 @@ func _prepare_menu(title: String, status: String) -> void:
 	_heading.add_theme_font_size_override("font_size", 43)
 	_message.add_theme_font_size_override("font_size", 22)
 	_heading.modulate = BRICK
+	_close_in_menu = false
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_heading.text = title
