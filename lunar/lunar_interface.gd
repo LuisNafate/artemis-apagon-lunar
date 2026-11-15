@@ -42,7 +42,7 @@ var _lobby_backdrop: Control
 var _heading: Label
 var _message: Label
 var _list: VBoxContainer
-var _resources: HBoxContainer
+var _resources: GridContainer
 var _readouts: Array[Label] = []
 var _controls: HBoxContainer
 var _pause: Button
@@ -96,12 +96,15 @@ func _build_play(root: Control) -> void:
 	header.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var content := VBoxContainer.new()
 	header.add_child(content)
-	location = _label(content, "", 32, TITLE)
+	location = _label(content, "", 30, TITLE)
 	_float_text(location)
-	_resources = HBoxContainer.new()
-	_resources.alignment = BoxContainer.ALIGNMENT_CENTER
-	content.add_child(_resources)
-	_resources.add_theme_constant_override("separation", 7)
+	_resources = GridContainer.new()
+	_resources.columns = 2
+	_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play.add_child(_resources)
+	_resources.position = Vector2(18, 8)
+	_resources.add_theme_constant_override("h_separation", 14)
+	_resources.add_theme_constant_override("v_separation", 0)
 	var colors := [Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")]
 	for index in range(colors.size()):
 		var chip := PanelContainer.new()
@@ -462,7 +465,7 @@ func sync(
 ) -> void:
 	var night := mission.shadow_active()
 	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
-	location.text = "%s  ·  %s" % [mission.base.name, cycle]
+	location.text = "%s\n%s" % [cycle, mission.base.name]
 	var cold := ["", ""]
 	for person in range(2):
 		if night and not sheltered[person] and mission.connected[person]:
