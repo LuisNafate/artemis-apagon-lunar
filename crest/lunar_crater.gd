@@ -72,7 +72,9 @@ static func _add_rock(
 	surface: SurfaceTool, base: Vector3, size: float, tint: Color, rng: RandomNumberGenerator
 ) -> void:
 	var sides := 5
-	var top := base + Vector3(rng.randf_range(-0.12, 0.12), 0.7, rng.randf_range(-0.12, 0.12)) * size
+	var top := (
+		base + Vector3(rng.randf_range(-0.12, 0.12), 0.7, rng.randf_range(-0.12, 0.12)) * size
+	)
 	var bottom := base + Vector3(0, -0.12, 0) * size
 	var ring: Array[Vector3] = []
 	var phase := rng.randf_range(0.0, TAU)
@@ -80,7 +82,13 @@ static func _add_rock(
 		var angle := TAU * index / sides + phase + rng.randf_range(-0.25, 0.25)
 		var reach := rng.randf_range(0.7, 1.15)
 		ring.append(
-			base + Vector3(cos(angle) * reach, rng.randf_range(0.05, 0.22), sin(angle) * reach) * size
+			(
+				base
+				+ (
+					Vector3(cos(angle) * reach, rng.randf_range(0.05, 0.22), sin(angle) * reach)
+					* size
+				)
+			)
 		)
 	for index in range(sides):
 		var next := (index + 1) % sides

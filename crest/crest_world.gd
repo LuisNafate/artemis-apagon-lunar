@@ -7,8 +7,12 @@ const APOLLO_BASE := preload("res://assets/props_luna/nasa/apollo_base_lunar.glb
 const APOLLO_ASCENT := preload("res://assets/props_luna/nasa/apollo_etapa_ascenso.glb")
 const NOBILE_RELIEF := preload("res://assets/props_luna/nasa/relieve_nobile_lola.glb")
 const LRO_MODEL := preload("res://assets/props_luna/nasa/lro_miniatura.glb")
-const WATER_MACHINE_EMPTY := preload("res://assets/props_luna/agua_hielo/maquina_agua_hielo_vacio.glb")
-const WATER_MACHINE_FULL := preload("res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb")
+const WATER_MACHINE_EMPTY := preload(
+	"res://assets/props_luna/agua_hielo/maquina_agua_hielo_vacio.glb"
+)
+const WATER_MACHINE_FULL := preload(
+	"res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb"
+)
 const WATER_MACHINE_SCALE := 1.55
 const GUIDE_MODEL := preload("res://assets/pilotos/astrocat_guia.glb")
 const TRANSPORT_PARK := Vector3(-11.9, 0.04, 7.45)
