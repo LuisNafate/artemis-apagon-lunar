@@ -21,6 +21,9 @@ const MODEL_GREENHOUSE := preload("res://assets/props_luna/estaciones/invernader
 const MODEL_SOLAR := preload("res://assets/props_luna/estaciones/paneles.glb")
 const MODEL_ROVER_ANTENNA := preload("res://assets/props_luna/estaciones/antena_rover.glb")
 const MODEL_WATER_TANK := preload("res://assets/props_luna/estaciones/tanque_agua.glb")
+const MODEL_TRAINING_TABLE := preload("res://assets/props_luna/estaciones/mesa_azul.glb")
+const MODEL_WOOD_TABLE := preload("res://assets/props_luna/estaciones/mesa_madera.glb")
+const MODEL_FUEL_TANK := preload("res://assets/props_luna/estaciones/deposito_propelente.glb")
 const TRANSPORT_PARK := Vector3(-11.9, 0.04, 7.45)
 const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
 const RECEIVER := preload("res://assets/props_luna/kenney/consola.glb")
@@ -58,7 +61,7 @@ const BOARDING := [Vector3(4.85, 0.04, 5.9), Vector3(6.35, 0.04, 5.9)]
 const SHELTER := Rect2(12.5, -2.6, 5.5, 9.1)
 const NAMES := {
 	&"supply": "SUMINISTROS",
-	&"training": "PRÁCTICA",
+	&"training": "MESA DE PRÁCTICA",
 	&"ice": "HIELO",
 	&"ore": "MINERAL",
 	&"refinery": "REFINADO",
@@ -69,7 +72,7 @@ const NAMES := {
 	&"crop": "CULTIVOS",
 	&"fuel": "PROPELENTE",
 	&"radio": "RADIO",
-	&"pad": "COHETE",
+	&"pad": "NAVE",
 	&"solar": "REFUERZO SOLAR",
 	&"irrigation": "RIEGO"
 }
@@ -596,6 +599,13 @@ func _stations() -> void:
 		_quarry(&"ice", BLUE)
 		_quarry(&"ore", AMBER)
 	training_desk = _console(&"training", BLUE)
+	if campaign_layout:
+		# Clipboard and sample cup distinguish this console by silhouette in shadow.
+		FieldWorld.box(training_desk, Vector3(-0.20, 0.84, -0.44), Vector3(0.33, 0.05, 0.27), WHITE)
+		FieldWorld.box(
+			training_desk, Vector3(-0.20, 0.875, -0.53), Vector3(0.16, 0.027, 0.07), BLUE
+		)
+		FieldWorld.box(training_desk, Vector3(0.22, 0.90, -0.46), Vector3(0.18, 0.15, 0.18), BLUE)
 	_equipment.append(_console(&"refinery", BLUE, false))
 	var drill_root := _console(&"drill", AMBER, false)
 	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 1.6), 1.5, 0.5))
@@ -639,14 +649,10 @@ func _stations() -> void:
 
 
 func _build_fuel_cabinet(root: Node3D) -> void:
-	var point := Vector3(0, 0.42, -1.42)
-	FieldWorld.box(root, point, Vector3(1.15, 0.84, 0.72), FRAME)
-	FieldWorld.box(root, point + Vector3(0, 0.42, 0), Vector3(1.2, 0.13, 0.76), WHITE)
-	for x in [-0.30, 0.30]:
-		var cell := point + Vector3(x, 0.08, 0.365)
-		FieldWorld.box(root, cell, Vector3(0.39, 0.46, 0.048), AMBER)
-		FieldWorld.box(root, cell + Vector3(0, 0.1, 0.031), Vector3(0.22, 0.055, 0.025), FRAME)
-	_solid(root.position + point, Vector3(1.15, 0.84, 0.72))
+	# El deposito de propelente es un modelo propio (tumbado a lo largo) y sustituye al armario de cubos.
+	var point := Vector3(0, 0.0, -1.42)
+	station_prop(root, MODEL_FUEL_TANK, point, 1.7, 0.364, -90.0)
+	_solid(root.position + point + Vector3(0, 0.62, 0), Vector3(1.7, 1.24, 1.27))
 
 
 func _shelter() -> void:
@@ -668,11 +674,10 @@ func _shelter() -> void:
 			BLUE,
 			true
 		)
-	for side in [-1.0, 1.0]:
-		var pos := Vector3(center.x + side * 1.6, 0.34, center.y - half.y + 1.3)
-		FieldWorld.box(shelter_shell, pos, Vector3(0.85, 0.69, 1.5), FRAME)
-		FieldWorld.box(shelter_shell, pos + Vector3.UP * 0.4, Vector3(0.78, 0.14, 1.4), BLUE)
-		_solid(pos, Vector3(0.85, 0.69, 1.5))
+	# Mesa de la racion: ocupa el sitio de los dos bloques que habia aqui.
+	var table := Vector3(center.x, 0.03, center.y - half.y + 1.3)
+	station_prop(shelter_shell, MODEL_WOOD_TABLE, table, 2.6, 0.162, 90.0)
+	_solid(table + Vector3.UP * 0.42, Vector3(2.6, 0.84, 0.92))
 	var cross := Vector3(center.x, 0.12, center.y + 0.5)
 	FieldWorld.box(shelter_shell, cross, Vector3(0.23, 0.08, 0.77), BLUE, true)
 	FieldWorld.box(shelter_shell, cross, Vector3(0.76, 0.08, 0.23), BLUE, true)
@@ -745,6 +750,10 @@ func _console(key: StringName, accent: Color, show_machine := true) -> Node3D:
 	root.position = point
 	_deck(point, Vector3(2.05, 0.06, 1.77), accent)
 	var machine := Vector3(0, 0.39, -0.55)
+	if key == &"training" and campaign_layout:
+		# La mesa azul del tutorial es un modelo propio: sustituye al escritorio de cubos.
+		station_prop(root, MODEL_TRAINING_TABLE, Vector3.ZERO, 1.7, 0.3)
+		show_machine = false
 	if show_machine:
 		FieldWorld.box(root, machine, Vector3(0.84, 0.78, 0.45), FRAME)
 		FieldWorld.box(root, machine + Vector3(0, 0.3, 0.12), Vector3(0.91, 0.25, 0.47), WHITE)

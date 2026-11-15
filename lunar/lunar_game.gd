@@ -59,6 +59,7 @@ var _planner := RoutePlanner.new()
 var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
 var _cargo_templates: Dictionary = {}
+var _objective_destination := Vector3.INF
 var _coins_by_guest: Dictionary = {}
 var _pending_reward: Dictionary = {}
 var _reward_retry := 0.0
@@ -195,6 +196,79 @@ func _physics_process(delta: float) -> void:
 		_guest_frame(delta)
 	if ui.play.visible and sim.phase != &"flight":
 		_follow_camera(delta)
+		_update_objective()
+
+
+func _update_objective() -> void:
+	_objective_destination = Vector3.INF
+	var player := pilots[0]
+	var here := player.position
+	var safe := world.sheltered(here)
+	var directive := LunarObjective.next(sim, 0, safe)
+	var key: StringName = directive[0]
+	var instruction: String = directive[1]
+	var target := _objective_target(key, here)
+	instruction = target.get("instruction", instruction)
+	if key == &"ice" and not target.is_empty() and world.base_arrow != null:
+		world.base_arrow.hide()
+	if target.is_empty() or target.reached:
+		ui.show_objective(instruction)
+		return
+	_objective_destination = target.destination
+	var point: Vector3 = target.anchor + Vector3.UP * 0.9
+	var screen := camera.unproject_position(point)
+	if camera.is_position_behind(point):
+		screen = get_viewport().get_visible_rect().size - screen
+	ui.show_objective(instruction, target.title, screen)
+
+
+func _objective_target(key: StringName, here: Vector3) -> Dictionary:
+	if key == &"":
+		return {}
+	if key == &"ice":
+		if not _camera_outside(here):
+			return {
+				"destination": world.enclosure.outside_point(),
+				"anchor": world.enclosure.door_point(),
+				"title": "Puerta de salida",
+				"reached": false,
+				"instruction": "Sal por la Puerta de salida para buscar hielo."
+			}
+		var deposit := streamer.nearest_available(here, &"ice")
+		if deposit.is_empty():
+			return {}
+		var target := _target_at(deposit.point, "Depósito de hielo", _spots[0] == deposit.key)
+		target.instruction = "En el depósito de hielo, toca Extraer hielo."
+		return target
+	if String(key).begins_with("loose_"):
+		return _loose_objective(StringName(String(key).trim_prefix("loose_")), here)
+	var location: Vector3 = CrestWorld.campaign_stations[key]
+	var name := String(CrestWorld.NAMES[key])
+	var title := name.left(1) + name.substr(1).to_lower()
+	var reached := _spots[0] == key or (key == &"life" and world.sheltered(here))
+	return _target_at(location, title, reached)
+
+
+func _loose_objective(kind: StringName, here: Vector3) -> Dictionary:
+	var nearest := INF
+	var target := {}
+	var pickup := _pickup_at(0)
+	for id: int in sim.crates:
+		var crate: Dictionary = sim.crates[id]
+		var point: Vector3 = crate.point
+		if crate.owner != -1 or crate.kind != kind:
+			continue
+		var distance := here.distance_squared_to(point)
+		if distance < nearest:
+			nearest = distance
+			target = _target_at(
+				point, String(LunarItemContext.LOAD_NAMES[kind]).capitalize(), pickup == id
+			)
+	return target
+
+
+func _target_at(point: Vector3, title: String, reached: bool) -> Dictionary:
+	return {"destination": point, "anchor": point, "title": title, "reached": reached}
 
 
 func _follow_camera(delta: float) -> void:
@@ -323,6 +397,9 @@ func _choose(action: String, argument: String) -> void:
 			profile.data.active_role = argument
 			profile.save()
 			ui.roles(profile)
+		"objective_route":
+			if net == &"solo" and ui.play.visible and sim.phase != &"flight":
+				_set_destination(0, _objective_destination)
 		"reset_confirm":
 			ui.confirm_reset(sim.rules.bases[argument].name, argument)
 		"reset":
@@ -949,6 +1026,9 @@ func _render(delta: float, player: int) -> void:
 		sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "", kind
 	)
 	ui.flight_status(flight_phase, view.y)
+	if flight_phase >= 0:
+		ui.show_objective("")
+		_objective_destination = Vector3.INF
 	_alert_if_changed()
 
 
@@ -1144,7 +1224,7 @@ func _confirm_awards(receipts: PackedStringArray) -> void:
 func _show_science(step: int) -> void:
 	_science_index = posmod(_science_index + step, sim.records.size())
 	var record := sim.records[_science_index]
-	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.instrument)
+	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.id)
 	ui.show_science(title, sim.science_text(record), _science_index, sim.records.size())
 
 

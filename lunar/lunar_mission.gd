@@ -47,6 +47,8 @@ const SAVE_FIELDS := [
 
 var rules: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH)).campaign_2026
 var resources: Dictionary = rules.resource
+var donki: Dictionary = rules.get("donki", {})
+var flares: Dictionary = _load_flares()
 var base: Dictionary
 var difficulty: Dictionary
 var base_id: String
@@ -225,7 +227,55 @@ func radio_warning() -> bool:
 
 
 func storm_warning() -> float:
-	return _warning("sep", float(difficulty.warning))
+	for event: Array in events:
+		var left := float(event[1]) - elapsed
+		var span := float(event[3]) if event.size() > 3 else float(difficulty.warning)
+		if event[0] == "sep" and left > 0.0 and left <= span:
+			return left
+	return -1.0
+
+
+## Llamarada real de DONKI detrás de la alerta anunciada o en curso.
+func storm_flare() -> Dictionary:
+	for event: Array in events:
+		if event[0] != "sep" or event.size() < 5:
+			continue
+		var left := float(event[1]) - elapsed
+		if _in_range(event[1], event[2]) or (left > 0.0 and left <= float(event[3])):
+			return flares.get(String(event[4]), {})
+	return {}
+
+
+## Llamarada real sin partículas que se está anunciando: una falsa alarma.
+func flare_notice() -> Dictionary:
+	for event: Array in events:
+		if event[0] == "flare" and _in_range(event[1], event[2]):
+			return flares.get(String(event[4]), {})
+	return {}
+
+
+## Aviso corto, medio o largo según los minutos reales entre la llamarada y las partículas.
+func flare_lead(record: Dictionary) -> String:
+	if record.get("lead_minutes") == null:
+		return ""
+	var minutes := float(record.lead_minutes)
+	if minutes < float(donki.lead_minutes.short):
+		return "short"
+	if minutes < float(donki.lead_minutes.long):
+		return "medium"
+	return "long"
+
+
+func science_text(record: Dictionary) -> String:
+	if String(record.id) != "donki_sep_20240510" or flares.is_empty():
+		return super(record)
+	return (
+		"NASA CCMC registró un aviso de partículas el 10 de mayo de 2024. Cada alerta de esta "
+		+ "campaña repite una llamarada real de DONKI: su clase y si soltó partículas son reales, "
+		+ "y el aviso es corto, medio o largo según cuánto tardaron en llegar. "
+		+ "No toda llamarada es peligrosa: de 243 llamaradas entre mayo y junio de 2024, "
+		+ "solo 16 soltaron partículas. Los 45 s de la alerta son del juego."
+	)
 
 
 func outage_warning() -> float:
@@ -710,16 +760,87 @@ func _roll_events() -> void:
 		var length := int(rules.events.outage_seconds)
 		var start := rng.randi_range(int(rules.cycle.day), last - length)
 		events.append(["outage", start, length])
-	if cycle % int(difficulty.alert_every) != 0:
+	if cycle % int(difficulty.alert_every) == 0:
+		var length := int(rules.events.alert_seconds)
+		for index in range(int(difficulty.alerts)):
+			var available: Array[int] = []
+			for start in range(margin, last - length + 1):
+				var allowed := true
+				for event: Array in events:
+					if start < int(event[1] + event[2]) and start + length > int(event[1]):
+						allowed = false
+				if allowed:
+					available.append(start)
+			events.append(["sep", available[rng.randi_range(0, available.size() - 1)], length])
+	_attach_flares(margin, last)
+
+
+## Cada alerta repite una llamarada real con partículas. Un aviso aparte, sin partículas,
+## muestra que no toda llamarada termina en tormenta. Usa su propia semilla para que el
+## calendario de EVT-4c no cambie.
+func _attach_flares(margin: int, last: int) -> void:
+	if flares.is_empty():
 		return
-	var length := int(rules.events.alert_seconds)
-	for index in range(int(difficulty.alerts)):
-		var available: Array[int] = []
-		for start in range(margin, last - length + 1):
-			var allowed := true
-			for event: Array in events:
-				if start < int(event[1] + event[2]) and start + length > int(event[1]):
-					allowed = false
-			if allowed:
-				available.append(start)
-		events.append(["sep", available[rng.randi_range(0, available.size() - 1)], length])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([cycle_seed, days, "donki"])
+	for event: Array in events:
+		if event[0] != "sep":
+			continue
+		var id := _pick_flare(rng, true)
+		if not id.is_empty():
+			event.append(int(donki.warning_seconds[flare_lead(flares[id])]))
+			event.append(id)
+	if (days + 1) % int(donki.false_alarm_every) != 0:
+		return
+	var quiet := _pick_flare(rng, false)
+	var length := int(donki.false_alarm_seconds)
+	var available: Array[int] = []
+	for start in range(margin, last - length + 1):
+		var allowed := true
+		for event: Array in events:
+			var lead := int(event[3]) if event.size() > 3 else 0
+			if start < int(event[1] + event[2]) and start + length > int(event[1]) - lead:
+				allowed = false
+		if allowed:
+			available.append(start)
+	if quiet.is_empty() or available.is_empty():
+		return
+	events.append(["flare", available[rng.randi_range(0, available.size() - 1)], length, 0, quiet])
+
+
+## Elige primero el tipo de aviso y después la llamarada, para que el promedio del aviso
+## coincida con el reglamento en cada dificultad.
+func _pick_flare(rng: RandomNumberGenerator, with_particles: bool) -> String:
+	var pool: Dictionary = donki.pools.get(String(base.difficulty), {})
+	var groups := {}
+	for id: String in flares:
+		var record: Dictionary = flares[id]
+		var lead := flare_lead(record)
+		if lead.is_empty() == with_particles:
+			continue
+		if with_particles and not lead in pool.get("leads", []):
+			continue
+		if with_particles and not String(record.class_type).left(1) in pool.get("classes", []):
+			continue
+		if not groups.has(lead):
+			groups[lead] = []
+		groups[lead].append(id)
+	if groups.is_empty():
+		return ""
+	var kinds := groups.keys()
+	kinds.sort()
+	var list: Array = groups[kinds[rng.randi_range(0, kinds.size() - 1)]]
+	list.sort()
+	return list[rng.randi_range(0, list.size() - 1)]
+
+
+func _load_flares() -> Dictionary:
+	var path := "res://" + String(donki.get("catalog", ""))
+	if donki.is_empty() or not FileAccess.file_exists(path):
+		return {}
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var result := {}
+	if data is Dictionary:
+		for record: Dictionary in data.get("flares", []):
+			result[String(record.id)] = record
+	return result
