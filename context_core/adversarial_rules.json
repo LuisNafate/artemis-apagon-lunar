@@ -1,5 +1,5 @@
 {
-  "revision": 23,
+  "revision": 25,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -452,6 +452,17 @@
       "VAC-17",
       "VAC-18"
     ],
+    "objective_guidance": {
+      "matching": "La instrucción y el marcador se calculan a partir del mismo objetivo y estado de misión.",
+      "visibility": "El marcador se acomoda a los límites de cámara, desaparece al llegar y cede ante el refugio durante la alerta.",
+      "navigation": "Pulsar el marcador solicita la ruta de superficie normal."
+    },
+    "items": {
+      "pickup": "Una sola carga por piloto. La oferta visible y la recogida usan el mismo alcance.",
+      "drop": "Proyectar al suelo cargado antes de soltar; si no hay superficie se conserva la carga.",
+      "capacity": "Si hay 24 cajas, el stock listo espera. Los lotes sueltos cuentan para la cuota de propelente.",
+      "timers": "Refinado, cultivo, fabricación y montaje muestran el tiempo restante sin adelantar resultados. Guardar exactamente mantiene los trabajos pendientes."
+    },
     "mvp_individual": {
       "scope": "Nueve bases; entrada individual y desbloqueo por monedas ganadas.",
       "completion": "El perfil anuncia el final cuando confirma un regreso a Tierra por cada base."

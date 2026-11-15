@@ -58,7 +58,7 @@ const BOARDING := [Vector3(4.85, 0.04, 5.9), Vector3(6.35, 0.04, 5.9)]
 const SHELTER := Rect2(12.5, -2.6, 5.5, 9.1)
 const NAMES := {
 	&"supply": "SUMINISTROS",
-	&"training": "PRÁCTICA",
+	&"training": "MESA DE PRÁCTICA",
 	&"ice": "HIELO",
 	&"ore": "MINERAL",
 	&"refinery": "REFINADO",
@@ -69,13 +69,13 @@ const NAMES := {
 	&"crop": "CULTIVOS",
 	&"fuel": "PROPELENTE",
 	&"radio": "RADIO",
-	&"pad": "COHETE",
+	&"pad": "NAVE",
 	&"solar": "REFUERZO SOLAR",
 	&"irrigation": "RIEGO"
 }
 
 ## En la campaña el hielo y el mineral se extraen de los depósitos del mundo abierto.
-static var campaign_stations := _without_quarries(STATIONS.merged(WORKSHOP))
+static var campaign_stations := _campaign_station_map()
 
 ## Ajustes del mundo abierto: si se dan, la base es la de la campana (con muro, puerta y flecha).
 var open_settings: Dictionary = {}:
@@ -114,9 +114,10 @@ var _soil := SOIL
 var _mission_clock := 0.0
 
 
-static func _without_quarries(stations: Dictionary) -> Dictionary:
-	stations.erase(&"ice")
-	stations.erase(&"ore")
+static func _campaign_station_map() -> Dictionary:
+	var stations := STATIONS.merged(WORKSHOP)
+	for unused in [&"ice", &"ore", &"solar", &"supply"]:
+		stations.erase(unused)
 	return stations
 
 
@@ -158,16 +159,9 @@ func build() -> void:
 
 
 func build_lunar_workshop() -> void:
-	for station: StringName in [&"solar", &"irrigation"]:
-		var is_solar := station == &"solar"
-		var point: Vector3 = WORKSHOP[station]
-		if is_solar:
-			pass
-		else:
-			_equipment.append(
-				station_prop(self, MODEL_WATER_TANK, point + Vector3(0, 0.0, 1.8), 1.5, 0.5)
-			)
-			_solid(point + Vector3(0, 0.55, 1.8), Vector3(1.1, 1.1, 1.5))
+	var point: Vector3 = WORKSHOP[&"irrigation"] + Vector3(0, 0, 1.8)
+	_equipment.append(station_prop(self, MODEL_WATER_TANK, point, 1.5, 0.5))
+	_solid(point + Vector3(0, 0.55, 0), Vector3(1.1, 1.1, 1.5))
 	var ring := TorusMesh.new()
 	ring.inner_radius = 1.61
 	ring.outer_radius = 1.72
@@ -602,6 +596,13 @@ func _stations() -> void:
 		_quarry(&"ice", BLUE)
 		_quarry(&"ore", AMBER)
 	training_desk = _console(&"training", BLUE)
+	if campaign_layout:
+		# Clipboard and sample cup distinguish this console by silhouette in shadow.
+		FieldWorld.box(training_desk, Vector3(-0.20, 0.84, -0.44), Vector3(0.33, 0.05, 0.27), WHITE)
+		FieldWorld.box(
+			training_desk, Vector3(-0.20, 0.875, -0.53), Vector3(0.16, 0.027, 0.07), BLUE
+		)
+		FieldWorld.box(training_desk, Vector3(0.22, 0.90, -0.46), Vector3(0.18, 0.15, 0.18), BLUE)
 	_equipment.append(_console(&"refinery", BLUE, false))
 	var drill_root := _console(&"drill", AMBER, false)
 	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 1.6), 1.5, 0.5))
@@ -611,7 +612,10 @@ func _stations() -> void:
 		station_prop(battery_root, MODEL_BATTERY, Vector3(0, 0, -2.1), 3.0, 0.18, 90.0)
 	)
 	_solid(STATIONS[&"battery"] + Vector3(0, 0.3, -2.1), Vector3(3.0, 0.6, 1.5))
-	_equipment.append(_console(&"fuel", AMBER, false))
+	var fuel_cabinet := _console(&"fuel", AMBER, false)
+	if campaign_layout:
+		_build_fuel_cabinet(fuel_cabinet)
+	_equipment.append(fuel_cabinet)
 	_console(&"radio", PURPLE, false)
 	if campaign_layout:
 		_marker(&"pad", AMBER)
@@ -639,6 +643,17 @@ func _stations() -> void:
 	drill_upgrade.position = STATIONS[&"drill"] + Vector3(1.3, 0, 1.2)
 	_disc(drill_upgrade, Vector3.UP * 0.56, 0.26, 1.12, AMBER, 8)
 	_disc(drill_upgrade, Vector3.UP * 1.13, 0.14, 0.4, WHITE, 8)
+
+
+func _build_fuel_cabinet(root: Node3D) -> void:
+	var point := Vector3(0, 0.42, -1.42)
+	FieldWorld.box(root, point, Vector3(1.15, 0.84, 0.72), FRAME)
+	FieldWorld.box(root, point + Vector3(0, 0.42, 0), Vector3(1.2, 0.13, 0.76), WHITE)
+	for x in [-0.30, 0.30]:
+		var cell := point + Vector3(x, 0.08, 0.365)
+		FieldWorld.box(root, cell, Vector3(0.39, 0.46, 0.048), AMBER)
+		FieldWorld.box(root, cell + Vector3(0, 0.1, 0.031), Vector3(0.22, 0.055, 0.025), FRAME)
+	_solid(root.position + point, Vector3(1.15, 0.84, 0.72))
 
 
 func _shelter() -> void:

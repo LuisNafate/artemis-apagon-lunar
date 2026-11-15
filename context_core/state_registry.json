@@ -1,5 +1,5 @@
 {
-  "revision": 23,
+  "revision": 25,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -921,6 +921,34 @@
       "radio_cut_seconds": 300,
       "radio_warning": 30
     },
+    "donki": {
+      "catalog": "context_core/data/donki_flares_v1.json",
+      "lead_minutes": {
+        "short": 60,
+        "long": 1440
+      },
+      "warning_seconds": {
+        "short": 15,
+        "medium": 25,
+        "long": 35
+      },
+      "pools": {
+        "easy": {
+          "leads": ["medium", "long"],
+          "classes": ["M", "X"]
+        },
+        "medium": {
+          "leads": ["short", "medium"],
+          "classes": ["M", "X"]
+        },
+        "hard": {
+          "leads": ["short", "medium"],
+          "classes": ["X"]
+        }
+      },
+      "false_alarm_seconds": 8,
+      "false_alarm_every": 1
+    },
     "mission": {
       "propellant": 3,
       "food": 2,
@@ -998,6 +1026,17 @@
       "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
       "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",
       "pending": ["escucha y mezcla en dispositivos"]
+    },
+    "objective_guidance": {
+      "audit": "context_core/auditoria_objetivos_mvp.md",
+      "display": "Un objetivo táctil en superficie, con nombre y dirección; la acción contextual lo reemplaza al llegar.",
+      "binding": "Anclas de estación, puerta, depósito con existencias o caja con posición registrada."
+    },
+    "item_integration": {
+      "audit": "context_core/auditoria_items_mvp.md",
+      "crate_limit": 24,
+      "timers": "Los segundos y amaneceres son valores de LunarMission. El panel los muestra al alcance de cada ítem.",
+      "supplies": "Depósitos y producción en la campaña. Entrega programada solo en la escena histórica de Cresta."
     },
     "solo_mode": {
       "source": "VAC-11 resuelto por el usuario",

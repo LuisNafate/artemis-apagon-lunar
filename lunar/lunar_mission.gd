@@ -4,6 +4,8 @@ extends CrestSim
 
 signal deposit_changed(key: StringName, left: int)
 
+const CARGO_LIMIT := 24
+
 const SAVE_FIELDS := [
 	"elapsed",
 	"days",
@@ -45,6 +47,8 @@ const SAVE_FIELDS := [
 
 var rules: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH)).campaign_2026
 var resources: Dictionary = rules.resource
+var donki: Dictionary = rules.get("donki", {})
+var flares: Dictionary = _load_flares()
 var base: Dictionary
 var difficulty: Dictionary
 var base_id: String
@@ -147,20 +151,25 @@ func _delta_key(key: StringName) -> String:
 
 ## Rellena un deposito vaciado cuando han pasado los amaneceres necesarios.
 func _refill_deposit(key: StringName) -> void:
-	var delta_key := _delta_key(key)
-	var known: Dictionary = _known_deposits.get(key, {})
-	if known.is_empty() or not world_deltas.has(delta_key):
-		return
-	var delta: Dictionary = world_deltas[delta_key]
-	if int(delta.left) > 0:
-		return
-	var open_world: Dictionary = rules.open_world
-	var wait := int(open_world.deposit_refill_dawns)
-	if known.near:
-		wait *= int(open_world.deposit_near_factor)
-	if days - int(delta.emptied_day) >= wait:
-		world_deltas.erase(delta_key)
+	if (
+		world_deltas.has(_delta_key(key))
+		and deposit_left(key) == 0
+		and deposit_refill_left(key) == 0
+	):
+		world_deltas.erase(_delta_key(key))
 		deposit_changed.emit(key, deposit_left(key))
+
+
+func deposit_refill_left(key: StringName) -> int:
+	var known: Dictionary = _known_deposits.get(key, {})
+	if known.is_empty() or deposit_left(key) > 0:
+		return 0
+	var settings: Dictionary = rules.open_world
+	var wait := int(settings.deposit_refill_dawns)
+	if known.near:
+		wait *= int(settings.deposit_near_factor)
+	var delta: Dictionary = world_deltas.get(_delta_key(key), {})
+	return maxi(0, wait - (days - int(delta.get("emptied_day", days))))
 
 
 func _refill_deposits() -> void:
@@ -169,21 +178,17 @@ func _refill_deposits() -> void:
 
 
 func _mine_deposit(player: int, key: StringName) -> String:
+	if deposit_kind(key) == &"":
+		return "Acércate a un depósito cargado"
 	if deposit_left(key) <= 0:
-		var open_world: Dictionary = rules.open_world
-		var wait := int(open_world.deposit_refill_dawns)
-		if _known_deposits.get(key, {}).get("near", false):
-			wait *= int(open_world.deposit_near_factor)
-		var delta: Dictionary = world_deltas.get(_delta_key(key), {"emptied_day": days})
-		var remaining := maxi(1, wait - (days - int(delta.emptied_day)))
-		return "Depósito vacío · vuelve en %d amaneceres" % remaining
+		return "Depósito vacío · vuelve en %d amaneceres" % deposit_refill_left(key)
 	return _start_mining(player, key)
 
 
 func _finish_deposit(player: int, key: StringName) -> StringName:
 	var pilot := pilots[player]
 	pilot.mine = &""
-	if deposit_left(key) <= 0:
+	if deposit_left(key) <= 0 or cargo_full():
 		return &""
 	var kind: StringName = _known_deposits[key].kind
 	_create_cargo(player, kind)
@@ -221,7 +226,55 @@ func radio_warning() -> bool:
 
 
 func storm_warning() -> float:
-	return _warning("sep", float(difficulty.warning))
+	for event: Array in events:
+		var left := float(event[1]) - elapsed
+		var span := float(event[3]) if event.size() > 3 else float(difficulty.warning)
+		if event[0] == "sep" and left > 0.0 and left <= span:
+			return left
+	return -1.0
+
+
+## Llamarada real de DONKI detrás de la alerta anunciada o en curso.
+func storm_flare() -> Dictionary:
+	for event: Array in events:
+		if event[0] != "sep" or event.size() < 5:
+			continue
+		var left := float(event[1]) - elapsed
+		if _in_range(event[1], event[2]) or (left > 0.0 and left <= float(event[3])):
+			return flares.get(String(event[4]), {})
+	return {}
+
+
+## Llamarada real sin partículas que se está anunciando: una falsa alarma.
+func flare_notice() -> Dictionary:
+	for event: Array in events:
+		if event[0] == "flare" and _in_range(event[1], event[2]):
+			return flares.get(String(event[4]), {})
+	return {}
+
+
+## Aviso corto, medio o largo según los minutos reales entre la llamarada y las partículas.
+func flare_lead(record: Dictionary) -> String:
+	if record.get("lead_minutes") == null:
+		return ""
+	var minutes := float(record.lead_minutes)
+	if minutes < float(donki.lead_minutes.short):
+		return "short"
+	if minutes < float(donki.lead_minutes.long):
+		return "medium"
+	return "long"
+
+
+func science_text(record: Dictionary) -> String:
+	if String(record.id) != "donki_sep_20240510" or flares.is_empty():
+		return super(record)
+	return (
+		"NASA CCMC registró un aviso de partículas el 10 de mayo de 2024. Cada alerta de esta "
+		+ "campaña repite una llamarada real de DONKI: su clase y si soltó partículas son reales, "
+		+ "y el aviso es corto, medio o largo según cuánto tardaron en llegar. "
+		+ "No toda llamarada es peligrosa: de 243 llamaradas entre mayo y junio de 2024, "
+		+ "solo 16 soltaron partículas. Los 45 s de la alerta son del juego."
+	)
 
 
 func outage_warning() -> float:
@@ -335,7 +388,7 @@ func _tutorial_use(player: int, station: StringName) -> String:
 
 func _collect_extraction_bonus(player: int, kind: StringName) -> bool:
 	var pilot := pilots[player]
-	if pilot.pending_extra != kind or pilot.cargo != 0:
+	if pilot.pending_extra != kind or pilot.cargo != 0 or cargo_full():
 		return false
 	_create_cargo(player, kind)
 	pilot.pending_extra = &""
@@ -381,7 +434,7 @@ func _refine(player: int) -> String:
 		return "La refinadora está trabajando"
 	_consume_cargo(player)
 	refining = [float(resources.refine_seconds)]
-	return "Refinando hielo · 5 s"
+	return "Refinando hielo"
 
 
 func _operate_job(player: int, station: StringName) -> String:
@@ -390,20 +443,19 @@ func _operate_job(player: int, station: StringName) -> String:
 	if pilots[player].cargo != 0:
 		return "Suelta o entrega tu caja primero"
 	if supply > 0:
+		if cargo_full():
+			return "Recoge o entrega cajas del suelo antes de sacar otra"
 		if crop:
 			food -= 1
 		else:
 			fuel_ready -= 1
 		_create_cargo(player, &"food" if crop else &"fuel")
 		return "Caja recogida"
-	if not crop and (returned or fuel_loaded + fuel_ready >= int(rules.mission.propellant)):
+	if not crop and fuel_quota_met():
 		return "La nave ya tiene su propelente"
 	if jobs[station] > 0.0:
 		return "En proceso · %d s" % ceili(jobs[station])
-	var cost := (
-		float(resources.crop_water if crop else resources.fuel_water)
-		* float(difficulty.consumption)
-	)
+	var cost := job_water_cost(station)
 	if water < cost:
 		return "Busca hielo y refínalo en el taller"
 	water -= cost
@@ -417,14 +469,49 @@ func _operate_job(player: int, station: StringName) -> String:
 	return "Cultivo regado" if crop else "Preparando propelente"
 
 
+func cargo_full() -> bool:
+	return crates.size() >= CARGO_LIMIT
+
+
+func fuel_quota_met() -> bool:
+	if returned:
+		return true
+	var total := fuel_loaded + fuel_ready
+	for crate: Dictionary in crates.values():
+		total += int(crate.kind == &"fuel")
+	return total >= int(rules.mission.propellant)
+
+
+func job_water_cost(station: StringName) -> float:
+	var units := float(resources.crop_water if station == &"crop" else resources.fuel_water)
+	return units * float(difficulty.consumption)
+
+
+func job_energy_cost(station: StringName) -> float:
+	var units := float(resources.crop_energy if station == &"crop" else resources.fuel_energy)
+	return units * float(difficulty.consumption)
+
+
+func workshop_paused() -> bool:
+	return energy_cut() or not life_powered
+
+
+func upgrade_installed(station: StringName) -> bool:
+	match station:
+		&"drill":
+			return drill
+		&"battery":
+			return auxiliary
+		&"irrigation":
+			return irrigation
+	return false
+
+
 func _queue_upgrade(player: int, station: StringName) -> String:
-	var flags := {
-		&"drill": drill, &"battery": auxiliary, &"solar": solar, &"irrigation": irrigation
-	}
-	if flags[station] or installing.has(station):
-		return "Mejora instalada o en montaje"
 	if station == &"solar":
 		return "Cambio de generación solar pendiente"
+	if upgrade_installed(station) or installing.has(station):
+		return "Mejora instalada o en montaje"
 	var cost := int(rules.upgrade_costs[String(station)])
 	if ore < cost:
 		return "Necesitas %d de mineral" % cost
@@ -542,9 +629,8 @@ func _tick_power(delta: float) -> void:
 	for kind: StringName in [priority, later]:
 		if jobs[kind] <= 0.0:
 			continue
-		var cost := float(resources.crop_energy if kind == &"crop" else resources.fuel_energy)
 		if not paid_jobs[kind]:
-			if not _draw(cost * consumption):
+			if not _draw(job_energy_cost(kind)):
 				continue
 			paid_jobs[kind] = true
 		jobs[kind] = maxf(0.0, float(jobs[kind]) - delta)
@@ -673,16 +759,87 @@ func _roll_events() -> void:
 		var length := int(rules.events.outage_seconds)
 		var start := rng.randi_range(int(rules.cycle.day), last - length)
 		events.append(["outage", start, length])
-	if cycle % int(difficulty.alert_every) != 0:
+	if cycle % int(difficulty.alert_every) == 0:
+		var length := int(rules.events.alert_seconds)
+		for index in range(int(difficulty.alerts)):
+			var available: Array[int] = []
+			for start in range(margin, last - length + 1):
+				var allowed := true
+				for event: Array in events:
+					if start < int(event[1] + event[2]) and start + length > int(event[1]):
+						allowed = false
+				if allowed:
+					available.append(start)
+			events.append(["sep", available[rng.randi_range(0, available.size() - 1)], length])
+	_attach_flares(margin, last)
+
+
+## Cada alerta repite una llamarada real con partículas. Un aviso aparte, sin partículas,
+## muestra que no toda llamarada termina en tormenta. Usa su propia semilla para que el
+## calendario de EVT-4c no cambie.
+func _attach_flares(margin: int, last: int) -> void:
+	if flares.is_empty():
 		return
-	var length := int(rules.events.alert_seconds)
-	for index in range(int(difficulty.alerts)):
-		var available: Array[int] = []
-		for start in range(margin, last - length + 1):
-			var allowed := true
-			for event: Array in events:
-				if start < int(event[1] + event[2]) and start + length > int(event[1]):
-					allowed = false
-			if allowed:
-				available.append(start)
-		events.append(["sep", available[rng.randi_range(0, available.size() - 1)], length])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([cycle_seed, days, "donki"])
+	for event: Array in events:
+		if event[0] != "sep":
+			continue
+		var id := _pick_flare(rng, true)
+		if not id.is_empty():
+			event.append(int(donki.warning_seconds[flare_lead(flares[id])]))
+			event.append(id)
+	if (days + 1) % int(donki.false_alarm_every) != 0:
+		return
+	var quiet := _pick_flare(rng, false)
+	var length := int(donki.false_alarm_seconds)
+	var available: Array[int] = []
+	for start in range(margin, last - length + 1):
+		var allowed := true
+		for event: Array in events:
+			var lead := int(event[3]) if event.size() > 3 else 0
+			if start < int(event[1] + event[2]) and start + length > int(event[1]) - lead:
+				allowed = false
+		if allowed:
+			available.append(start)
+	if quiet.is_empty() or available.is_empty():
+		return
+	events.append(["flare", available[rng.randi_range(0, available.size() - 1)], length, 0, quiet])
+
+
+## Elige primero el tipo de aviso y después la llamarada, para que el promedio del aviso
+## coincida con el reglamento en cada dificultad.
+func _pick_flare(rng: RandomNumberGenerator, with_particles: bool) -> String:
+	var pool: Dictionary = donki.pools.get(String(base.difficulty), {})
+	var groups := {}
+	for id: String in flares:
+		var record: Dictionary = flares[id]
+		var lead := flare_lead(record)
+		if lead.is_empty() == with_particles:
+			continue
+		if with_particles and not lead in pool.get("leads", []):
+			continue
+		if with_particles and not String(record.class_type).left(1) in pool.get("classes", []):
+			continue
+		if not groups.has(lead):
+			groups[lead] = []
+		groups[lead].append(id)
+	if groups.is_empty():
+		return ""
+	var kinds := groups.keys()
+	kinds.sort()
+	var list: Array = groups[kinds[rng.randi_range(0, kinds.size() - 1)]]
+	list.sort()
+	return list[rng.randi_range(0, list.size() - 1)]
+
+
+func _load_flares() -> Dictionary:
+	var path := "res://" + String(donki.get("catalog", ""))
+	if donki.is_empty() or not FileAccess.file_exists(path):
+		return {}
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var result := {}
+	if data is Dictionary:
+		for record: Dictionary in data.get("flares", []):
+			result[String(record.id)] = record
+	return result

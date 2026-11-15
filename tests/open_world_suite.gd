@@ -436,7 +436,17 @@ func _campaign() -> void:
 	_check(game.sim.cargo_kind(0) == &"ice", "mined starter ice")
 	game._interact(0, true)
 	await _frames(2)
+	_check(
+		game.ui.action_button.text == "Recoger hielo",
+		"loose ice can be recovered near depleted deposit"
+	)
+	game._set_positions([ice + Vector3(-0.8, 0.3, 0), Vector3.ZERO])
+	await _frames(2)
 	_check(game.ui.action_button.text == "Depósito vacío", "emptied starter deposit")
+	_check(
+		"amaneceres" in game.ui._zone_detail.text,
+		"depleted starter shows the actual refill interval"
+	)
 	var crate_id: int = game.sim.crates.keys()[0]
 	var far := Vector3(300, 2, 300)
 	game._set_positions([far, Vector3.ZERO])

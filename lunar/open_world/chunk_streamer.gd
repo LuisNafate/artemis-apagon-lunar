@@ -81,6 +81,22 @@ func nearest_deposit(point: Vector3, reach: float) -> StringName:
 	return best
 
 
+## Only loaded, registered and usable deposits can become guidance targets.
+func nearest_available(point: Vector3, kind: StringName) -> Dictionary:
+	var result := {}
+	var best := INF
+	for view: ChunkView in _views.values():
+		for deposit: Dictionary in view.data.deposits:
+			if deposit.kind != kind:
+				continue
+			var key := LunarMission.deposit_key(view.data.coord, int(deposit.id))
+			var distance := point.distance_squared_to(deposit.point)
+			if distance < best and _sim.deposit_left(key) > 0:
+				result = {"key": key, "point": deposit.point}
+				best = distance
+	return result
+
+
 ## Altura del relieve bajo `point`, o -INF si su chunk no tiene datos.
 func height_at(point: Vector3) -> float:
 	var coord := ChunkGenerator.coord_of(point, _chunk_size)

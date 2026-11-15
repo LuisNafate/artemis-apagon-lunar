@@ -14,6 +14,7 @@ const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const CHIP_FILL := Color("#ecd5a8")
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
+const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const CHIP_ICONS := [
 	AIR_ICON,
 	AIR_ICON,
@@ -42,9 +43,11 @@ var alert: Label
 var next_step: Label
 var feedback: Label
 var _objective_hint: Label
+var _objective_marker: Button
 var _title_tween: Tween
 var _zone_panel: PanelContainer
 var _zone_title: Label
+var _zone_detail: Label
 var _zone_buttons: VBoxContainer
 var _tapped_name := ""
 var _tapped_until := 0
@@ -97,6 +100,19 @@ func _build_play(root: Control) -> void:
 	root.add_child(play)
 	play.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective_marker = _button(play, "", "objective_route")
+	_objective_marker.focus_mode = Control.FOCUS_NONE
+	_objective_marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_objective_marker.custom_minimum_size = Vector2(196, 46)
+	_objective_marker.add_theme_font_size_override("font_size", 18)
+	_objective_marker.add_theme_stylebox_override(
+		"normal", _style(Color("#124741"), Color("#ffe3a0"))
+	)
+	_objective_marker.add_theme_stylebox_override(
+		"hover", _style(Color("#25665f"), Color("#ffe3a0"))
+	)
+	_objective_marker.tooltip_text = "Toca para caminar hasta el objetivo."
+	_objective_marker.hide()
 	var header := PanelContainer.new()
 	play.add_child(header)
 	header.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -245,6 +261,10 @@ func _build_play(root: Control) -> void:
 	_zone_title = _label(zone_box, "", 24, TITLE)
 	_zone_title.add_theme_color_override("font_color", INK)
 	_zone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zone_detail = _label(zone_box, "", 17)
+	_zone_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_zone_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zone_detail.add_theme_color_override("font_color", INK)
 	var buttons := VBoxContainer.new()
 	_zone_buttons = buttons
 	zone_box.add_child(buttons)
@@ -261,6 +281,7 @@ func _build_play(root: Control) -> void:
 	jump_button.offset_right = -266
 	jump_button.offset_top = -78
 	jump_button.offset_bottom = -16
+	play.move_child(_objective_marker, -1)
 	play.hide()
 
 
@@ -588,8 +609,9 @@ func _sfx_control(volume: float) -> void:
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
 	_prepare_menu("ARCHIVO CIENTÍFICO", "%02d/%02d · %s" % [index + 1, count, record_title])
 	_button(_list, "Volver", "close_science")
-	var card := _label(_list, description, 22)
+	var card := _label(_list, "", 22)
 	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.text = description
 	_button(_list, "Ficha anterior", "previous_science")
 	_button(_list, "Ficha siguiente", "next_science")
 
@@ -615,7 +637,12 @@ func playing() -> void:
 
 
 func sync(
-	mission: LunarMission, player: int, spot: StringName, sheltered: Array[bool], message: String
+	mission: LunarMission,
+	player: int,
+	spot: StringName,
+	sheltered: Array[bool],
+	message: String,
+	pickup: StringName = &""
 ) -> void:
 	var night := mission.shadow_active()
 	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
@@ -635,17 +662,9 @@ func sync(
 	_readouts[2].text = "%.1f/%.0f" % [mission.charge, mission.battery_capacity()]
 	_readouts[3].text = "%.1f" % mission.water
 	_readouts[4].text = "%d" % ceili(mission.pilots[player].hunger)
-	release_button.text = "Soltar / entregar" if mission.solo else "Soltar / pasar"
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
-		if mission.solo:
-			next_step.text = (
-				"Acércate a la mesa azul y toma la muestra."
-				if mission.tutorial_step == 0
-				else "Lleva la muestra a la mesa y toca Soltar / entregar."
-			)
-		else:
-			next_step.text = PROMPTS[mission.tutorial_step][1]
+		next_step.text = "" if mission.solo else PROMPTS[mission.tutorial_step][1]
 	elif mission.returned:
 		next_step.text = "Regreso a Tierra completado. Puedes seguir jugando en la base."
 	else:
@@ -661,90 +680,95 @@ func sync(
 				mission.required_seats()
 			]
 		)
-	_objective_hint.text = _solo_objective(mission, player)
-	_objective_hint.visible = not _objective_hint.text.is_empty()
-	_show_alert(mission)
-	var deposit := String(spot).begins_with("dep:")
-	var named: StringName = mission.deposit_kind(spot) if deposit else spot
+	_show_alert(mission, sheltered[player])
 	feedback.text = message
 	feedback.visible = not message.is_empty() and mission.phase != &"flight"
-	var carrying: bool = mission.pilots[player].cargo != 0
+	_item_panel(mission, player, spot, pickup)
+
+
+func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: StringName) -> void:
+	var cargo := mission.cargo_kind(player)
 	var seated: bool = mission.pilots[player].seated
-	var spot_name := String(CrestWorld.NAMES.get(named, ""))
+	var named := mission.deposit_kind(spot) if String(spot).begins_with("dep:") else spot
+	var caption := String(CrestWorld.NAMES.get(named, ""))
+	var context := LunarItemContext.at(mission, player, spot, pickup)
 	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
-	var actionable := not spot_name.is_empty() or carrying or seated
-	_zone_buttons.visible = actionable
-	_zone_panel.visible = actionable or tapped
-	if not spot_name.is_empty():
-		_zone_title.text = spot_name
-	elif carrying or seated:
-		_zone_title.text = "Llevas carga" if carrying else "A bordo"
+	action_button.text = context[0]
+	action_button.visible = not action_button.text.is_empty()
+	action_button.disabled = context[2]
+	release_button.visible = cargo != &"" and not seated
+	if cargo != &"":
+		var name: String = LunarItemContext.LOAD_NAMES[cargo]
+		if LunarItemContext.delivers(mission, player, spot):
+			release_button.text = "Entregar %s" % name
+		else:
+			release_button.text = "Soltar %s" % name if mission.solo else "Soltar / pasar"
+	_zone_buttons.visible = action_button.visible or release_button.visible
+	_zone_detail.text = context[1]
+	_zone_detail.visible = not _zone_detail.text.is_empty()
+	_zone_panel.visible = (
+		mission.phase != &"flight" and (_zone_buttons.visible or _zone_detail.visible or tapped)
+	)
+	if pickup != &"":
+		_zone_title.text = "CARGA EN EL SUELO"
+	elif not caption.is_empty():
+		_zone_title.text = caption
+	elif cargo != &"":
+		_zone_title.text = "CARGA · %s" % String(LunarItemContext.LOAD_NAMES[cargo]).to_upper()
+	elif seated:
+		_zone_title.text = "A BORDO"
 	else:
 		_zone_title.text = _tapped_name
-	action_button.text = _action_caption(named)
-	action_button.disabled = mission.returned and spot == &"pad"
-	if action_button.disabled:
-		action_button.text = "Misión completada"
-	if deposit and mission.deposit_left(spot) <= 0:
-		action_button.text = "Depósito vacío"
-	if seated:
-		action_button.text = "Bajar"
-	if mission.phase == &"tutorial" and spot == &"training":
-		if mission.solo:
-			action_button.text = (
-				"Tomar muestra" if mission.tutorial_step == 0 else "Entregar muestra"
-			)
-		elif mission.tutorial_step == 2 and player == 1:
-			action_button.text = "Entregar muestra"
 
 
-func _solo_objective(mission: LunarMission, player: int) -> String:
-	if (
-		not mission.solo
-		or mission.phase in [&"tutorial", &"flight", &"countdown"]
-		or mission.returned
-	):
-		return ""
-	var cargo := mission.cargo_kind(player)
-	if cargo == &"ice":
-		return "Lleva el hielo a Refinado y toca Soltar / entregar."
-	if cargo in [&"fuel", &"food"]:
-		return "Lleva la caja a la nave y toca Soltar / entregar."
-	if cargo != &"":
-		return "Entrega tu carga o suéltala antes de preparar la nave."
-	var requirements: Dictionary = mission.rules.mission
-	return _preparation_hint(mission, requirements)
+func show_objective(instruction: String, title: String = "", projected := Vector2.ZERO) -> void:
+	_objective_hint.text = instruction
+	_objective_hint.visible = not instruction.is_empty()
+	_objective_marker.visible = not title.is_empty()
+	if title.is_empty():
+		return
+	var bounds := play.size
+	var marker_size := Vector2(196, 46)
+	var ideal := projected - Vector2(marker_size.x * 0.5, 44)
+	var safe := Rect2(Vector2(20, 112), bounds - Vector2(40, 300))
+	var offset := ideal.clamp(safe.position, safe.end - marker_size)
+	var difference := ideal - offset
+	var arrow := "↓"
+	if difference.length_squared() > 4:
+		if absf(difference.x) > absf(difference.y):
+			arrow = "→" if difference.x > 0 else "←"
+		else:
+			arrow = "↓" if difference.y > 0 else "↑"
+	_objective_marker.text = "%s  %s" % [arrow, title]
+	_objective_marker.position = offset
+	_objective_marker.size = marker_size
 
 
-func _preparation_hint(mission: LunarMission, requirements: Dictionary) -> String:
-	var fuel_needed := mission.fuel_loaded < int(requirements.propellant)
-	var food_needed := mission.food_loaded < int(requirements.food)
-	if fuel_needed or food_needed:
-		var station := &"fuel" if fuel_needed else &"crop"
-		var ready := mission.fuel_ready if fuel_needed else mission.food
-		if ready > 0:
-			return (
-				"Recoge un lote en Propelente." if fuel_needed else "Recoge una ración en Cultivos."
-			)
-		if mission.jobs[station] > 0:
-			return "Espera a que se prepare la carga y vuelve a recogerla."
-		var water := float(
-			mission.resources.fuel_water if fuel_needed else mission.resources.crop_water
-		)
-		if mission.water < water * float(mission.difficulty.consumption):
-			return "Sal por la puerta, extrae hielo y llévalo a Refinado para obtener agua."
-		return "Prepara un lote en Propelente." if fuel_needed else "Siembra en Cultivos."
-	if not mission.earth_ok:
-		return "Envía la lista de vuelo desde la radio y espera la respuesta."
-	return "Entra en la nave para iniciar la cuenta regresiva."
+## "Llamarada X8.2 · 10 sep 2017" a partir de un registro del catálogo DONKI.
+static func flare_label(record: Dictionary) -> String:
+	var date := String(record.begin)
+	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
+	return (
+		"Llamarada %s · %d %s %s" % [record.class_type, int(date.substr(8, 2)), month, date.left(4)]
+	)
 
 
-func _show_alert(mission: LunarMission) -> void:
+func _show_alert(mission: LunarMission, safe: bool) -> void:
 	alert.show()
+	var flare := mission.storm_flare()
+	var quiet := mission.flare_notice()
 	if mission.storm_active():
-		alert.text = "⚠ Partículas solares   ·   Entra al refugio"
+		var source := "llamarada %s" % flare.class_type if not flare.is_empty() else "solares"
+		alert.text = "⚠ Partículas %s · %s" % [source, "A cubierto" if safe else "Ve al refugio"]
 	elif mission.storm_warning() > 0:
-		alert.text = "⚠ Al refugio en %d s" % ceili(mission.storm_warning())
+		var seconds := ceili(mission.storm_warning())
+		alert.text = (
+			"⚠ %s · Al refugio en %d s" % [flare_label(flare), seconds]
+			if not flare.is_empty()
+			else "⚠ Al refugio en %d s" % seconds
+		)
+	elif not quiet.is_empty():
+		alert.text = "☀ %s · Sin partículas, sigue trabajando" % flare_label(quiet)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
 	elif mission.outage_warning() > 0:
@@ -757,25 +781,6 @@ func _show_alert(mission: LunarMission) -> void:
 		alert.text = "Se aproxima un corte de radio"
 	else:
 		alert.hide()
-
-
-func _action_caption(spot: StringName) -> String:
-	return String(
-		(
-			{
-				&"ice": "Extraer hielo",
-				&"ore": "Extraer mineral",
-				&"refinery": "Usar taller",
-				&"life": "Comer / aire",
-				&"radio": "Usar radio",
-				&"pad": "Cargar / subir",
-				&"crop": "Cultivar / recoger",
-				&"fuel": "Preparar / recoger",
-				&"power": "Prioridad"
-			}
-			. get(spot, "Acción")
-		)
-	)
 
 
 func _prepare_menu(title: String, status: String) -> void:

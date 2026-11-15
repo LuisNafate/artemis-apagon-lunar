@@ -17,10 +17,7 @@ const DEPOSIT_REACH := 1.63
 const LOOKAHEAD_FRAMES := 4.0
 const SINK_TOLERANCE := 0.25
 const TERRAIN_WAIT_MSEC := 8000
-const CARGO_MODELS := {
-	&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62],
-	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
-}
+const CARGO_MODELS := {&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62]}
 const ROUTES := preload("res://lunar/lunar_routes.gd")
 const AUDIO := preload("res://lunar/lunar_audio.gd")
 const MUSIC := preload("res://lunar/lunar_music.gd")
@@ -64,6 +61,7 @@ var _planner := RoutePlanner.new()
 var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
 var _cargo_templates: Dictionary = {}
+var _objective_destination := Vector3.INF
 var _coins_by_guest: Dictionary = {}
 var _pending_reward: Dictionary = {}
 var _reward_retry := 0.0
@@ -211,6 +209,79 @@ func _physics_process(delta: float) -> void:
 		_guest_frame(delta)
 	if ui.play.visible and sim.phase != &"flight":
 		_follow_camera(delta)
+		_update_objective()
+
+
+func _update_objective() -> void:
+	_objective_destination = Vector3.INF
+	var player := pilots[0]
+	var here := player.position
+	var safe := world.sheltered(here)
+	var directive := LunarObjective.next(sim, 0, safe)
+	var key: StringName = directive[0]
+	var instruction: String = directive[1]
+	var target := _objective_target(key, here)
+	instruction = target.get("instruction", instruction)
+	if key == &"ice" and not target.is_empty() and world.base_arrow != null:
+		world.base_arrow.hide()
+	if target.is_empty() or target.reached:
+		ui.show_objective(instruction)
+		return
+	_objective_destination = target.destination
+	var point: Vector3 = target.anchor + Vector3.UP * 0.9
+	var screen := camera.unproject_position(point)
+	if camera.is_position_behind(point):
+		screen = get_viewport().get_visible_rect().size - screen
+	ui.show_objective(instruction, target.title, screen)
+
+
+func _objective_target(key: StringName, here: Vector3) -> Dictionary:
+	if key == &"":
+		return {}
+	if key == &"ice":
+		if not _camera_outside(here):
+			return {
+				"destination": world.enclosure.outside_point(),
+				"anchor": world.enclosure.door_point(),
+				"title": "Puerta de salida",
+				"reached": false,
+				"instruction": "Sal por la Puerta de salida para buscar hielo."
+			}
+		var deposit := streamer.nearest_available(here, &"ice")
+		if deposit.is_empty():
+			return {}
+		var target := _target_at(deposit.point, "Depósito de hielo", _spots[0] == deposit.key)
+		target.instruction = "En el depósito de hielo, toca Extraer hielo."
+		return target
+	if String(key).begins_with("loose_"):
+		return _loose_objective(StringName(String(key).trim_prefix("loose_")), here)
+	var location: Vector3 = CrestWorld.campaign_stations[key]
+	var name := String(CrestWorld.NAMES[key])
+	var title := name.left(1) + name.substr(1).to_lower()
+	var reached := _spots[0] == key or (key == &"life" and world.sheltered(here))
+	return _target_at(location, title, reached)
+
+
+func _loose_objective(kind: StringName, here: Vector3) -> Dictionary:
+	var nearest := INF
+	var target := {}
+	var pickup := _pickup_at(0)
+	for id: int in sim.crates:
+		var crate: Dictionary = sim.crates[id]
+		var point: Vector3 = crate.point
+		if crate.owner != -1 or crate.kind != kind:
+			continue
+		var distance := here.distance_squared_to(point)
+		if distance < nearest:
+			nearest = distance
+			target = _target_at(
+				point, String(LunarItemContext.LOAD_NAMES[kind]).capitalize(), pickup == id
+			)
+	return target
+
+
+func _target_at(point: Vector3, title: String, reached: bool) -> Dictionary:
+	return {"destination": point, "anchor": point, "title": title, "reached": reached}
 
 
 func _follow_camera(delta: float) -> void:
@@ -294,17 +365,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _zone_name_at(point: Vector3) -> String:
-	var found := ""
-	var closest := 2.2
-	for key: StringName in CrestWorld.campaign_stations:
-		if key in [&"training", &"supply"] or not CrestWorld.NAMES.has(key):
-			continue
-		var location: Vector3 = CrestWorld.campaign_stations[key]
-		var distance := point.distance_to(location)
-		if distance < closest:
-			closest = distance
-			found = String(CrestWorld.NAMES[key])
-	return found
+	var tutorial := sim.phase == &"tutorial"
+	var station := world.nearest(point, tutorial)
+	if station == &"" and not tutorial:
+		station = sim.deposit_kind(streamer.nearest_deposit(point, 2.2))
+	return String(CrestWorld.NAMES.get(station, ""))
 
 
 func _choose(action: String, argument: String) -> void:
@@ -346,6 +411,9 @@ func _choose(action: String, argument: String) -> void:
 			profile.data.active_role = argument
 			profile.save()
 			ui.roles(profile)
+		"objective_route":
+			if net == &"solo" and ui.play.visible and sim.phase != &"flight":
+				_set_destination(0, _objective_destination)
 		"reset_confirm":
 			ui.confirm_reset(sim.rules.bases[argument].name, argument)
 		"reset":
@@ -797,35 +865,35 @@ func _guest_frame(delta: float) -> void:
 
 
 func _interact(player: int, release: bool) -> void:
-	if not _pending_reward.is_empty():
+	if sim.solo and not ui.play.visible:
+		return
+	if not sim.connected[player] or not _pending_reward.is_empty():
 		return
 	if sim.phase == &"flight":
 		return
 	var pilot := pilots[player]
-	var spot := _spots[player]
+	var spot := _spot_at(pilot.position)
 	var message := ""
 	var was_tutorial := sim.phase == &"tutorial"
 	if release:
-		var cargo := sim.cargo_kind(player)
-		var station_deposit := (
-			spot == &"training" and (sim.solo or player == 1) and cargo == &"sample"
-		)
-		station_deposit = station_deposit or (spot == &"refinery" and cargo in [&"ice", &"ore"])
-		station_deposit = station_deposit or (spot == &"pad" and cargo in [&"fuel", &"food"])
-		if station_deposit:
+		if LunarItemContext.delivers(sim, player, spot):
 			message = sim.use_station(player, spot)
 		else:
 			var other := 1 - player
 			var near: bool = (
 				sim.connected[other] and pilot.position.distance_to(pilots[other].position) <= 2.35
 			)
-			message = sim.release(player, pilot.position, near)
+			var ground: Variant = _cargo_ground(pilot.position)
+			if ground != null:
+				message = sim.release(player, ground, near)
+			elif sim.cargo_kind(player) != &"":
+				message = "Espera a estar sobre terreno cargado."
 	else:
 		if sim.pilots[player].seated:
 			spot = &"pad"
-		var crate := _closest_box(pilot.position) if sim.cargo_kind(player) == &"" else 0
+		var crate := _pickup_at(player)
 		if crate != 0 and sim.pickup(player, crate):
-			_notice("Caja recogida")
+			_notice("Recogiste %s." % LunarItemContext.LOAD_NAMES[sim.cargo_kind(player)])
 			return
 		message = sim.use_station(player, spot)
 		if sim.pilots[player].seated:
@@ -838,13 +906,29 @@ func _interact(player: int, release: bool) -> void:
 	_notice(message)
 
 
+func _cargo_ground(point: Vector3) -> Variant:
+	if not streamer.is_ready_at(point):
+		return null
+	var ray := PhysicsRayQueryParameters3D.create(
+		point + Vector3.UP * 0.2, point - Vector3.UP * 128.0, 1
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	return hit.get("position")
+
+
+func _pickup_at(player: int) -> int:
+	if sim.cargo_kind(player) != &"" or sim.pilots[player].seated:
+		return 0
+	return _closest_box(pilots[player].position)
+
+
 func _closest_box(point: Vector3) -> int:
 	var closest := 1.25
 	var result := 0
 	for id: int in sim.crates:
 		var crate: Dictionary = sim.crates[id]
 		var distance := point.distance_to(crate.point)
-		if crate.owner == -1 and distance < closest:
+		if crate.owner == -1 and distance < closest and streamer.is_ready_at(crate.point):
 			result = id
 			closest = distance
 	return result
@@ -936,23 +1020,25 @@ func _render(delta: float, player: int) -> void:
 		var crate: Dictionary = sim.crates[id]
 		if not _boxes.has(id):
 			var box := Node3D.new()
-			if CARGO_MODELS.has(crate.kind):
-				box.add_child(_cargo_model(crate.kind))
-			else:
-				FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
-				FieldWorld.box(
-					box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME
-				)
+			_build_cargo_visual(box, crate.kind)
 			add_child(box)
 			_boxes[id] = box
 		var mesh: Node3D = _boxes[id]
+		var available := streamer.is_ready_at(crate.point) if crate.owner == -1 else true
+		if crate.owner == -1 and available and not mesh.has_meta(&"settled"):
+			var ground: Variant = _cargo_ground(crate.point)
+			if ground != null:
+				crate.point = ground
+				mesh.set_meta(&"settled", true)
+		elif crate.owner != -1 and mesh.has_meta(&"settled"):
+			mesh.remove_meta(&"settled")
 		mesh.global_position = (
 			crate.point + Vector3.UP * 0.29
 			if crate.owner == -1
 			else pilots[crate.owner].carrying.global_position
 		)
 		# Las cajas sueltas siguen en `sim.crates`; solo se ocultan si su chunk no esta cargado.
-		mesh.visible = crate.owner != -1 or streamer.is_ready_at(crate.point)
+		mesh.visible = available and sim.phase != &"flight"
 	world.reflect(sim, _spots, delta, _focus_points(), pilots[player].position)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
 	var view := sim.flight_stage()
@@ -960,9 +1046,37 @@ func _render(delta: float, player: int) -> void:
 	world.present_lander(flight_phase, view.y, sim.returned)
 	flight.present(flight_phase, view.y)
 	_feedback_time = maxf(0.0, _feedback_time - delta)
-	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
+	var pickup := _pickup_at(player)
+	var kind: StringName = sim.crates[pickup].kind if pickup != 0 else &""
+	ui.sync(
+		sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "", kind
+	)
 	ui.flight_status(flight_phase, view.y)
+	if flight_phase >= 0:
+		ui.show_objective("")
+		_objective_destination = Vector3.INF
 	_alert_if_changed()
+
+
+func _build_cargo_visual(box: Node3D, kind: StringName) -> void:
+	match kind:
+		&"ice":
+			box.add_child(_cargo_model(kind))
+		&"food":
+			FieldWorld.box(box, Vector3(0, -0.08, 0), Vector3(0.52, 0.29, 0.40), Color("#e8d9b5"))
+			FieldWorld.box(box, Vector3(0, 0.077, 0), Vector3(0.24, 0.026, 0.34), CrestWorld.LIME)
+			FieldWorld.box(box, Vector3(0, 0.094, 0), Vector3(0.16, 0.013, 0.05), CrestWorld.FRAME)
+		&"fuel":
+			FieldWorld.box(box, Vector3.ZERO, Vector3(0.45, 0.47, 0.37), CrestWorld.AMBER)
+			FieldWorld.box(
+				box, Vector3(0.11, 0.261, 0), Vector3(0.14, 0.052, 0.18), CrestWorld.FRAME
+			)
+			FieldWorld.box(
+				box, Vector3(0, -0.12, 0.188), Vector3(0.32, 0.08, 0.015), CrestWorld.FRAME
+			)
+		_:
+			FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[kind])
+			FieldWorld.box(box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME)
 
 
 ## Copia del modelo de carga. Las copias comparten los materiales de una plantilla oculta:
@@ -1149,7 +1263,7 @@ func _confirm_awards(receipts: PackedStringArray) -> void:
 func _show_science(step: int) -> void:
 	_science_index = posmod(_science_index + step, sim.records.size())
 	var record := sim.records[_science_index]
-	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.instrument)
+	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.id)
 	ui.show_science(title, sim.science_text(record), _science_index, sim.records.size())
 
 
