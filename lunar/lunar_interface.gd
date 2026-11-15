@@ -135,15 +135,17 @@ func _build_play(root: Control) -> void:
 	play.add_child(notes)
 	notes.anchor_top = 1.0
 	notes.anchor_bottom = 1.0
-	notes.offset_left = 18
-	notes.offset_right = 600
-	notes.offset_top = -170
-	notes.offset_bottom = -140
+	notes.anchor_left = 0.5
+	notes.anchor_right = 0.5
+	notes.offset_left = -300
+	notes.offset_right = 300
+	notes.offset_top = -120
+	notes.offset_bottom = -90
 	notes.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
-	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	next_step.custom_minimum_size.x = 580
 	next_step.add_theme_constant_override("outline_size", 6)
 	alert = _label(content, "", 19, TITLE)
@@ -159,6 +161,8 @@ func _build_play(root: Control) -> void:
 	_pause.offset_top = 14
 	_pause.offset_right = -18
 	_pause.offset_bottom = 66
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		_pause.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	var middle := CenterContainer.new()
 	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pause.add_child(middle)
