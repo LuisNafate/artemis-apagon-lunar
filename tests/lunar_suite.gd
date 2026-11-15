@@ -460,7 +460,8 @@ func _solo() -> void:
 	player.profile = LunarProfile.new(player.sim.rules, player.profile_path)
 	player.ui.lobby(player.profile, "")
 	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
-	_press_menu_button(player, "Continuar solo")
+	_press_menu_button(player, "Jugar solo · sin conexión")
+	_check(player.ui.globe.enter_base(base_id), "el selector ofrece continuar la base guardada")
 	await _until(func() -> bool: return not player._loading)
 	_check(
 		player.sim.returned and absf(player.sim.elapsed - elapsed) < 0.04,

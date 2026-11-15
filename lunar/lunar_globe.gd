@@ -19,6 +19,9 @@ const DIM := Color("#b9b2a2")
 const ROUTE := Color("#5fd6c4")
 const COIN := Color("#e8b84a")
 const OPEN := Color("#5fd6c4")
+const SAVED := Color("#e8b84a")
+const SAVED_INK := Color("#2b1f06")
+const MUTED := Color("#6a665c")
 const SPIN := 0.09
 const REST := 2.4
 
@@ -35,6 +38,7 @@ var _coins: Label
 var _dragging := false
 var _idle := REST
 var _tilt := 0.0
+var _age := 0.0
 var _passive := false
 var _chrome: Array[Control] = []
 var _notice: Label
@@ -256,18 +260,24 @@ func show_bases(
 func _make_card(entry: Dictionary) -> Button:
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
-	var edge := RIM if entry.owned else Color("#8d8779")
+	var edge := RIM if entry.owned else MUTED
+	var sub := DIM if entry.owned else MUTED
+	if entry.focus:
+		edge = SAVED
 	card.add_theme_stylebox_override("normal", _plate(CARD, edge))
 	card.add_theme_stylebox_override("hover", _plate(Color("#1f1f26"), OPEN))
 	card.add_theme_stylebox_override("pressed", _plate(Color("#0c0c10"), OPEN))
+	var badge := _badge(int(entry.order), entry.owned, entry.focus)
+	card.add_child(badge)
+	badge.position = Vector2(11, 9)
 	var lines := VBoxContainer.new()
 	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lines.add_theme_constant_override("separation", -3)
-	lines.position = Vector2(13, 5)
+	lines.position = Vector2(48, 5)
 	card.add_child(lines)
 	var wide := 0.0
 	var tall := 0.0
-	for row: Array in [[String(entry.name).to_upper(), 21, TEXT], [entry.note, 15, DIM]]:
+	for row: Array in [[String(entry.name).to_upper(), 21, TEXT], [entry.note, 15, sub]]:
 		var words: String = row[0]
 		var letters: int = row[1]
 		var strip := HBoxContainer.new()
@@ -289,25 +299,82 @@ func _make_card(entry: Dictionary) -> Button:
 		wide = maxf(wide, measure.x)
 		tall += measure.y
 	lines.size = Vector2(wide, tall - 3.0)
-	card.custom_minimum_size = Vector2(wide + 26.0, tall + 9.0)
+	card.custom_minimum_size = Vector2(wide + 61.0, tall + 9.0)
 	card.size = card.custom_minimum_size
-	card.pressed.connect(func() -> void: picked.emit(entry.action, entry.id))
 	if entry.saved:
-		var redo := Button.new()
-		redo.text = "REINICIAR"
-		redo.focus_mode = Control.FOCUS_NONE
-		redo.add_theme_font_override("font", MONO)
-		redo.add_theme_font_size_override("font_size", 13)
-		redo.add_theme_color_override("font_color", DIM)
-		redo.add_theme_stylebox_override("normal", _plate(CARD, Color("#8d8779")))
-		redo.add_theme_stylebox_override("hover", _plate(Color("#1f1f26"), COIN))
-		redo.add_theme_stylebox_override("pressed", _plate(Color("#0c0c10"), COIN))
-		redo.position = Vector2(0, card.size.y + 4)
-		redo.size = Vector2(card.size.x, 26)
-		redo.pressed.connect(func() -> void: picked.emit("reset_confirm", entry.id))
-		card.add_child(redo)
+		card.disabled = true
+		card.add_theme_stylebox_override("disabled", _plate(CARD, edge))
+		_add_actions(card, entry)
+	else:
+		card.pressed.connect(func() -> void: picked.emit(entry.action, entry.id))
 	add_child(card)
 	return card
+
+
+func _add_actions(card: Button, entry: Dictionary) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 7)
+	row.position = Vector2(0, card.size.y + 5.0)
+	card.add_child(row)
+	row.custom_minimum_size.x = card.size.x
+	row.size.x = card.size.x
+	var go := _small(String(entry.resume).to_upper(), SAVED_INK)
+	go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	go.add_theme_stylebox_override("normal", _plate(SAVED, Color("#f6d98a")))
+	go.add_theme_stylebox_override("hover", _plate(Color("#f6cd62"), Color("#fff0c4")))
+	go.add_theme_stylebox_override("pressed", _plate(Color("#cfa033"), Color("#f6d98a")))
+	go.pressed.connect(func() -> void: picked.emit(entry.action, entry.id))
+	row.add_child(go)
+	var redo := _small("REINICIAR", DIM)
+	redo.add_theme_stylebox_override("normal", _plate(CARD, MUTED))
+	redo.add_theme_stylebox_override("hover", _plate(Color("#1f1f26"), COIN))
+	redo.add_theme_stylebox_override("pressed", _plate(Color("#0c0c10"), COIN))
+	redo.pressed.connect(func() -> void: picked.emit("reset_confirm", entry.id))
+	row.add_child(redo)
+	var tall := row.get_combined_minimum_size().y
+	row.size = Vector2(card.size.x, tall)
+	card.custom_minimum_size.y += tall + 5.0
+	card.size.y += tall + 5.0
+
+
+func _small(words: String, tone: Color) -> Button:
+	var button := Button.new()
+	button.text = words
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_override("font", MONO)
+	button.add_theme_font_size_override("font_size", 14)
+	button.add_theme_color_override("font_color", tone)
+	button.add_theme_color_override("font_hover_color", tone)
+	button.custom_minimum_size = Vector2(
+		MONO.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14).x + 22.0, 27.0
+	)
+	return button
+
+
+func _badge(number: int, owned: bool, focus: bool) -> Control:
+	var span := 29.0
+	var chip := Control.new()
+	chip.custom_minimum_size = Vector2(span, span)
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tone: Color = SAVED if focus else (OPEN if owned else MUTED)
+	var ink: Color = SAVED_INK if focus else CARD
+	chip.draw.connect(
+		func() -> void:
+			var middle := Vector2(span, span) * 0.5
+			chip.draw_circle(middle, span * 0.5, tone, true, -1.0, true)
+			var words := str(number)
+			var size := MONO.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 19)
+			chip.draw_string(
+				MONO,
+				middle + Vector2(-size.x * 0.5, size.y * 0.33),
+				words,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1.0,
+				19,
+				ink
+			)
+	)
+	return chip
 
 
 func _coin(span: float) -> Control:
@@ -335,6 +402,30 @@ func _plate(fill: Color, stroke: Color) -> StyleBoxFlat:
 	return style
 
 
+func enter_base(id: String) -> bool:
+	var card: Button = _cards.get(id)
+	if card == null:
+		return false
+	for item: Node in card.find_children("*", "Button", true, false):
+		var inner := item as Button
+		if inner.text.begins_with("CONTINUAR"):
+			inner.pressed.emit()
+			return true
+	card.pressed.emit()
+	return true
+
+
+func face_base(id: String) -> void:
+	var socket: Node3D = _sockets.get(id)
+	if socket == null or _pivot == null:
+		return
+	var place := socket.position
+	_pivot.rotation.y = -atan2(place.x, place.z)
+	_tilt = 0.0
+	_idle = 0.0
+	_place_cards()
+
+
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed
@@ -348,6 +439,7 @@ func _gui_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not visible or _pivot == null:
 		return
+	_age += delta
 	if not _dragging:
 		_idle += delta
 		if _idle >= REST:
@@ -430,8 +522,23 @@ func _draw_ink() -> void:
 		if card == null or socket == null or not card.visible:
 			continue
 		var spot := _camera.unproject_position(_pivot.global_transform * socket.position)
-		var tone: Color = OPEN if entry.owned else COIN
 		var fade := card.modulate.a
+		var tone: Color = OPEN if entry.owned else MUTED
+		if entry.saved:
+			tone = SAVED
+		if entry.focus:
+			tone = SAVED
+			var beat := 0.5 + 0.5 * sin(_age * 3.1)
+			_ink.draw_arc(
+				spot,
+				9.0 + beat * 9.0,
+				0.0,
+				TAU,
+				30,
+				Color(SAVED, (1.0 - beat) * 0.85 * fade),
+				2.2,
+				true
+			)
 		var target := card.position + card.size * 0.5
 		_ink.draw_line(spot, target, Color(RIM, 0.75 * fade), 1.6, true)
 		_ink.draw_circle(spot, 6.5, Color(CARD, fade), true, -1.0, true)

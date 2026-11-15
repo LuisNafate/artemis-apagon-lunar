@@ -580,7 +580,7 @@ func _game_solo(base_id: String) -> Node:
 	return game
 
 
-## Libera `game` y abre otro con el mismo perfil pulsando Continuar en el menú.
+## Libera `game` y abre otro con el mismo perfil continuando desde el selector.
 func _game_continue(game: Node) -> Node:
 	var path: String = game.profile_path
 	game.get_parent().queue_free()
@@ -590,10 +590,12 @@ func _game_continue(game: Node) -> Node:
 	again._choose("title_enter", "")
 	var pressed := false
 	for item: Control in again.ui._list.get_children():
-		if item is Button and item.text == "Continuar solo":
+		if item is Button and item.text == "Jugar solo · sin conexión":
 			item.pressed.emit()
 			pressed = true
-	_check(pressed, "menu offers Continuar solo")
+	_check(pressed, "menu offers Jugar solo")
+	var base_id := String(again.profile.data.recent)
+	_check(again.ui.globe.enter_base(base_id), "selector continues the saved base")
 	await _until(func() -> bool: return not again._loading)
 	return again
 
