@@ -169,12 +169,17 @@ func _build_play(root: Control) -> void:
 	middle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bars := VBoxContainer.new()
 	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bars.add_theme_constant_override("separation", 5)
+	bars.add_theme_constant_override("separation", 3)
 	middle.add_child(bars)
 	for bar_index in range(3):
-		var bar := ColorRect.new()
-		bar.color = Color("#fff2d6")
-		bar.custom_minimum_size = Vector2(26, 4)
+		var bar := Panel.new()
+		var bar_style := StyleBoxFlat.new()
+		bar_style.bg_color = Color("#fff2d6")
+		bar_style.border_color = Color("#1c1410")
+		bar_style.set_border_width_all(2)
+		bar_style.set_corner_radius_all(3)
+		bar.add_theme_stylebox_override("panel", bar_style)
+		bar.custom_minimum_size = Vector2(30, 9)
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		bars.add_child(bar)
 	var bottom := HBoxContainer.new()
