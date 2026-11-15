@@ -1,5 +1,5 @@
 {
-  "revision": 17,
+  "revision": 18,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -923,6 +923,36 @@
       "pause_in_menu": true,
       "day_reward_share": 1.0,
       "save_slot": "solo_bases"
+    },
+    "opening": {
+      "frames": 480,
+      "fps": 24,
+      "loop_starts_at": 16.0,
+      "flight": "res://assets/cinematica/artemis-viaje.ogv",
+      "loop": "res://assets/cinematica/artemis-luna.ogv",
+      "poster": "res://assets/cinematica/artemis-luna.png",
+      "captions": [
+        [
+          0,
+          "01 / TIERRA",
+          "Dos cadetes despegan con semillas, herramientas y un puesto lunar por montar."
+        ],
+        [
+          5,
+          "02 / RUMBO A LA LUNA",
+          "En la Luna, cada noche pondrá a prueba la energía que logren guardar."
+        ],
+        [
+          11,
+          "03 / PRIMERA LUZ",
+          "Al tocar suelo, despliegan el panel que dará energía a su base."
+        ],
+        [
+          16,
+          "04 / TU MISIÓN",
+          "Mantén la base en marcha y prepara el regreso de la tripulación."
+        ]
+      ]
     }
   }
 }

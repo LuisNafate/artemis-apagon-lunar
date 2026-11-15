@@ -154,3 +154,9 @@
 - Estaciones reubicadas segun croquis: paneles x4 y bateria al norte, invernadero grande (6 m) al oeste, refinado y tanque de riego al sur, refugio al este, hielo x2 y rover/radio al noreste. Quitados consolas, tanques blancos, mineral, LRO y pasillos previos.
 - AstroCat guia eliminado del mapa; su diseno (astrocat_guia.glb, animaciones Idle/Walk) se aplica a los pilotos en crest_pilot.gd.
 - Camara de juego PLAY_SIZE 9.8 con seguimiento (lunar_game.gd). Godot 4.7.2 Forward+: verificado a ojo en laptop; tests crest_suite/lunar_suite pendientes de actualizar (guide_animator, huesos del gato anterior).
+
+## 2026-11-15 - Cinemática Última ventana (revisión 18)
+
+- Se integró la apertura en la portada de la campaña. El viaje dura 16 s y el alunizaje se repite cada 4 s. Hay subtítulos en español, entrada directa al menú con Intro, salto con Esc y repetición con H. Los dos OGV Theora de 1280 × 720 incluyen los 480 fotogramas a 24 fps del montaje original.
+- Se integró sobre la revisión del selector que incluye el modelo `luna_bases.glb`. El código de Blender y la codificación se conservan en `tools/`.
+- Godot 4.7.2 (Windows). Verificados formato, lint, importación, arranque, transición natural al bucle, repetición y acceso al menú con Intro. Academia 16/3910, Puesto 7/75 y 3D 3/35 sin fallos. Cresta conserva errores de compilación en su prueba antigua de rig. La suite de campaña comprueba la portada y reporta 17 fallos en los flujos de tutorial, lanzamiento y recompensas.

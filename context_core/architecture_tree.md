@@ -175,3 +175,7 @@ La [auditoría de terreno](auditoria_terreno_campana.md) registra medidas, inter
 ## Entrega Android · revisión 17
 
 El preset Android usa ETC2/ASTC, ARM64 y orientación horizontal. El icono compartido vive en `assets/ui/artemis_icon.svg`. Godot exporta una compilación de prueba firmada por el certificado de desarrollo a `dist/Artemis-Ultima-Ventana.apk`. Las compilaciones de la versión en curso quedan en `dist/` y la edición anterior en `dist/Anterior/`. Los binarios de `dist/` se excluyen de Git.
+
+## Portada cinematográfica · revisión 18
+
+LunarGame aloja LunarOpening sobre la campaña actual. La portada enlaza el viaje de 16 segundos y el bucle lunar de 4 segundos. Su señal de entrada retira la portada y abre el menú con el selector de bases. Los clips y los subtítulos se configuran en state_registry.json.

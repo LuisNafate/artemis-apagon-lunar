@@ -1,5 +1,5 @@
 {
-  "revision": 17,
+  "revision": 18,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -451,7 +451,11 @@
       "VAC-16",
       "VAC-17",
       "VAC-18"
-    ]
+    ],
+    "opening": {
+      "rule": "La portada se puede omitir o repetir sin avanzar la misión. Entrar detiene el vídeo y abre el menú vigente.",
+      "fallback": "Si falta un clip se muestra el póster y se puede entrar."
+    }
   },
   "distribution_checks": {
     "android": {

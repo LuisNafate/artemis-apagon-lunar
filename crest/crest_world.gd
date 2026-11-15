@@ -7,8 +7,12 @@ const APOLLO_BASE := preload("res://assets/props_luna/nasa/apollo_base_lunar.glb
 const APOLLO_ASCENT := preload("res://assets/props_luna/nasa/apollo_etapa_ascenso.glb")
 const NOBILE_RELIEF := preload("res://assets/props_luna/nasa/relieve_nobile_lola.glb")
 const LRO_MODEL := preload("res://assets/props_luna/nasa/lro_miniatura.glb")
-const WATER_MACHINE_EMPTY := preload("res://assets/props_luna/agua_hielo/maquina_agua_hielo_vacio.glb")
-const WATER_MACHINE_FULL := preload("res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb")
+const WATER_MACHINE_EMPTY := preload(
+	"res://assets/props_luna/agua_hielo/maquina_agua_hielo_vacio.glb"
+)
+const WATER_MACHINE_FULL := preload(
+	"res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb"
+)
 const WATER_MACHINE_SCALE := 2.3
 const MOON_SURFACE := preload("res://assets/props_luna/superficie/superficie_lunar.glb")
 const SURFACE_SCALE := Vector3(110.0, 11.0, 110.0)
@@ -174,7 +178,7 @@ func build_lunar_workshop() -> void:
 	refuge_alert.hide()
 
 
-func show_field_models(science_key: String = "F1") -> void:
+func show_field_models(_science_key: String = "F1") -> void:
 	transport.position = TRANSPORT_PARK
 	transport.scale = Vector3.ONE * 0.72
 	transport.visible = not campaign_layout
@@ -381,9 +385,7 @@ func _build_moon_surface() -> void:
 	add_child(surface)
 	_floor_color = PaperMaterial.new(SOIL)
 	_floor_color.set_shader_parameter("albedo_gain", SURFACE_GAIN)
-	_floor_color.set_shader_parameter(
-		"relief_rect", Vector4(-HALF_X, -HALF_Z, HALF_X, HALF_Z)
-	)
+	_floor_color.set_shader_parameter("relief_rect", Vector4(-HALF_X, -HALF_Z, HALF_X, HALF_Z))
 	_floor_color.set_shader_parameter("relief_flat", 6.0)
 	_floor_color.set_shader_parameter("relief_ramp", 7.0)
 	_floor_color.set_shader_parameter("back_edge_cut", true)
@@ -448,11 +450,7 @@ func _build_craters(base_id: StringName) -> void:
 			2.42,
 			0.85
 		],
-		[
-			Vector3(24.8, 0.015, 1.5) if campaign_layout else Vector3(17.1, 0.015, 1.15),
-			1.73,
-			0.63
-		],
+		[Vector3(24.8, 0.015, 1.5) if campaign_layout else Vector3(17.1, 0.015, 1.15), 1.73, 0.63],
 		[Vector3(9.9, 0.015, 14.8) if campaign_layout else Vector3(9.9, 0.015, 10.57), 2.37, 0.80],
 		[
 			Vector3(-13.7, 0.015, 14.0) if campaign_layout else Vector3(-13.7, 0.015, 10.2),
