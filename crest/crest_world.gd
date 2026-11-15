@@ -73,7 +73,9 @@ const NAMES := {
 	&"crop": "CULTIVOS",
 	&"fuel": "PROPELENTE",
 	&"radio": "RADIO",
-	&"pad": "COHETE"
+	&"pad": "COHETE",
+	&"solar": "REFUERZO SOLAR",
+	&"irrigation": "RIEGO"
 }
 
 static var campaign_stations := STATIONS.merged(WORKSHOP)
@@ -147,7 +149,6 @@ func build_lunar_workshop() -> void:
 	for station: StringName in [&"solar", &"irrigation"]:
 		var is_solar := station == &"solar"
 		var point: Vector3 = WORKSHOP[station]
-		var tint := AMBER if is_solar else LIME
 		if is_solar:
 			pass
 		else:
@@ -155,16 +156,6 @@ func build_lunar_workshop() -> void:
 				station_prop(self, MODEL_WATER_TANK, point + Vector3(0, 0.0, 1.8), 1.5, 0.5)
 			)
 			_solid(point + Vector3(0, 0.55, 1.8), Vector3(1.1, 1.1, 1.5))
-		var label := Label3D.new()
-		label.text = "REFUERZO SOLAR" if is_solar else "RIEGO"
-		label.position = point + Vector3.UP * 0.68
-		label.font = MONO
-		label.pixel_size = 0.016
-		label.outline_size = 10
-		label.modulate = tint
-		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		add_child(label)
-		markers[station] = label
 	var ring := TorusMesh.new()
 	ring.inner_radius = 1.61
 	ring.outer_radius = 1.72
@@ -654,10 +645,10 @@ func _shelter() -> void:
 
 
 func _solar() -> void:
-	for offset in [-15.8, -14.1, -12.4, -10.7]:
-		var point := Vector3(offset, 0.0, -6.8)
-		_equipment.append(station_prop(self, MODEL_SOLAR, point, 2.5, 0.49))
-		_solid(point + Vector3.UP * 0.49, Vector3(1.3, 0.98, 1.05))
+	for offset in [-7.2, -4.6, -2.0, 0.6]:
+		var point := Vector3(offset, 0.0, -8.0)
+		_equipment.append(station_prop(self, MODEL_SOLAR, point, 3.5, 0.68))
+		_solid(point + Vector3.UP * 0.68, Vector3(1.8, 1.36, 1.45))
 
 
 func _greenhouse() -> void:
@@ -736,23 +727,7 @@ func _marker(key: StringName, accent: Color) -> void:
 	var root := Node3D.new()
 	add_child(root)
 	root.position = STATIONS[key]
-	var mesh := TorusMesh.new()
-	mesh.inner_radius = 0.63
-	mesh.outer_radius = 0.685
-	mesh.rings = 10
-	mesh.ring_segments = 24
-	FieldWorld._mesh(root, Vector3(0, 0.08, 0), mesh, accent, true)
-	var label := Label3D.new()
-	label.text = "MÓDULO LUNAR" if campaign_layout and key == &"pad" else NAMES[key]
-	label.font = MONO
-	label.font_size = 30
-	label.pixel_size = 0.019
-	label.position = Vector3(0, 0.46, 0.9)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.modulate = accent.lightened(0.38)
-	label.outline_size = 14
-	label.outline_modulate = Color("#1a2335")
-	root.add_child(label)
+	# Sin anillos ni letreros en el mapa: el nombre de la zona sale en el aviso lateral.
 	markers[key] = root
 
 

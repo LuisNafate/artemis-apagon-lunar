@@ -29,6 +29,11 @@ const PROMPTS := [
 var joystick := LunarTouch.new()
 var play: Control
 var _title_tween: Tween
+var _zone_panel: PanelContainer
+var _zone_title: Label
+var _zone_buttons: VBoxContainer
+var _tapped_name := ""
+var _tapped_until := 0
 var globe: LunarGlobe
 var menu: PanelContainer
 var address: LineEdit
@@ -194,19 +199,39 @@ func _build_play(root: Control) -> void:
 	bottom.add_child(joystick)
 	feedback = _label(bottom, "", 23)
 	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	feedback.hide()
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	feedback.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
 	feedback.add_theme_color_override("font_outline_color", Color("#271e20"))
 	feedback.add_theme_constant_override("outline_size", 8)
+	_zone_panel = PanelContainer.new()
+	_zone_panel.add_theme_stylebox_override("panel", _style(FILL, EDGE))
+	play.add_child(_zone_panel)
+	_zone_panel.anchor_left = 1.0
+	_zone_panel.anchor_right = 1.0
+	_zone_panel.anchor_top = 1.0
+	_zone_panel.anchor_bottom = 1.0
+	_zone_panel.offset_left = -250
+	_zone_panel.offset_right = -16
+	_zone_panel.offset_top = -60
+	_zone_panel.offset_bottom = -16
+	_zone_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_zone_panel.hide()
+	var zone_box := VBoxContainer.new()
+	zone_box.add_theme_constant_override("separation", 6)
+	_zone_panel.add_child(zone_box)
+	_zone_title = _label(zone_box, "", 24, TITLE)
+	_zone_title.add_theme_color_override("font_color", INK)
+	_zone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var buttons := VBoxContainer.new()
-	buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom.add_child(buttons)
+	_zone_buttons = buttons
+	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
-	action_button.custom_minimum_size = Vector2(210, 55)
+	action_button.custom_minimum_size = Vector2(200, 50)
 	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
-	release_button.custom_minimum_size = Vector2(210, 55)
+	release_button.custom_minimum_size = Vector2(200, 50)
 	play.hide()
 
 
@@ -296,6 +321,8 @@ func loading(base_name: String, status: String, progress: float) -> void:
 func flight_status(phase: int, progress: float) -> void:
 	var flying := phase >= 0
 	_controls.visible = not flying
+	if flying:
+		_zone_panel.hide()
 	_pause.visible = not flying
 	_resources.visible = not flying
 	details.visible = flying
@@ -549,15 +576,21 @@ func sync(
 			]
 		)
 	_show_alert(mission)
-	feedback.text = (
-		message
-		if not message.is_empty()
-		else (
-			"MÓDULO LUNAR"
-			if spot == &"pad"
-			else String(CrestWorld.NAMES.get(spot, "Toca el destino o usa el joystick"))
-		)
-	)
+	feedback.text = message
+	feedback.visible = not message.is_empty()
+	var carrying: bool = mission.pilots[player].cargo != 0
+	var seated: bool = mission.pilots[player].seated
+	var spot_name := String(CrestWorld.NAMES.get(spot, ""))
+	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
+	var actionable := not spot_name.is_empty() or carrying or seated
+	_zone_buttons.visible = actionable
+	_zone_panel.visible = actionable or tapped
+	if not spot_name.is_empty():
+		_zone_title.text = spot_name
+	elif carrying or seated:
+		_zone_title.text = "Llevas carga" if carrying else "A bordo"
+	else:
+		_zone_title.text = _tapped_name
 	action_button.text = "Bajar" if mission.pilots[player].seated else _action_caption(spot)
 	if mission.phase == &"tutorial" and spot == &"training":
 		if mission.solo:
@@ -657,6 +690,11 @@ func _label(parent: Control, caption: String, font_size: int, font: Font = BODY)
 	label.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(label)
 	return label
+
+
+func show_zone(zone_name: String) -> void:
+	_tapped_name = zone_name
+	_tapped_until = Time.get_ticks_msec() + 3000
 
 
 func show_title() -> void:
