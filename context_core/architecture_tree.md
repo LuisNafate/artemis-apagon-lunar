@@ -187,3 +187,10 @@ LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al
 ## Pilotos y alunizaje · revisión 20
 
 CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por piloto y poses por velocidad y carga. La cinemática suprime toda la geometría del astronauta durante el descenso y la revela al desembarcar en el fotograma 271.
+## Efectos de la campaña
+
+`LunarGame` instancia `lunar/lunar_audio.gd`, que sintetiza efectos breves para botones, pasos, proximidad a estaciones y extracción. Se calculan para el piloto local en individual y cooperativo, sin alterar la simulación ni transmitir eventos de audio. El control de SFX del menú inicial y de opciones ajusta también la alerta existente y se guarda en `LunarProfile`. `lunar/lunar_music.gd` reproduce las tres pistas del usuario desde `assets/music/` según menú y ciclo de día/noche, con fundido cruzado y pausa de las pistas inactivas. Pendiente revisar la mezcla con altavoces y dispositivos móviles.
+
+## Selector de bases de main
+
+`LunarGlobe` muestra el selector 3D y envía las acciones a `LunarInterface`. El modelo original `assets/props_luna/luna_bases.glb` está incluido desde la integración posterior de main.

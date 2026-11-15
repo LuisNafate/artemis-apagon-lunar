@@ -172,3 +172,38 @@
 - Blender 5.2.2. El gato queda oculto y a escala cero hasta el fotograma 270 inclusive. Se regeneró el tramo 185–270 y se verificó el descenso antes y después. El archivo Theora conserva sus 384 fotogramas a 24 fps y 1280 × 720.
 - Cresta y campaña vuelven al gato optimizado con 15 huesos, tinte por jugador, marcha articulada, reposo al parar y pose de carga. Se actualizó la prueba de Cresta para usar la posición actual de la mesa de práctica.
 - Godot 4.7.2. Verificadas las poses de ambos gatos y el traspaso en Cresta, con captura en Forward+. Cresta ejecuta 10 casos y mantiene 25 fallos de rutas y objetos del mapa. La campaña sigue reportando 17 fallos de tutorial, lanzamiento y recompensas.
+## 2026-11-15 · Comprobación de arranque en la rama soundFx
+
+- Godot 4.7.2 stable en Linux: importación del proyecto mediante `--headless --editor --import` y arranque de la escena principal durante 120 fotogramas con `--headless --quit-after 120`, ambos sin errores registrados tras la importación. El primer arranque, previo a importar, no encontró las clases globales.
+- No hay herramientas MCP de Godot disponibles en esta sesión. La comprobación headless no verifica imagen, interacción ni reproducción de audio. No se modificaron escenas ni GDScript; no se ejecutó `tests/verify.ps1`.
+
+## 2026-11-15 · Conexión MCP de Godot
+
+- Instalado fuera del proyecto Coding-Solo/godot-mcp (commit `1209744fad78f3998f98c7394fd0f6ef50da5281`), con dependencias actualizadas, y registrado como `godot` en la configuración global de Codex. `npm audit` terminó sin vulnerabilidades conocidas.
+- Un cliente MCP de prueba consultó la versión Godot 4.7.2, inspeccionó el proyecto, arrancó la escena principal con Vulkan Forward+ y la detuvo tras leer la salida: se registraron advertencias de GDScript, sin errores en la muestra. La sesión actual de Codex aún no dispone de las herramientas registradas; debe recargarse para descubrirlas. No se comprobó el sonido ni se modificaron escenas o GDScript.
+
+## 2026-11-15 · Primeros efectos de sonido
+
+- Godot 4.7.2 en Linux. `lunar_audio.gd` sintetiza efectos originales de botón, pasos por distancia, cercanía y extracción periódica; `LunarGame` los activa para el piloto local en individual y cooperativo. La síntesis evita dependencias de audio externas. Pendiente escucha y ajuste de mezcla en dispositivos y música.
+- `tests/verify.ps1` se ejecutó y se detuvo en `gdformat` por `crest/crest_world.gd` y `crest/lunar_crater.gd`, archivos previos a este corte. El lint general registra tres problemas previos en `crest_world.gd`; formato y lint de los dos scripts modificados pasan. Importación y arranque headless sin errores. Una prueba específica verificó generación de cuatro efectos, botones, distancia de pasos, proximidad, extracción, enfriamiento y descarte de teletransportes.
+- Comprobaciones individuales: Academia 16 casos y 3890 comprobaciones sin fallos; Puesto 7 y 75; Apagón lunar 3 y 35. Cresta no compila por tipos en su suite y Campaña obtiene 17 fallos de 419 comprobaciones. Ambas incidencias se reprodujeron en una copia limpia del commit previo `9219609` con los mismos resultados. No se validó la escucha de audio ni se corrieron pruebas en Android.
+
+## 2026-11-15 · Volumen de efectos
+
+- Godot 4.7.2 en Linux. Los efectos sintetizados suben de -10 a +4 dB, 14 dB respecto al corte anterior. Un deslizador en el menú de opciones y en el menú inicial controla efectos y alerta entre 0 y 100 %, con preferencia persistente en el perfil local y compatibilidad con perfiles anteriores.
+- `tests/verify.ps1` se ejecutó y volvió a detenerse en el formato previo de `crest/crest_world.gd` y `crest/lunar_crater.gd`. Formato y lint de los cuatro scripts modificados, importación y arranque headless pasaron. La prueba de integración comprobó deslizador, ganancia, silencio, alerta, menú y restauración desde el perfil. Pendiente escuchar y ajustar la mezcla en dispositivos.
+
+## 2026-11-15 · Música de menú, día y noche
+
+- Godot 4.7.2 en Linux. Copiadas íntegramente las tres pistas MP3 aportadas por el usuario a `assets/music/`. `LunarMusic` selecciona menú o ciclo de la misión, cruza las pistas durante 2 s y pausa la saliente para reanudar desde su posición; cada pista se repite al terminar. Las opciones durante una partida conservan la música del ciclo.
+- `tests/verify.ps1` se ejecutó tras el cambio y volvió a detenerse en el formato previo de `crest/crest_world.gd` y `crest/lunar_crater.gd`. Los scripts cambiados pasaron formato y lint; importación y arranque headless terminaron sin errores, aunque al cerrar con música activa Godot notificó dos instancias MP3 sin liberar. Pruebas específicas verificaron las tres pistas, bucle, fundido cruzado, reanudación desde la posición pausada y selección de menú/día/noche. Pendiente escucha y mezcla en dispositivos e investigar la advertencia de cierre.
+
+## 2026-11-15 · Integración de main en soundFx
+
+- Actualizada `soundFx` hasta `origin/main` en `41d1e75`, con el selector 3D de bases. Resuelto el conflicto de interfaz conservando el globo y las opciones de sonido. El modelo `assets/props_luna/luna_bases.glb` referenciado por main no está versionado ni se encontró localmente; se usa una esfera provisional con puntos derivados del registro de campaña, sustituida automáticamente si aparece el modelo.
+- Godot 4.7.2 en Linux. Importación sin errores, formato y lint de interfaz y globo aprobados. Una prueba headless comprobó las tres músicas, opciones de SFX, nueve bases y tarjetas visibles. `tests/verify.ps1` volvió a detenerse por el formato previo de `crest_world.gd` y `lunar_crater.gd`. La prueba registró advertencia de instancias al cerrar. Pendientes el modelo original, revisión visual y escucha.
+
+## 2026-11-15 · Segunda integración de main en soundFx
+
+- `origin/main` fue reescrito y avanzó a `dbab1b6`; se integró mediante el merge `fd75ad2`. Se conservaron la cinemática, el menú nuevo, el gato articulado y los cambios de sonido locales. El modelo original `luna_bases.glb` ya está incluido y se retiró la esfera provisional. El enlace Sonido se adaptó al menú de modos.
+- Godot 4.7.2 en Linux. `tests/verify.ps1` aprobó formato, lint, importación, Academia (16/3926), Puesto (7/75) y 3D (3/35), y se detuvo en Cresta (10/162, 25 fallos), ya documentados en main. Campaña se ejecutó por separado: 8/424, 17 fallos previamente documentados. La prueba de integración comprobó cinemática, Luna original, nueve bases, deslizador SFX y música nocturna. Godot notificó instancias sin liberar al cerrar las pruebas; falta revisión visual y escucha.

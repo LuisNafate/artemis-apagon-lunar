@@ -914,6 +914,14 @@
         "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
       }
     },
+    "audio_effects": {
+      "source": "efectos sintetizados originales, sin archivos externos",
+      "events": ["botón", "pasos", "proximidad", "extracción"],
+      "local_player_only": true,
+      "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
+      "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",
+      "pending": ["escucha y mezcla en dispositivos"]
+    },
     "solo_mode": {
       "source": "VAC-11 resuelto por el usuario",
       "players": 1,

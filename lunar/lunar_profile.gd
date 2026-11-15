@@ -19,7 +19,7 @@ func _init(campaign_rules: Dictionary, save_path: String = SAVE_PATH) -> void:
 			var saved: Variant = file.get_var(false)
 			if saved is Dictionary and saved.get("version") == 1:
 				data = saved
-				data.merge({"solo_bases": {}, "recent_mode": "host"})
+				data.merge({"solo_bases": {}, "recent_mode": "host", "sfx_volume": 1.0})
 				return
 		error = ERR_FILE_CORRUPT
 		return
@@ -32,6 +32,7 @@ func _init(campaign_rules: Dictionary, save_path: String = SAVE_PATH) -> void:
 		"active_role": "",
 		"recent": "",
 		"recent_mode": "host",
+		"sfx_volume": 1.0,
 		"bases": {},
 		"solo_bases": {},
 		"paid_missions": {},

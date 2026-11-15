@@ -977,6 +977,26 @@
       "path": "lunar/lunar_game.gd"
     },
     {
+      "id": "lunar_audio",
+      "kind": "script",
+      "path": "lunar/lunar_audio.gd"
+    },
+    {
+      "id": "lunar_music",
+      "kind": "script",
+      "path": "lunar/lunar_music.gd"
+    },
+    {
+      "id": "lunar_music_tracks",
+      "kind": "asset",
+      "path": "assets/music/"
+    },
+    {
+      "id": "lunar_globe",
+      "kind": "script",
+      "path": "lunar/lunar_globe.gd"
+    },
+    {
       "id": "lunar_mission",
       "kind": "script",
       "path": "lunar/lunar_mission.gd"
@@ -1153,6 +1173,41 @@
     }
   ],
   "edges": [
+    [
+      "lunar_game",
+      "uses",
+      "lunar_audio"
+    ],
+    [
+      "lunar_audio",
+      "configured_by",
+      "lunar_profile"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "lunar_music"
+    ],
+    [
+      "lunar_music",
+      "loads",
+      "lunar_music_tracks"
+    ],
+    [
+      "lunar_music",
+      "uses",
+      "lunar_mission"
+    ],
+    [
+      "lunar_interface",
+      "uses",
+      "lunar_globe"
+    ],
+    [
+      "lunar_globe",
+      "uses",
+      "config"
+    ],
     [
       "director",
       "loads",

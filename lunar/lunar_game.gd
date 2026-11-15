@@ -11,6 +11,8 @@ const CARGO_MODELS := {
 	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
 }
 const ROUTES := preload("res://lunar/lunar_routes.gd")
+const AUDIO := preload("res://lunar/lunar_audio.gd")
+const MUSIC := preload("res://lunar/lunar_music.gd")
 const MATCOLORS := {
 	&"sample": CrestWorld.BLUE,
 	&"ice": CrestWorld.BLUE,
@@ -58,9 +60,13 @@ var _replica_positions: Array = []
 var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
+var _audio := AUDIO.new()
+var _music := MUSIC.new()
 
 
 func _ready() -> void:
+	add_child(_audio)
+	add_child(_music)
 	if profile_path == LunarProfile.SAVE_PATH:
 		for argument: String in OS.get_cmdline_user_args():
 			if argument.begins_with("--perfil="):
@@ -94,11 +100,13 @@ func _ready() -> void:
 	add_child(ui)
 	ui.build()
 	ui.selected.connect(_choose)
+	ui.sfx_volume_changed.connect(_change_sfx_volume)
 	multiplayer.peer_disconnected.connect(_peer_left)
 	multiplayer.connected_to_server.connect(_request_join)
 	multiplayer.connection_failed.connect(_connection_failed)
 	multiplayer.server_disconnected.connect(_host_left)
 	_build_alert_audio()
+	_apply_sfx_volume(float(profile.data.get("sfx_volume", 1.0)) if profile.error == OK else 1.0)
 	if profile.error != OK:
 		ui.wait_for_guest("PERFIL LOCAL", "", "No se pudo leer el progreso guardado.")
 	else:
@@ -132,6 +140,11 @@ func _surface_camera() -> void:
 
 
 func _process(delta: float) -> void:
+	var in_game := net == &"solo" or net == &"guest" or (net == &"host" and play_started)
+	var music_context := &"menu"
+	if in_game:
+		music_context = &"night" if sim.shadow_active() else &"day"
+	_music.set_context(music_context)
 	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
 
 
@@ -184,6 +197,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _choose(action: String, argument: String) -> void:
+	_audio.play_effect(&"button")
 	if profile.error != OK or _loading:
 		return
 	match action:
@@ -231,7 +245,9 @@ func _choose(action: String, argument: String) -> void:
 		"leave":
 			_leave()
 		"menu":
-			ui.session_menu(net)
+			ui.session_menu(net, "", float(profile.data.sfx_volume))
+		"sound_options":
+			ui.sound_options(float(profile.data.sfx_volume))
 		"back_to_play":
 			ui.playing()
 		"action", "release":
@@ -248,7 +264,7 @@ func _choose(action: String, argument: String) -> void:
 			_show_science(1)
 		"close_science":
 			if _science_from_session:
-				ui.session_menu(net)
+				ui.session_menu(net, "", float(profile.data.sfx_volume))
 			else:
 				ui.lobby(profile, "")
 
@@ -327,6 +343,7 @@ func join(address: String, port: int = PORT) -> void:
 
 
 func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> void:
+	_audio.reset_tracking()
 	sim = LunarMission.new()
 	sim.prepare(id, seed_value, single_player)
 	_feedback_time = 0.0
@@ -371,7 +388,9 @@ func _leave() -> void:
 	if net in [&"host", &"solo"]:
 		if not _save_base(true):
 			if play_started or net == &"solo":
-				ui.session_menu(net, "El guardado falló. Inténtalo de nuevo.")
+				ui.session_menu(
+					net, "El guardado falló. Inténtalo de nuevo.", float(profile.data.sfx_volume)
+				)
 			else:
 				ui.wait_for_guest(sim.base.name, _address, "El guardado falló. Inténtalo de nuevo.")
 			return
@@ -382,6 +401,7 @@ func _leave() -> void:
 
 
 func _close_network() -> void:
+	_audio.reset_tracking()
 	net = &"lobby"
 	play_started = false
 	guest_peer = 0
@@ -653,6 +673,12 @@ func _sheltered() -> Array[bool]:
 
 
 func _render(delta: float, player: int) -> void:
+	if ui.play.visible and sim.phase != &"flight" and sim.connected[player]:
+		_audio.update_player(
+			delta, pilots[player].position, _spots[player], sim.pilots[player].mine != &""
+		)
+	else:
+		_audio.reset_tracking()
 	for index in range(2):
 		pilots[index].visible = sim.connected[index] and sim.phase != &"flight"
 	for id: int in _boxes.keys():
@@ -719,6 +745,18 @@ func _build_alert_audio() -> void:
 	stream.data = buffer
 	_alert_audio.stream = stream
 	add_child(_alert_audio)
+
+
+func _apply_sfx_volume(value: float) -> void:
+	var level := clampf(value, 0.0, 1.0)
+	_audio.set_volume(level)
+	_alert_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+
+
+func _change_sfx_volume(value: float) -> void:
+	_apply_sfx_volume(value)
+	profile.data.sfx_volume = clampf(value, 0.0, 1.0)
+	profile.save()
 
 
 func _send_snapshot() -> void:

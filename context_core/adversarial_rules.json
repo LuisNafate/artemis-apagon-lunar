@@ -458,6 +458,14 @@
       "continuity": "El astronauta queda oculto hasta el fotograma 270 inclusive y sale tras el alunizaje."
     }
   },
+  "audio_feedback": {
+    "scope": "piloto local de la campaña; no modifica ni transmite el estado de simulación",
+    "volume": "control local persistente, silencio al 0 %, efectos y alertas ajustados juntos",
+    "steps": "según distancia recorrida; se excluyen saltos de posición de un metro o más",
+    "proximity": "al cambiar a una estación cercana, con espera de 1,2 segundos",
+    "mining": "golpes cada 0,42 segundos mientras la extracción permanece activa",
+    "music": "menú fuera de partida; día o noche según shadow_active; fundido cruzado de 2 segundos y pausa de la pista saliente para reanudarla"
+  },
   "distribution_checks": {
     "android": {
       "outcome": "APK validado por firma, alineación y manifiesto",

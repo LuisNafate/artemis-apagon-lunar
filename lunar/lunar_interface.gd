@@ -2,6 +2,7 @@ class_name LunarInterface
 extends CanvasLayer
 
 signal selected(action: String, argument: String)
+signal sfx_volume_changed(value: float)
 
 const TITLE := preload("res://assets/ui/fonts/BarlowCondensed-Bold.ttf")
 const BODY := preload("res://assets/ui/fonts/Barlow-SemiBold.ttf")
@@ -298,11 +299,13 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_list.add_child(extras)
 	var roles := LunarOpening.corner_button("Roles")
 	var archive := LunarOpening.corner_button("Archivo científico")
-	for link in [roles, archive]:
+	var sound := LunarOpening.corner_button("Sonido")
+	for link in [roles, archive, sound]:
 		link.custom_minimum_size = Vector2(110, 48)
 		extras.add_child(link)
 	roles.pressed.connect(func() -> void: selected.emit("roles", ""))
 	archive.pressed.connect(func() -> void: selected.emit("science", ""))
+	sound.pressed.connect(func() -> void: selected.emit("sound_options", ""))
 	var balance := _label(_list, "%s monedas" % profile.balance_text(), 16)
 	balance.add_theme_color_override("font_color", Color("#fff0cf"))
 	solo.grab_focus()
@@ -405,12 +408,36 @@ func wait_for_guest(base_name: String, host_address: String, status: String) -> 
 	_button(_list, "Volver al inicio", "leave")
 
 
-func session_menu(mode: StringName, status: String = "") -> void:
+func session_menu(mode: StringName, status: String = "", sfx_volume: float = 1.0) -> void:
 	var note := "Partida en pausa." if mode == &"solo" else "La base sigue en actividad."
 	_prepare_menu("OPCIONES", status if not status.is_empty() else note)
 	_button(_list, "Volver a la partida", "back_to_play")
+	_sfx_control(sfx_volume)
 	_button(_list, "Archivo científico", "science")
 	_button(_list, "Salir de la partida" if mode == &"guest" else "Guardar y salir", "leave")
+
+
+func sound_options(sfx_volume: float) -> void:
+	_prepare_menu("OPCIONES DE SONIDO", "Ajusta el volumen de los efectos.")
+	_sfx_control(sfx_volume)
+	_button(_list, "Volver", "lobby")
+
+
+func _sfx_control(volume: float) -> void:
+	var label := _label(_list, "Efectos de sonido · %d %%" % roundi(volume * 100.0), 22)
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = volume
+	slider.custom_minimum_size = Vector2(0, 50)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list.add_child(slider)
+	slider.value_changed.connect(
+		func(value: float) -> void:
+			label.text = "Efectos de sonido · %d %%" % roundi(value * 100.0)
+			sfx_volume_changed.emit(value)
+	)
 
 
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
