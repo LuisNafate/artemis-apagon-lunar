@@ -84,7 +84,7 @@ static func use(mission: LunarMission, player: int) -> String:
 	if int(mission.rover.driver) != -1:
 		return "Tu compañero conduce el rover"
 	if mission.cargo_kind(player) != &"":
-		return "Suelta la caja antes de subir al rover"
+		return RoverTray.load_hand(mission, player)
 	mission.rover.driver = player
 	mission.pilots[player].mine = &""
 	return "Al volante · el joystick conduce"

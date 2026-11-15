@@ -623,4 +623,4 @@ Cambio aprobado por el usuario el 2026-11-16. Ver la sección "Rover manejable" 
   - En otro sitio, Soltar deja una caja en el suelo junto al rover y se puede volver a recoger.
   - La bandeja se ve en el modelo, se guarda y viaja en cooperativo.
 - [ ] **Step 2: Verlas fallar.** **Step 3: Implementar.** **Step 4: `verify.ps1`.**
-- [ ] **Step 5: Commit** `Rover: bandeja de carga` (en español, sin atribución).
+- [x] **Step 5: Commit** `Rover: bandeja de carga` (en español, sin atribución).

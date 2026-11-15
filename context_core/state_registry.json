@@ -791,6 +791,8 @@
       "park_radius": 2.0,
       "stand_offset": [1.8, 0.0],
       "tray_capacity": 2,
+      "tray_anchor": [0.0, 0.9, 1.0],
+      "tray_spacing": 0.7,
       "model_scale": 2.7,
       "model_half_height": 0.33,
       "model_yaw_degrees": 0.0,

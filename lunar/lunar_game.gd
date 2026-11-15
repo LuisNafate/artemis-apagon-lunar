@@ -857,7 +857,9 @@ func _interact(player: int, release: bool) -> void:
 	var message := ""
 	var was_tutorial := sim.phase == &"tutorial"
 	if release:
-		if LunarItemContext.delivers(sim, player, spot):
+		if sim.driving(player):
+			message = rover.unload(player, spot)
+		elif LunarItemContext.delivers(sim, player, spot):
 			message = sim.deliver(player, spot)
 		else:
 			var other := 1 - player
@@ -873,6 +875,9 @@ func _interact(player: int, release: bool) -> void:
 		if sim.pilots[player].seated:
 			spot = &"pad"
 		var crate := _pickup_at(player)
+		if crate != 0 and sim.driving(player):
+			_notice(RoverTray.load_ground(sim, crate))
+			return
 		if crate != 0 and sim.pickup(player, crate):
 			_notice("Recogiste %s." % LunarItemContext.LOAD_NAMES[sim.cargo_kind(player)])
 			return
@@ -898,13 +903,17 @@ func _cargo_ground(point: Vector3) -> Variant:
 
 
 func _pickup_at(player: int) -> int:
-	if sim.cargo_kind(player) != &"" or sim.pilots[player].seated or sim.driving(player):
+	if sim.driving(player):
+		if RoverTray.full(sim):
+			return 0
+		return _closest_box(sim.rover.position, float(RoverSpec.data.reach))
+	if sim.cargo_kind(player) != &"" or sim.pilots[player].seated:
 		return 0
 	return _closest_box(pilots[player].position)
 
 
-func _closest_box(point: Vector3) -> int:
-	var closest := 1.25
+func _closest_box(point: Vector3, limit := 1.25) -> int:
+	var closest := limit
 	var result := 0
 	for id: int in sim.crates:
 		var crate: Dictionary = sim.crates[id]

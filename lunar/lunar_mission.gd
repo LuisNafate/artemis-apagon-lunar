@@ -389,6 +389,12 @@ func deliver(player: int, spot: StringName) -> String:
 	return RoverState.deliver(self, player) if spot == &"radio" else use_station(player, spot)
 
 
+## Caja suelta nueva (la bandeja del rover la deja junto a si).
+func spawn_crate(kind: StringName, point: Vector3) -> void:
+	crates[_next_crate] = {"kind": kind, "owner": -1, "point": point}
+	_next_crate += 1
+
+
 func radio_available() -> bool:
 	return RoverState.radio_available(self)
 
@@ -503,6 +509,7 @@ func fuel_quota_met() -> bool:
 	var total := fuel_loaded + fuel_ready
 	for crate: Dictionary in crates.values():
 		total += int(crate.kind == &"fuel")
+	total += rover.tray.count(&"fuel")
 	return total >= int(rules.mission.propellant)
 
 

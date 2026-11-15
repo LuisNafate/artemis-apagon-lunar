@@ -11,6 +11,8 @@ const LOAD_NAMES := {
 
 
 static func delivers(mission: LunarMission, player: int, spot: StringName) -> bool:
+	if mission.driving(player):
+		return spot == &"refinery" and RoverTray.deliverable(mission)
 	var cargo := mission.cargo_kind(player)
 	match spot:
 		&"training":
@@ -28,7 +30,7 @@ static func at(mission: LunarMission, player: int, spot: StringName, pickup: Str
 	if mission.pilots[player].seated:
 		return ["Bajar de la nave", "", false]
 	if mission.driving(player):
-		return RoverContext.at(mission, player, spot)
+		return RoverContext.driving(mission, pickup)
 	if pickup != &"":
 		return ["Recoger %s" % LOAD_NAMES[pickup], "Añade la carga a tu traje.", false]
 	if String(spot).begins_with("dep:"):

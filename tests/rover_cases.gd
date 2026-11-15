@@ -20,6 +20,10 @@ func run() -> void:
 	await _parked_radio()
 	await _persistence()
 	await _air_out()
+	await _tray_ground()
+	await _tray_hand()
+	await _tray_refinery()
+	await _tray_drop()
 	await _coop()
 
 
@@ -284,6 +288,7 @@ func _coop() -> void:
 	if guest.net != &"guest":
 		return
 	host.sim.finish_tutorial()
+	host.sim.rover.tray.append(&"ice")
 	host.sim.rover.unlocked = true
 	await _suite._until(func() -> bool: return host.streamer.is_ready_at(host.pilots[0].position))
 	var stand := RoverSpec.stand_point() + Vector3(0, 0.1, 0)
@@ -303,6 +308,10 @@ func _coop() -> void:
 		await _suite.get_tree().physics_frame
 	_suite._check(host.rover.body.position.distance_to(start) > 3.0, "the host drove away")
 	_suite._check(guest.sim.rover.driver == 0, "the guest sees the host at the wheel")
+	_suite._check(
+		guest.rover.body._tray_kinds == [&"ice"] and guest.rover.body._tray.get_child_count() == 1,
+		"the guest sees the crate in the tray"
+	)
 	_suite._check(
 		guest.rover.body.position.distance_to(host.rover.body.position) < 1.0,
 		"the guest sees the rover where the host drove it"
@@ -346,10 +355,168 @@ func _coop() -> void:
 	await _suite.get_tree().process_frame
 
 
+## Conduciendo junto a cajas sueltas: Cargar caja, maximo 2, con la bandeja llena no carga.
+func _tray_ground() -> void:
+	_suite._cases += 1
+	var game: Node = await _suite._game_solo(BASE)
+	var ui: LunarInterface = game.ui
+	var sim: LunarMission = game.sim
+	sim.rover.unlocked = true
+	await _stand_by(game)
+	ui.selected.emit("action", "")
+	await _suite._frames(3)
+	_suite._check(sim.rover.driver == 0, "boarded to load crates")
+	var spot: Vector3 = sim.rover.position
+	sim.spawn_crate(&"ice", spot + Vector3(1.6, 0.0, 0.0))
+	sim.spawn_crate(&"ore", spot + Vector3(-1.6, 0.0, 0.0))
+	sim.spawn_crate(&"fuel", spot + Vector3(0.0, 0.0, 1.6))
+	sim.spawn_crate(&"ice", spot + Vector3(0.0, 0.0, 9.0))
+	await _until_ready(game, spot + Vector3(0.0, 0.0, 9.0))
+	await _suite._frames(5)
+	_suite._check(ui.action_button.text == "Cargar caja", "next to a loose crate: Cargar caja")
+	_suite._check("Bandeja 0/2" in ui._zone_detail.text, "the panel shows the tray")
+	ui.selected.emit("action", "")
+	await _suite._frames(3)
+	_suite._check(sim.rover.tray.size() == 1 and sim.crates.size() == 3, "one crate is on the tray")
+	_suite._check(sim.rover.driver == 0, "loading keeps the driver at the wheel")
+	ui.selected.emit("action", "")
+	await _suite._frames(3)
+	_suite._check(sim.rover.tray.size() == 2, "the tray holds 2")
+	_suite._check(sim.crates.size() == 2, "a loaded crate leaves the ground")
+	_suite._check(game.rover.body._tray.get_child_count() == 2, "the tray crates show on the model")
+	await _suite._frames(3)
+	_suite._check(ui.action_button.text == "Bajar del rover", "full tray: no more loading")
+	_suite._check("llena" in ui._zone_detail.text, "full tray is shown")
+	game._interact(0, false)
+	await _suite._frames(2)
+	_suite._check(sim.rover.tray.size() == 2, "a third crate is not loaded")
+	_suite._check(sim.crates.size() == 2, "the far crate stays on the ground")
+	_suite._check(sim.state().rover.tray.size() == 2, "the tray rides in the saved state")
+	await _close(game)
+
+
+## Bajado junto al rover con una caja en la mano: Cargar en el rover.
+func _tray_hand() -> void:
+	_suite._cases += 1
+	var game: Node = await _suite._game_solo(BASE)
+	var ui: LunarInterface = game.ui
+	var sim: LunarMission = game.sim
+	sim.rover.unlocked = true
+	await _stand_by(game)
+	sim._create_cargo(0, &"ore")
+	await _suite._frames(4)
+	_suite._check(ui.action_button.text == "Cargar en el rover", "with a crate: Cargar en el rover")
+	_suite._check(not ui.action_button.disabled, "loading from hands is enabled")
+	ui.selected.emit("action", "")
+	await _suite._frames(3)
+	_suite._check(
+		sim.cargo_kind(0) == &"" and sim.rover.tray == [&"ore"], "the crate is on the tray"
+	)
+	_suite._check(sim.crates.is_empty(), "the hand crate is consumed")
+	sim._create_cargo(0, &"ice")
+	game._interact(0, false)
+	_suite._check(sim.rover.tray.size() == 2, "a second crate fits")
+	sim._create_cargo(0, &"ice")
+	await _suite._frames(4)
+	_suite._check(ui.action_button.disabled, "full tray: loading from hands is disabled")
+	game._interact(0, false)
+	_suite._check(sim.rover.tray.size() == 2 and sim.cargo_kind(0) == &"ice", "nothing more loads")
+	await _close(game)
+
+
+## En el refinado, conduciendo, Entregar descarga: hielo se refina, mineral se guarda.
+func _tray_refinery() -> void:
+	_suite._cases += 1
+	var game: Node = await _suite._game_solo(BASE)
+	var ui: LunarInterface = game.ui
+	var sim: LunarMission = game.sim
+	sim.rover.unlocked = true
+	var station: Vector3 = CrestWorld.campaign_stations[&"refinery"]
+	var at := station + Vector3(1.3, 0.04, 0.0)
+	_place_rover(game, at, 0.0)
+	sim.rover.driver = 0
+	game._set_positions([at + Vector3(0, 0.1, 0), Vector3.ZERO])
+	sim.rover.tray.assign([&"ice", &"ore", &"fuel"])
+	await _until_ready(game, at)
+	await _suite._frames(5)
+	_suite._check(game._spots[0] == &"refinery", "the driver is at the refinery")
+	_suite._check(ui.release_button.visible, "the driver sees the unload button")
+	_suite._check(ui.release_button.text == "Descargar en Refinado", "unload caption at refinery")
+	var ore := sim.ore
+	ui.selected.emit("release", "")
+	await _suite._frames(3)
+	_suite._check(not sim.refining.is_empty(), "the ice goes to the refinery")
+	_suite._check(sim.rover.tray == [&"ore", &"fuel"], "one crate left the tray")
+	ui.selected.emit("release", "")
+	await _suite._frames(3)
+	_suite._check(sim.ore == ore + 1 and sim.rover.tray == [&"fuel"], "the ore is stored")
+	_suite._check(ui.release_button.text == "Soltar caja", "only fuel left: it can only be dropped")
+	_suite._check(
+		(
+			RoverTray.unload_refinery(sim, 0) == "Nada que descargar aquí"
+			and sim.rover.tray == [&"fuel"]
+		),
+		"the refinery does not take fuel"
+	)
+	sim.rover.tray.assign([&"ice", &"ice"])
+	game._interact(0, true)
+	await _suite._frames(2)
+	_suite._check(sim.rover.tray.size() == 2, "a busy refinery keeps the crate in the tray")
+	_suite._check(ui.feedback.text == "La refinadora está trabajando", "the busy refinery says so")
+	sim.rover.tray.assign([&"ice", &"ore"])
+	game._interact(0, true)
+	_suite._check(sim.rover.tray == [&"ice"], "busy for ice: the ore still goes in")
+	await _close(game)
+
+
+## En otro sitio, Soltar deja una caja junto al rover y se puede volver a recoger.
+func _tray_drop() -> void:
+	_suite._cases += 1
+	var game: Node = await _suite._game_solo(BASE)
+	var ui: LunarInterface = game.ui
+	var sim: LunarMission = game.sim
+	sim.rover.unlocked = true
+	var at := Vector3(13.0, 0.04, -6.0)
+	_place_rover(game, at, 0.0)
+	sim.rover.driver = 0
+	game._set_positions([at + Vector3(0, 0.1, 0), Vector3.ZERO])
+	sim.rover.tray.assign([&"ore", &"ice"])
+	await _until_ready(game, at)
+	await _suite._frames(5)
+	_suite._check(ui.release_button.text == "Soltar caja", "away from the refinery: Soltar caja")
+	ui.selected.emit("release", "")
+	await _suite._frames(4)
+	_suite._check(sim.rover.tray == [&"ore"], "the top crate leaves the tray")
+	_suite._check(sim.crates.size() == 1, "a loose crate appears")
+	var crate: Dictionary = sim.crates.values()[0]
+	_suite._check(crate.kind == &"ice" and crate.owner == -1, "it is the ice crate, on the ground")
+	_suite._check(
+		Vector2(crate.point.x - at.x, crate.point.z - at.z).length() < 3.0,
+		"it lands next to the rover"
+	)
+	await _suite._frames(4)
+	_suite._check(ui.action_button.text == "Cargar caja", "the dropped crate can be loaded again")
+	sim.use_station(0, &"rover")
+	await _suite._frames(3)
+	_suite._check(sim.rover.driver == -1, "the driver steps out")
+	var id: int = sim.crates.keys()[0]
+	game._set_positions([crate.point + Vector3(0.0, 0.1, 0.6), Vector3.ZERO])
+	await _suite._frames(5)
+	_suite._check(game._pickup_at(0) == id, "the dropped crate can be picked up again")
+	_suite._check(sim.pickup(0, id) and sim.cargo_kind(0) == &"ice", "and carried")
+	await _close(game)
+
+
 ## Pone al astronauta junto al rover aparcado y espera a que el panel se actualice.
 func _stand_by(game: Node) -> void:
 	game._set_positions([RoverSpec.stand_point() + Vector3(0, 0.1, 0), Vector3.ZERO])
+	await _until_ready(game, RoverSpec.stand_point())
 	await _suite._frames(5)
+
+
+## Espera a que el chunk de ese punto tenga suelo.
+func _until_ready(game: Node, point: Vector3) -> void:
+	await _suite._until(func() -> bool: return game.streamer.is_ready_at(point))
 
 
 ## Mueve el rover (cuerpo y estado) sin conductor ni animacion.

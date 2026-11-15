@@ -31,6 +31,9 @@ func spot_at(point: Vector3) -> StringName:
 	if sim.phase in [&"tutorial", &"flight"]:
 		return &""
 	var at: Vector3 = sim.rover.position
+	# El conductor va dentro del rover: sus estaciones son las de alrededor, no el propio rover.
+	if int(sim.rover.driver) != -1 and point.distance_to(at) < 0.2:
+		return &""
 	if Vector2(point.x - at.x, point.z - at.z).length() > float(RoverSpec.data.reach):
 		return &""
 	return &"rover" if sim.rover.unlocked else &"radio"
@@ -110,6 +113,7 @@ func _drive(delta: float, driver: int, terrain: ChunkStreamer) -> void:
 
 func _present(info: Dictionary, terrain: ChunkStreamer) -> void:
 	body.visible = terrain.is_ready_at(body.position)
+	body.show_tray(info.tray, _game, _game._cargo_templates)
 	var driver := int(info.driver)
 	if driver == -1:
 		body.show_driver("", Color.WHITE)
@@ -171,3 +175,15 @@ func _free_at(point: Vector3) -> bool:
 	var ground := _game.streamer.height_at(point)
 	probe.transform = Transform3D(Basis.IDENTITY, Vector3(point.x, ground + RIDE_HEIGHT, point.z))
 	return _game.get_world_3d().direct_space_state.intersect_shape(probe, 1).is_empty()
+
+
+## El conductor descarga: en el refinado entra como una entrega; en otro sitio, caja al suelo.
+func unload(player: int, spot: StringName) -> String:
+	var sim := _game.sim
+	if LunarItemContext.delivers(sim, player, spot):
+		return RoverTray.unload_refinery(sim, player)
+	var back := -RoverBody.heading_of(body.yaw) * (float(RoverSpec.data.collision_radius) + 0.6)
+	var ground: Variant = _game._cargo_ground(body.position + Vector3(back.x, 0.0, back.y))
+	if ground == null:
+		return "Espera a estar sobre terreno cargado."
+	return RoverTray.drop(sim, ground)

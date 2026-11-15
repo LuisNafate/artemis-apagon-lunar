@@ -976,8 +976,11 @@ func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: S
 	action_button.text = context[0]
 	action_button.visible = not action_button.text.is_empty()
 	action_button.disabled = context[2]
-	release_button.visible = cargo != &"" and not seated
-	if cargo != &"":
+	var unloads: bool = mission.driving(player) and RoverTray.count(mission) > 0
+	release_button.visible = (cargo != &"" or unloads) and not seated
+	if unloads:
+		release_button.text = RoverContext.unload_caption(mission, player, spot)
+	elif cargo != &"":
 		var name: String = LunarItemContext.LOAD_NAMES[cargo]
 		if LunarItemContext.delivers(mission, player, spot):
 			release_button.text = (

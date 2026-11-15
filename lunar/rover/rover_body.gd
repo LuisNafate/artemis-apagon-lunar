@@ -13,6 +13,8 @@ var _spec: Dictionary = RoverSpec.data
 var _pivot := Node3D.new()
 var _tag := Label3D.new()
 var _up := Vector3.UP
+var _tray := Node3D.new()
+var _tray_kinds: Array = []
 
 
 func _init() -> void:
@@ -42,6 +44,7 @@ func _init() -> void:
 	_tag.outline_size = 12
 	_tag.hide()
 	add_child(_tag)
+	add_child(_tray)
 
 
 ## Direccion de proa (plano XZ) para un giro dado: con giro 0 el rover mira al norte (-Z).
@@ -90,6 +93,23 @@ func follow(delta: float, point: Vector3, angle: float, terrain: ChunkStreamer) 
 	_apply_pose(delta, terrain)
 
 
+## Cajas de la bandeja trasera; solo se reconstruyen si cambia la lista.
+func show_tray(kinds: Array, host: Node, templates: Dictionary) -> void:
+	if kinds == _tray_kinds:
+		return
+	_tray_kinds = kinds.duplicate()
+	for child in _tray.get_children():
+		child.queue_free()
+	var anchor: Array = _spec.tray_anchor
+	var spacing := float(_spec.tray_spacing)
+	for index in range(kinds.size()):
+		var box := Node3D.new()
+		LunarCargoVisual.build(host, templates, box, StringName(kinds[index]))
+		var slot := (float(index) - (kinds.size() - 1) * 0.5) * spacing
+		box.position = Vector3(float(anchor[0]) + slot, float(anchor[1]), float(anchor[2]))
+		_tray.add_child(box)
+
+
 func show_driver(tag: String, tint: Color) -> void:
 	_tag.visible = not tag.is_empty()
 	_tag.text = tag
@@ -106,6 +126,7 @@ func _apply_pose(delta: float, terrain: ChunkStreamer) -> void:
 	_up = _up.slerp(normal, rate).normalized()
 	var turn := yaw + deg_to_rad(float(_spec.model_yaw_degrees))
 	_pivot.basis = Basis(Quaternion(Vector3.UP, _up)) * Basis(Vector3.UP, turn)
+	_tray.basis = Basis(Quaternion(Vector3.UP, _up)) * Basis(Vector3.UP, yaw)
 
 
 func _normal_at(terrain: ChunkStreamer) -> Vector3:
