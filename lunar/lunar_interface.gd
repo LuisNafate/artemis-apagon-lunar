@@ -809,7 +809,8 @@ func _role_card(
 	art.pressed.connect(func() -> void: selected.emit(action, id))
 
 	var perk := _label(card, ROLE_PERKS[id], 17)
-	perk.custom_minimum_size.x = 240.0
+	perk.custom_minimum_size = Vector2(240.0, 48.0)
+	perk.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	perk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	perk.modulate = SOFT
