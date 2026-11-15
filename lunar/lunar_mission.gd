@@ -183,7 +183,9 @@ func _mine_deposit(player: int, key: StringName) -> String:
 	if deposit_kind(key) == &"":
 		return "Acércate a un depósito cargado"
 	if deposit_left(key) <= 0:
-		return LunarLanguage.t("Depósito vacío · vuelve en %d amaneceres") % deposit_refill_left(key)
+		return (
+			LunarLanguage.t("Depósito vacío · vuelve en %d amaneceres") % deposit_refill_left(key)
+		)
 	return _start_mining(player, key)
 
 
@@ -397,7 +399,8 @@ func use_station(player: int, station: StringName) -> String:
 		&"power":
 			priority = &"fuel" if priority == &"crop" else &"crop"
 			return (
-				LunarLanguage.t("Primero %s después del aire") % ("cultivo" if priority == &"crop" else "propelente")
+				LunarLanguage.t("Primero %s después del aire")
+				% ("cultivo" if priority == &"crop" else "propelente")
 			)
 		&"life":
 			return _eat(player)

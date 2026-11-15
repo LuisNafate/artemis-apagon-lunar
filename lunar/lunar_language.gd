@@ -10,6 +10,9 @@ const SAVE_PATH := "user://idioma.cfg"
 const LANGUAGES := {"es": "Español", "en": "English"}
 
 static var _english: Translation
+## Idioma elegido en el juego. No depende del idioma de la computadora, para que el juego
+## empiece en español aunque Windows esté en inglés.
+static var _code := "es"
 
 var _buttons := {}
 
@@ -23,7 +26,7 @@ static func setup() -> void:
 
 
 static func current() -> String:
-	return "en" if TranslationServer.get_locale().begins_with("en") else "es"
+	return _code
 
 
 static func set_language(code: String, save := true) -> void:
@@ -36,6 +39,7 @@ static func set_language(code: String, save := true) -> void:
 	if code == "en":
 		TranslationServer.add_translation(_english)
 	TranslationServer.set_locale(code)
+	_code = code
 	if save:
 		var file := ConfigFile.new()
 		file.set_value("idioma", "codigo", code)
@@ -72,4 +76,6 @@ func _choose(code: String) -> void:
 
 func _refresh() -> void:
 	for code: String in _buttons:
-		LunarButtonKit.apply(_buttons[code], &"construir" if code == current() else &"seguimiento", 16)
+		LunarButtonKit.apply(
+			_buttons[code], &"construir" if code == current() else &"seguimiento", 16
+		)

@@ -179,7 +179,7 @@ func use_station(player: int, station: StringName) -> String:
 			return _upgrade(station)
 		&"power":
 			priority = &"fuel" if priority == &"crop" else &"crop"
-			return "Prioridad · %s" % ("cultivo" if priority == &"crop" else "propelente")
+			return tr("Prioridad · %s") % tr("cultivo" if priority == &"crop" else "propelente")
 		&"life":
 			return _eat(player)
 		&"radio":
@@ -216,7 +216,7 @@ func release(player: int, point: Vector3, partner_near: bool) -> String:
 		crates[id].owner = other
 		if phase == &"tutorial":
 			tutorial_step = 2 if player == 0 else 1
-		return "¡Entrega al astronauta %d!" % (other + 1)
+		return tr("¡Entrega al astronauta %d!") % (other + 1)
 	crates[id].owner = -1
 	crates[id].point = point
 	return "Caja en el suelo"
@@ -438,7 +438,7 @@ func _refine(player: int) -> String:
 			water += amount
 			_consume_cargo(player)
 			deliveries += 1
-			return "+%d agua" % amount
+			return tr("+%d agua") % amount
 		&"ore":
 			if ore >= int(runtime.ore_capacity):
 				return "Tolva de mineral llena"
@@ -462,14 +462,14 @@ func _operate_job(player: int, station: StringName) -> String:
 		_create_cargo(player, cargo)
 		return "Lleva la caja a la plataforma"
 	if float(jobs[station]) > 0.0:
-		return "En proceso · %.0f s" % ceilf(float(jobs[station]))
+		return tr("En proceso · %.0f s") % ceilf(float(jobs[station]))
 	if not is_crop and fuel_prepared >= launch_target:
 		return "Propelente suficiente · entrega los lotes"
 	var cost := (
 		int(runtime.crop_water) if is_crop else int(targets.water_units_per_propellant_batch)
 	)
 	if water < cost:
-		return "Falta agua · necesitas %d" % cost
+		return tr("Falta agua · necesitas %d") % cost
 	if is_crop and food + int(targets.rations_per_crop_cycle) > int(runtime.rations_capacity):
 		return "Retira raciones antes de sembrar"
 	water -= cost
@@ -483,7 +483,7 @@ func _upgrade(station: StringName) -> String:
 		return "Mejora instalada"
 	var cost := int(targets.drill_upgrade_ore if is_drill else targets.aux_battery_ore)
 	if ore < cost:
-		return "Faltan %d de mineral" % (cost - ore)
+		return tr("Faltan %d de mineral") % (cost - ore)
 	ore -= cost
 	if is_drill:
 		drill = true
@@ -518,7 +518,7 @@ func _consume_supply() -> String:
 	campaign.supply_pending = false
 	water += water_bonus
 	food += rations_bonus
-	return "Suministros · +%d agua y +%d ración" % [water_bonus, rations_bonus]
+	return tr("Suministros · +%d agua y +%d ración") % [water_bonus, rations_bonus]
 
 
 func _radio() -> String:
@@ -632,9 +632,9 @@ func _tick_crew(delta: float, sheltered: Array[bool]) -> void:
 				float(pilot.exposure) + float(runtime.exposure_rate) * scale * delta
 			)
 		if pilot.air <= 0.0:
-			_fail("El astronauta %d se quedó sin aire." % (player + 1))
+			_fail(tr("El astronauta %d se quedó sin aire.") % (player + 1))
 		elif pilot.exposure >= float(runtime.exposure_limit):
-			_fail("El astronauta %d superó el límite de exposición." % (player + 1))
+			_fail(tr("El astronauta %d superó el límite de exposición.") % (player + 1))
 		if terminal():
 			return
 

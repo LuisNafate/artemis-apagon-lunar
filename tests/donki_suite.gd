@@ -11,6 +11,7 @@ func _ready() -> void:
 	_catalog()
 	_cards()
 	_radiation()
+	_language()
 	print("DONKI SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -221,6 +222,27 @@ func _record(mission: LunarMission, id: String) -> Dictionary:
 		if record.id == id:
 			return record
 	return {}
+
+
+func _language() -> void:
+	_cases += 1
+	_check(LunarLanguage.current() == "es", "the game starts in Spanish whatever the computer says")
+	var mission := _mission()
+	mission.food = 0
+	var record: Dictionary = mission.flares["2017-09-10T15:35:00-FLR-001"]
+	LunarLanguage.set_language("en", false)
+	for name: String in CrestWorld.NAMES.values() + LunarItemContext.LOAD_NAMES.values():
+		_check(LunarLanguage.t(name) != name or name in ["MINERAL", "RADIO", "mineral"], name)
+	var crops := LunarItemContext.at(mission, 0, &"crop", &"")
+	_check(LunarLanguage.t(crops[0]) == "Plant crops", "crop button in English")
+	_check(String(crops[1]).begins_with("Water: "), "crop water in English")
+	var label := LunarInterface.flare_label(record)
+	_check(label == "Real flare of 10 Sep 2017 · very strong (X8.2)", "flare in English")
+	LunarLanguage.set_language("es", false)
+	_check(
+		LunarItemContext.at(mission, 0, &"crop", &"")[1].begins_with("Agua: "), "back in Spanish"
+	)
+	_check(LunarLanguage.current() == "es", "Spanish again")
 
 
 func _check(ok: bool, reason: String) -> void:

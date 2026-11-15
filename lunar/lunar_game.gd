@@ -47,7 +47,6 @@ var flight := LunarFlightView.new()
 var streamer := ChunkStreamer.new()
 var pilots: Array[CrestPilot] = []
 var net := &"lobby"
-var _language_layer: CanvasLayer
 var guest_peer := 0
 var guest_id := ""
 var positions_at_dawn: Array = []
@@ -55,6 +54,7 @@ var saved_run := 0
 var play_started := false
 var opening: LunarOpening
 var _camera_home := Vector3.ZERO
+var _language_layer: CanvasLayer
 
 var _base_mode := "solo"
 var _loading := false
@@ -298,7 +298,7 @@ func _objective_target(key: StringName, here: Vector3) -> Dictionary:
 	if String(key).begins_with("loose_"):
 		return _loose_objective(StringName(String(key).trim_prefix("loose_")), here)
 	var location: Vector3 = CrestWorld.campaign_stations[key]
-	var name := String(CrestWorld.NAMES[key])
+	var name := LunarLanguage.t(CrestWorld.NAMES[key])
 	var title := name.left(1) + name.substr(1).to_lower()
 	var reached := _spots[0] == key or (key == &"life" and world.sheltered(here))
 	return _target_at(location, title, reached)
@@ -317,7 +317,7 @@ func _loose_objective(kind: StringName, here: Vector3) -> Dictionary:
 		if distance < nearest:
 			nearest = distance
 			target = _target_at(
-				point, String(LunarItemContext.LOAD_NAMES[kind]).capitalize(), pickup == id
+				point, LunarLanguage.t(LunarItemContext.LOAD_NAMES[kind]).capitalize(), pickup == id
 			)
 	return target
 
@@ -547,7 +547,10 @@ func host(id: String, port: int = PORT) -> void:
 		return
 	var peer := ENetMultiplayerPeer.new()
 	if peer.create_server(port, 1) != OK:
-		ui.lobby(profile, LunarLanguage.t("No se pudo abrir la partida. Comprueba el puerto UDP %d.") % port)
+		ui.lobby(
+			profile,
+			LunarLanguage.t("No se pudo abrir la partida. Comprueba el puerto UDP %d.") % port
+		)
 		return
 	multiplayer.multiplayer_peer = peer
 	net = &"host"
@@ -858,8 +861,19 @@ func _evacuate(index: int) -> void:
 	pilot.velocity = Vector3.ZERO
 	_chunk_ready[index] = false
 	_route[index].clear()
-	var who := "Tu dosímetro" if sim.solo else LunarLanguage.t("El dosímetro del astronauta %d") % (index + 1)
-	_notice(LunarLanguage.t("☢ %s se llenó. Control de Misión te trajo al refugio para una revisión médica.") % who)
+	var who := (
+		LunarLanguage.t("Tu dosímetro")
+		if sim.solo
+		else LunarLanguage.t("El dosímetro del astronauta %d") % (index + 1)
+	)
+	_notice(
+		(
+			LunarLanguage.t(
+				"☢ %s se llenó. Control de Misión te trajo al refugio para una revisión médica."
+			)
+			% who
+		)
+	)
 
 
 ## Informe al volver a la Tierra: la dosis de la tripulación en puntos del juego y una
@@ -873,7 +887,12 @@ func _mission_report(clean: bool) -> String:
 		if record.id == sim.rules.radiation.reference:
 			var sample: Dictionary = record.observation.samples[0]
 			report += (
-				LunarLanguage.t("\nEn la vida real se mide en grays: un detector de la nave Orion midió %.1f µGy/h.")
+				(
+					LunarLanguage
+					. t(
+						"\nEn la vida real se mide en grays: un detector de la nave Orion midió %.1f µGy/h."
+					)
+				)
 				% sample.absorbed_dose_rate
 			)
 	if clean:
@@ -915,9 +934,11 @@ func _commit_reward() -> bool:
 		return false
 	_pending_reward.clear()
 	_send_awards()
-	var message := "Amanecer. Progreso asegurado." if daily else "¡Misión de regreso completada!"
+	var message := LunarLanguage.t(
+		"Amanecer. Progreso asegurado." if daily else "¡Misión de regreso completada!"
+	)
 	if not daily and sim.solo and profile.campaign_finished():
-		message = "¡Campaña completada! Regresaste desde las nueve bases."
+		message = LunarLanguage.t("¡Campaña completada! Regresaste desde las nueve bases.")
 	var detail := "" if daily else _mission_report(sim.crew_dose() <= 0.0)
 	_show_reward(int(profile.data.balance) - before, message, detail)
 	if not daily:
@@ -980,7 +1001,12 @@ func _interact(player: int, release: bool) -> void:
 			spot = &"pad"
 		var crate := _pickup_at(player)
 		if crate != 0 and sim.pickup(player, crate):
-			_notice(LunarLanguage.t("Recogiste %s.") % LunarItemContext.LOAD_NAMES[sim.cargo_kind(player)])
+			_notice(
+				(
+					LunarLanguage.t("Recogiste %s.")
+					% LunarItemContext.LOAD_NAMES[sim.cargo_kind(player)]
+				)
+			)
 			return
 		message = sim.use_station(player, spot)
 		if sim.pilots[player].seated:

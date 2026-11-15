@@ -26,7 +26,7 @@ static func at(mission: LunarMission, player: int, spot: StringName, pickup: Str
 	if mission.pilots[player].seated:
 		return ["Bajar de la nave", "", false]
 	if pickup != &"":
-		return ["Recoger %s" % LOAD_NAMES[pickup], "Añade la carga a tu traje.", false]
+		return [_t("Recoger %s") % _t(LOAD_NAMES[pickup]), "Añade la carga a tu traje.", false]
 	if String(spot).begins_with("dep:"):
 		return _deposit(mission, player, spot)
 	match spot:
@@ -41,7 +41,11 @@ static func at(mission: LunarMission, player: int, spot: StringName, pickup: Str
 		&"power":
 			var other := "propelente" if mission.priority == &"crop" else "cultivo"
 			var current := "cultivo" if mission.priority == &"crop" else "propelente"
-			return ["Priorizar %s" % other, "Prioridad actual tras el aire: %s." % current, false]
+			return [
+				_t("Priorizar %s") % _t(other),
+				_t("Prioridad actual tras el aire: %s.") % _t(current),
+				false
+			]
 		&"life":
 			return _shelter(mission, player)
 		&"radio":
@@ -61,25 +65,25 @@ static func _training(mission: LunarMission, player: int) -> Array:
 
 static func _deposit(mission: LunarMission, player: int, spot: StringName) -> Array:
 	var kind := mission.deposit_kind(spot)
-	var item: String = LOAD_NAMES.get(kind, "recurso")
+	var item := _t(LOAD_NAMES.get(kind, "recurso"))
 	var pilot := mission.pilots[player]
 	if pilot.mine == spot:
-		return ["Extrayendo…", "%s · quédate cerca." % _seconds(pilot.mine_left), true]
+		return ["Extrayendo…", _t("%s · quédate cerca.") % _seconds(pilot.mine_left), true]
 	if pilot.cargo != 0:
-		return ["Extraer %s" % item, "Entrega o suelta la carga que llevas.", true]
+		return [_t("Extraer %s") % item, "Entrega o suelta la carga que llevas.", true]
 	if pilot.get("pending_extra", &"") == kind and kind != &"" and not mission.cargo_full():
-		return ["Recoger extra", "Caja adicional de %s por tu rol." % item, false]
+		return ["Recoger extra", _t("Caja adicional de %s por tu rol.") % item, false]
 	if mission.deposit_left(spot) <= 0:
 		var days := mission.deposit_refill_left(spot)
 		var cycle := "amanecer" if days == 1 else "amaneceres"
-		return ["Depósito vacío", "Se repone en %d %s." % [days, cycle], true]
+		return ["Depósito vacío", _t("Se repone en %d %s.") % [days, _t(cycle)], true]
 	return [
-		"Extraer %s" % item,
+		_t("Extraer %s") % item,
 		(
 			"Capacidad de carga alcanzada."
 			if mission.cargo_full()
 			else (
-				"Quedan %d · extracción %s."
+				_t("Quedan %d · extracción %s.")
 				% [mission.deposit_left(spot), _seconds(mission.drill_seconds())]
 			)
 		),
@@ -99,7 +103,7 @@ static func _refinery(mission: LunarMission, player: int) -> Array:
 		"Refinar hielo",
 		(
 			(
-				"Produce %.0f de agua en %s."
+				_t("Produce %.0f de agua en %s.")
 				% [mission.resources.ice_water, _seconds(mission.resources.refine_seconds)]
 			)
 			if cargo == &"ice"
@@ -116,7 +120,9 @@ static func _production(mission: LunarMission, player: int, spot: StringName) ->
 		var title := "Recoger ración" if crop else "Recoger propelente"
 		var full := mission.cargo_kind(player) != &"" or mission.cargo_full()
 		return [
-			title, "Libera espacio para recoger." if full else "Unidades listas: %d." % stock, full
+			title,
+			"Libera espacio para recoger." if full else _t("Unidades listas: %d.") % stock,
+			full
 		]
 	if mission.jobs[spot] > 0.0:
 		var lacks_power: bool = (
@@ -134,7 +140,7 @@ static func _production(mission: LunarMission, player: int, spot: StringName) ->
 	var message := (
 		"Suelta o entrega tu carga primero."
 		if carrying
-		else "Agua: %.2f/%.2f." % [mission.water, cost]
+		else _t("Agua: %.2f/%.2f.") % [mission.water, cost]
 	)
 	return [
 		"Sembrar cultivo" if crop else "Preparar propelente",
@@ -157,7 +163,7 @@ static func _upgrade(mission: LunarMission, spot: StringName) -> Array:
 	if mission.installing.has(spot):
 		return _timer("Instalando mejora", mission.installing[spot], mission.workshop_paused())
 	var cost := int(mission.rules.upgrade_costs[String(spot)])
-	return ["Instalar mejora", "Mineral: %d/%d." % [mission.ore, cost], mission.ore < cost]
+	return ["Instalar mejora", _t("Mineral: %d/%d.") % [mission.ore, cost], mission.ore < cost]
 
 
 static func _shelter(mission: LunarMission, player: int) -> Array:
@@ -180,14 +186,18 @@ static func _radio(mission: LunarMission) -> Array:
 		return ["Lista confirmada", "Tierra recibió la lista de vuelo.", true]
 	if mission.radio_left > 0.0:
 		return [
-			"Señal en tránsito", "Respuesta de Tierra en %s." % _seconds(mission.radio_left), true
+			"Señal en tránsito",
+			_t("Respuesta de Tierra en %s.") % _seconds(mission.radio_left),
+			true
 		]
 	if mission.radio_cut():
 		var end := (
 			float(mission.rules.prototype_parameters.radio_cut_at)
 			+ float(mission.rules.events.radio_cut_seconds)
 		)
-		return ["Radio sin señal", "Se restablece en %s." % _seconds(end - mission.elapsed), true]
+		return [
+			"Radio sin señal", _t("Se restablece en %s.") % _seconds(end - mission.elapsed), true
+		]
 	return ["Enviar lista de vuelo", "Espera la respuesta de Tierra.", false]
 
 
@@ -218,10 +228,16 @@ static func _lander(mission: LunarMission, player: int) -> Array:
 
 
 static func _timer(title: String, remaining: float, paused: bool) -> Array:
-	var status := "En pausa por energía · " if paused else "Tiempo restante: "
+	var status := _t("En pausa por energía · " if paused else "Tiempo restante: ")
 	return [title, status + _seconds(remaining), true]
 
 
 static func _seconds(value: float) -> String:
 	var seconds := maxi(0, ceili(value))
 	return "%d:%02d" % [floori(seconds / 60.0), seconds % 60]
+
+
+## Traduce las partes que se arman con números o nombres; los textos fijos los traduce
+## cada botón o etiqueta por su cuenta.
+static func _t(text: String) -> String:
+	return LunarLanguage.t(text)

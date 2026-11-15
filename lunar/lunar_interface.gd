@@ -32,6 +32,9 @@ const ROLE_PERKS := {
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
 const STRENGTH := {"X": "muy fuerte", "M": "fuerte", "C": "mediana"}
 const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+const MONTHS_EN := [
+	"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+]
 const CHIP_ICONS := [
 	AIR_ICON,
 	AIR_ICON,
@@ -575,14 +578,19 @@ func loading(base_name: String, status: String, progress: float) -> void:
 	percent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	percent.add_theme_color_override("font_color", Color("#a85b0e"))
 	var fill := bar.create_tween()
-	fill.tween_method(
-		func(amount: float) -> void:
-			bar.value = amount
-			percent.text = "%d %%" % roundi(amount * 100.0),
-		_loading_last,
-		progress,
-		0.35
-	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	(
+		fill
+		. tween_method(
+			func(amount: float) -> void:
+				bar.value = amount
+				percent.text = "%d %%" % roundi(amount * 100.0),
+			_loading_last,
+			progress,
+			0.35
+		)
+		. set_trans(Tween.TRANS_QUAD)
+		. set_ease(Tween.EASE_OUT)
+	)
 	_loading_last = progress
 
 
@@ -615,7 +623,7 @@ func flight_status(phase: int, progress: float) -> void:
 
 
 func lobby(profile: LunarProfile, status: String) -> void:
-	var subtitle := "ÚLTIMA VENTANA"
+	var subtitle := LunarLanguage.t("ÚLTIMA VENTANA")
 	if profile.campaign_finished():
 		subtitle += LunarLanguage.t("\nCampaña completada")
 	if not status.is_empty():
@@ -803,7 +811,9 @@ func _animate_lobby() -> void:
 func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 	var single_player := mode == "solo"
 	var title := "JUGAR SOLO" if single_player else "CREAR PARTIDA EN LÍNEA"
-	_prepare_menu(title, LunarLanguage.t("%s monedas · Elige una base lunar.") % profile.balance_text())
+	_prepare_menu(
+		title, LunarLanguage.t("%s monedas · Elige una base lunar.") % profile.balance_text()
+	)
 	var spots: Array[Dictionary] = []
 	var focus := String(profile.data.recent)
 	if focus.is_empty() or not profile.open_base(focus):
@@ -860,7 +870,11 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 
 func roles(profile: LunarProfile) -> void:
 	_prepare_menu(
-		"ROLES", LunarLanguage.t("%s monedas · Un rol por partida. Elige antes de entrar.") % profile.balance_text()
+		"ROLES",
+		(
+			LunarLanguage.t("%s monedas · Un rol por partida. Elige antes de entrar.")
+			% profile.balance_text()
+		)
 	)
 	menu.offset_left = -435.0
 	menu.offset_right = 435.0
@@ -950,7 +964,9 @@ func _role_card(
 	perk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	perk.modulate = SOFT
-	var caption := "Elegido" if picked else ("Elegir" if owned else LunarLanguage.t("Comprar · %d") % price)
+	var caption := (
+		"Elegido" if picked else ("Elegir" if owned else LunarLanguage.t("Comprar · %d") % price)
+	)
 	var button := _button(card, caption, action, id)
 	button.custom_minimum_size = Vector2(240.0, 50.0)
 	button.focus_mode = Control.FOCUS_ALL
@@ -1014,7 +1030,11 @@ func _compact_menu(width: float = 520.0) -> void:
 
 func wait_for_guest(base_name: String, host_address: String, status: String) -> void:
 	_prepare_menu(
-		base_name, LunarLanguage.t("Comparte esta dirección con tu compañero.\n%s\n%s") % [host_address, status]
+		base_name,
+		(
+			LunarLanguage.t("Comparte esta dirección con tu compañero.\n%s\n%s")
+			% [host_address, status]
+		)
 	)
 	_button(_list, "Volver al inicio", "leave")
 	_compact_menu()
@@ -1037,7 +1057,9 @@ func sound_options(sfx_volume: float) -> void:
 
 
 func _sfx_control(volume: float) -> void:
-	var label := _label(_list, "Efectos de sonido · %d %%" % roundi(volume * 100.0), 22)
+	var label := _label(
+		_list, LunarLanguage.t("Efectos de sonido · %d %%") % roundi(volume * 100.0), 22
+	)
 	var slider := HSlider.new()
 	slider.min_value = 0.0
 	slider.max_value = 1.0
@@ -1048,7 +1070,7 @@ func _sfx_control(volume: float) -> void:
 	_list.add_child(slider)
 	slider.value_changed.connect(
 		func(value: float) -> void:
-			label.text = "Efectos de sonido · %d %%" % roundi(value * 100.0)
+			label.text = LunarLanguage.t("Efectos de sonido · %d %%") % roundi(value * 100.0)
 			sfx_volume_changed.emit(value)
 	)
 
@@ -1067,7 +1089,10 @@ func show_science(record_title: String, description: String, index: int, count: 
 func confirm_reset(base_name: String, id: String) -> void:
 	_prepare_menu(
 		"¿Reiniciar esta base?",
-		LunarLanguage.t("%s perderá sus días y mejoras. Tus monedas globales se conservan.") % base_name
+		(
+			LunarLanguage.t("%s perderá sus días y mejoras. Tus monedas globales se conservan.")
+			% base_name
+		)
 	)
 	_button(_list, "Cancelar", "bases")
 	_button(_list, "Reiniciar base", "reset", id)
@@ -1096,7 +1121,7 @@ func sync(
 	pickup: StringName = &""
 ) -> void:
 	var night := mission.shadow_active()
-	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
+	var cycle := "%s %d" % [LunarLanguage.t("Noche" if night else "Día"), mission.days + 1]
 	location.text = "%s\n%s" % [cycle, mission.base.name]
 	var cold := ["", ""]
 	for person in range(2):
@@ -1107,7 +1132,9 @@ func sync(
 	_readouts[1].get_parent().get_parent().visible = not mission.solo
 	if not mission.solo:
 		var air := (
-			"%d%s" % [ceili(mission.pilots[1].air), cold[1]] if mission.connected[1] else "ausente"
+			"%d%s" % [ceili(mission.pilots[1].air), cold[1]]
+			if mission.connected[1]
+			else LunarLanguage.t("ausente")
 		)
 		_readouts[1].text = "J2 " + air
 	_readouts[2].text = "%.1f/%.0f" % [mission.charge, mission.battery_capacity()]
@@ -1121,13 +1148,15 @@ func sync(
 		next_step.text = "Regreso a Tierra completado. Puedes seguir jugando en la base."
 	else:
 		next_step.text = (
-			LunarLanguage.t("Propelente %d/%d   ·   Raciones %d/%d   ·   Radio %s   ·   A bordo %d/%d")
+			LunarLanguage.t(
+				"Propelente %d/%d   ·   Raciones %d/%d   ·   Radio %s   ·   A bordo %d/%d"
+			)
 			% [
 				mission.fuel_loaded,
 				flight.propellant,
 				mission.food_loaded,
 				flight.food,
-				"lista" if mission.earth_ok else "pendiente",
+				LunarLanguage.t("lista" if mission.earth_ok else "pendiente"),
 				mission.crew_seated(),
 				mission.required_seats()
 			]
@@ -1150,11 +1179,13 @@ func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: S
 	action_button.disabled = context[2]
 	release_button.visible = cargo != &"" and not seated
 	if cargo != &"":
-		var name: String = LunarItemContext.LOAD_NAMES[cargo]
+		var name := LunarLanguage.t(LunarItemContext.LOAD_NAMES[cargo])
 		if LunarItemContext.delivers(mission, player, spot):
 			release_button.text = LunarLanguage.t("Entregar %s") % name
 		else:
-			release_button.text = LunarLanguage.t("Soltar %s") % name if mission.solo else "Soltar / pasar"
+			release_button.text = (
+				LunarLanguage.t("Soltar %s") % name if mission.solo else "Soltar / pasar"
+			)
 	_zone_buttons.visible = action_button.visible or release_button.visible
 	_zone_detail.text = context[1]
 	_zone_detail.visible = not _zone_detail.text.is_empty()
@@ -1166,7 +1197,8 @@ func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: S
 	elif not caption.is_empty():
 		_zone_title.text = caption
 	elif cargo != &"":
-		_zone_title.text = LunarLanguage.t("CARGA · %s") % String(LunarItemContext.LOAD_NAMES[cargo]).to_upper()
+		var load_name := LunarLanguage.t(LunarItemContext.LOAD_NAMES[cargo])
+		_zone_title.text = LunarLanguage.t("CARGA · %s") % load_name.to_upper()
 	elif seated:
 		_zone_title.text = "A BORDO"
 	else:
@@ -1191,7 +1223,7 @@ func show_objective(instruction: String, title: String = "", projected := Vector
 			arrow = "→" if difference.x > 0 else "←"
 		else:
 			arrow = "↓" if difference.y > 0 else "↑"
-	_objective_marker.text = "%s  %s" % [arrow, title]
+	_objective_marker.text = "%s  %s" % [arrow, LunarLanguage.t(title)]
 	_objective_marker.position = offset
 	_objective_marker.size = marker_size
 
@@ -1199,11 +1231,18 @@ func show_objective(instruction: String, title: String = "", projected := Vector
 ## "Llamarada real del 10 sep 2017 · muy fuerte (X8.2)" a partir del catálogo DONKI.
 static func flare_label(record: Dictionary) -> String:
 	var date := String(record.begin)
-	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
+	var months := MONTHS_EN if LunarLanguage.current() == "en" else MONTHS
+	var month: String = months[int(date.substr(5, 2)) - 1]
 	var kind := String(record.class_type)
 	return (
 		LunarLanguage.t("Llamarada real del %d %s %s · %s (%s)")
-		% [int(date.substr(8, 2)), month, date.left(4), STRENGTH.get(kind.left(1), "pequeña"), kind]
+		% [
+			int(date.substr(8, 2)),
+			month,
+			date.left(4),
+			LunarLanguage.t(STRENGTH.get(kind.left(1), "pequeña")),
+			kind
+		]
 	)
 
 
@@ -1270,16 +1309,19 @@ func _show_alert(mission: LunarMission, safe: bool) -> void:
 	if mission.storm_active():
 		alert.text = (
 			LunarLanguage.t("⚠ Lluvia de partículas del Sol · ")
-			+ ("Estás a salvo aquí" if safe else "¡Entra al refugio!")
+			+ LunarLanguage.t("Estás a salvo aquí" if safe else "¡Entra al refugio!")
 			+ real
 		)
 	elif mission.storm_warning() > 0:
 		var seconds := ceili(mission.storm_warning())
-		alert.text = LunarLanguage.t("☀ ¡Explosión en el Sol! Corre al refugio: %d s%s") % [seconds, real]
+		alert.text = (
+			LunarLanguage.t("☀ ¡Explosión en el Sol! Corre al refugio: %d s%s") % [seconds, real]
+		)
 	elif not quiet.is_empty():
 		alert.add_theme_color_override("font_color", Color("#ffd36b"))
 		alert.text = (
-			LunarLanguage.t("☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n") + flare_label(quiet)
+			LunarLanguage.t("☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n")
+			+ flare_label(quiet)
 		)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
@@ -1346,7 +1388,11 @@ func _button(parent: Control, caption: String, action: String, argument: String 
 	LunarButtonKit.apply(button, LunarButtonKit.kind_for(caption))
 	parent.add_child(button)
 	button.pressed.connect(func() -> void: selected.emit(action, argument))
-	if parent == _list and _close_action.is_empty() and (caption.begins_with("Volver") or caption.begins_with("Cancelar")):
+	if (
+		parent == _list
+		and _close_action.is_empty()
+		and (caption.begins_with("Volver") or caption.begins_with("Cancelar"))
+	):
 		_set_close(action, argument)
 	return button
 

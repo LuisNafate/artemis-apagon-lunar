@@ -333,9 +333,17 @@ func _small(words: String, kind: StringName) -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	LunarButtonKit.apply(button, kind, 16)
 	button.custom_minimum_size = Vector2(
-		LunarButtonKit.FONT.get_string_size(
-			TranslationServer.translate(words), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16
-		).x + 56.0,
+		(
+			(
+				LunarButtonKit
+				. FONT
+				. get_string_size(
+					TranslationServer.translate(words), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16
+				)
+				. x
+			)
+			+ 56.0
+		),
 		44.0
 	)
 	return button

@@ -1,3 +1,4 @@
+# gdlint: disable=max-line-length
 class_name LunarScienceCards
 extends RefCounted
 
@@ -21,8 +22,18 @@ const MONTHS := [
 	"diciembre"
 ]
 const MONTHS_EN := [
-	"January", "February", "March", "April", "May", "June", "July", "August", "September",
-	"October", "November", "December"
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December"
 ]
 const ENGLISH := [
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -270,20 +281,22 @@ static func _english(record: Dictionary, values: Dictionary, donki_storms: bool)
 				return ""
 			return _card_en(
 				(
-					"Sometimes the Sun has explosions called solar flares. Some of them throw out "
-					+ "particles so fast they can hurt astronauts and ships. On %s at %s UTC "
-					+ "(universal time), NASA sent alert %s because those particles were on their way."
-				)
-				% [
-					_english_date(String(values.messageIssueTime)),
-					String(values.messageIssueTime).substr(11, 5),
-					values.messageID
-				],
+					(
+						"Sometimes the Sun has explosions called solar flares. Some of them throw out "
+						+ "particles so fast they can hurt astronauts and ships. On %s at %s UTC "
+						+ "(universal time), NASA sent alert %s because those particles were on their way."
+					)
+					% [
+						_english_date(String(values.messageIssueTime)),
+						String(values.messageIssueTime).substr(11, 5),
+						values.messageID
+					]
+				),
 				[
 					"DONKI (Database Of Notifications, Knowledge, Information): NASA's database where space weather is recorded.",
 					"CCMC (Community Coordinated Modeling Center): the NASA center that studies space weather and publishes the alerts.",
 					"Class C, M or X: how strong a flare is. Each letter is 10 times stronger.",
-					"SEP (Solar Energetic Particles): energetic particles from the Sun, the dangerous \"rain\".",
+					'SEP (Solar Energetic Particles): energetic particles from the Sun, the dangerous "rain".',
 				],
 				(
 					"each storm uses a real DONKI flare with its date. Not all of them are dangerous: "
@@ -296,15 +309,17 @@ static func _english(record: Dictionary, values: Dictionary, donki_storms: bool)
 			var sample: Dictionary = values.samples[0]
 			return _card_en(
 				(
-					"In 2022 the Orion ship flew around the Moon with no astronauts on the Artemis I "
-					+ "mission. It carried sensors to measure radiation. On %s, minutes after liftoff, "
-					+ "the %s detector measured %.3f µGy/h."
-				)
-				% [
-					_english_date(String(sample.timestamp_utc)),
-					values.instrument_id,
-					sample.absorbed_dose_rate
-				],
+					(
+						"In 2022 the Orion ship flew around the Moon with no astronauts on the Artemis I "
+						+ "mission. It carried sensors to measure radiation. On %s, minutes after liftoff, "
+						+ "the %s detector measured %.3f µGy/h."
+					)
+					% [
+						_english_date(String(sample.timestamp_utc)),
+						values.instrument_id,
+						sample.absorbed_dose_rate
+					]
+				),
 				[
 					"Radiation: invisible energy that travels through space and can harm the body.",
 					"HERA (Hybrid Electronic Radiation Assessor): the radiation detector Orion carries.",
@@ -319,15 +334,17 @@ static func _english(record: Dictionary, values: Dictionary, donki_storms: bool)
 			var distance := float(values.miss_distance_km)
 			return _card_en(
 				(
-					"Asteroid %s passed close to Earth on %s, %.2f million km away. It sounds like a "
-					+ "lot, but it is about %d times the distance between Earth and the Moon."
-				)
-				% [
-					values.name,
-					_english_date(String(values.datetime_as_reported)),
-					distance / 1000000.0,
-					roundi(distance / MOON_KM)
-				],
+					(
+						"Asteroid %s passed close to Earth on %s, %.2f million km away. It sounds like a "
+						+ "lot, but it is about %d times the distance between Earth and the Moon."
+					)
+					% [
+						values.name,
+						_english_date(String(values.datetime_as_reported)),
+						distance / 1000000.0,
+						roundi(distance / MOON_KM)
+					]
+				),
 				[
 					"Asteroid: a rock that orbits the Sun.",
 					"NEO (Near-Earth Object): an object close to Earth.",
@@ -342,14 +359,16 @@ static func _english(record: Dictionary, values: Dictionary, donki_storms: bool)
 			var derived: Dictionary = record.get("derived", {})
 			return _card_en(
 				(
-					"The International Space Station (ISS) circles the Earth in about %.1f minutes, at "
-					+ "around 400 km high. That is about %.1f laps a day! This calculation uses its orbit from %s."
-				)
-				% [
-					derived.estimated_period_minutes,
-					derived.mean_motion_revs_per_day,
-					_english_date(String(values.date))
-				],
+					(
+						"The International Space Station (ISS) circles the Earth in about %.1f minutes, at "
+						+ "around 400 km high. That is about %.1f laps a day! This calculation uses its orbit from %s."
+					)
+					% [
+						derived.estimated_period_minutes,
+						derived.mean_motion_revs_per_day,
+						_english_date(String(values.date))
+					]
+				),
 				[
 					"Orbit: the path a ship follows around a planet.",
 					"TLE (Two-Line Element set): two lines of numbers that describe an orbit.",
@@ -364,17 +383,19 @@ static func _english(record: Dictionary, values: Dictionary, donki_storms: bool)
 		"ntrs_life_support_mass":
 			return _card_en(
 				(
-					"Each astronaut needs %.2f kg of oxygen every day, %.2f kg of water to drink and "
-					+ "cook (about %.1f liters) and %.2f kg of dry food. They also breathe out %.2f kg of "
-					+ "carbon dioxide that must be cleaned from the air."
-				)
-				% [
-					values.oxygen,
-					values.drinking_and_food_water,
-					values.drinking_and_food_water,
-					values.food_solids,
-					values.carbon_dioxide_produced
-				],
+					(
+						"Each astronaut needs %.2f kg of oxygen every day, %.2f kg of water to drink and "
+						+ "cook (about %.1f liters) and %.2f kg of dry food. They also breathe out %.2f kg of "
+						+ "carbon dioxide that must be cleaned from the air."
+					)
+					% [
+						values.oxygen,
+						values.drinking_and_food_water,
+						values.drinking_and_food_water,
+						values.food_solids,
+						values.carbon_dioxide_produced
+					]
+				),
 				[
 					"ECLSS (Environmental Control and Life Support System): a ship's environmental control and life support system.",
 					"Life support: everything that keeps astronauts alive.",
@@ -388,14 +409,16 @@ static func _english(record: Dictionary, values: Dictionary, donki_storms: bool)
 		"ntrs_lunar_radio":
 			return _card_en(
 				(
-					"The Moon is about %s km away. Radio waves travel at the speed of light, almost "
-					+ "300,000 km per second, so a message takes %.2f s to reach Earth and %.2f s to go and come back."
-				)
-				% [
-					_thousands(int(values.nominal_earth_moon_distance_km)).replace(" ", ","),
-					values.one_way_seconds_rounded,
-					values.round_trip_seconds_rounded
-				],
+					(
+						"The Moon is about %s km away. Radio waves travel at the speed of light, almost "
+						+ "300,000 km per second, so a message takes %.2f s to reach Earth and %.2f s to go and come back."
+					)
+					% [
+						_thousands(int(values.nominal_earth_moon_distance_km)).replace(" ", ","),
+						values.one_way_seconds_rounded,
+						values.round_trip_seconds_rounded
+					]
+				),
 				[
 					"Latency: the time a message takes to arrive.",
 					"Speed of light: the fastest thing in the universe.",

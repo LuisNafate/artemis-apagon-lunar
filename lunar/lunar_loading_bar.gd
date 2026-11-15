@@ -38,7 +38,10 @@ func _draw() -> void:
 		if float(index) + 1.0 <= lit + 0.001:
 			draw_rect(block, Color("#dc7d19"))
 			draw_rect(Rect2(block.position, Vector2(BLOCK, 4.0)), Color("#ffb347"))
-			draw_rect(Rect2(block.position + Vector2(0.0, block.size.y - 5.0), Vector2(BLOCK, 5.0)), Color("#a85b0e"))
+			draw_rect(
+				Rect2(block.position + Vector2(0.0, block.size.y - 5.0), Vector2(BLOCK, 5.0)),
+				Color("#a85b0e")
+			)
 			if index == sweep:
 				draw_rect(block, Color(1.0, 0.95, 0.8, 0.35))
 		elif float(index) < lit:
