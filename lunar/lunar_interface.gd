@@ -89,29 +89,24 @@ func _build_play(root: Control) -> void:
 	var header := PanelContainer.new()
 	play.add_child(header)
 	header.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	header.offset_left = 16
-	header.offset_right = -430
-	header.offset_top = 15
+	header.offset_left = 250
+	header.offset_right = -250
+	header.offset_top = 10
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var content := VBoxContainer.new()
 	header.add_child(content)
-	location = _label(content, "", 29, TITLE)
-	location.modulate = BRICK
+	location = _label(content, "", 32, TITLE)
+	_float_text(location)
 	_resources = HBoxContainer.new()
+	_resources.alignment = BoxContainer.ALIGNMENT_CENTER
 	content.add_child(_resources)
 	_resources.add_theme_constant_override("separation", 7)
 	var colors := [Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")]
 	for index in range(colors.size()):
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var border := _style(CHIP_FILL, colors[index].darkened(0.1))
-		border.content_margin_top = 1
-		border.content_margin_bottom = 2
-		border.content_margin_left = 4
-		border.content_margin_right = 12
-		border.set_corner_radius_all(12)
-		border.shadow_size = 0
-		chip.add_theme_stylebox_override("panel", border)
+		chip.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		_resources.add_child(chip)
 		var row := HBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -119,20 +114,24 @@ func _build_play(root: Control) -> void:
 		chip.add_child(row)
 		var icon := TextureRect.new()
 		icon.texture = CHIP_ICONS[index]
-		icon.custom_minimum_size = Vector2(44, 44)
+		icon.custom_minimum_size = Vector2(54, 54)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
-		var reading := _label(row, "", 21)
+		var reading := _label(row, "", 25, TITLE)
 		reading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_float_text(reading)
 		_readouts.append(reading)
 	details = _label(content, "", 21)
+	_float_text(details)
 	details.hide()
 	next_step = _label(content, "", 22)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_float_text(next_step)
 	alert = _label(content, "", 25, TITLE)
-	alert.modulate = BRICK
+	_float_text(alert)
+	alert.add_theme_color_override("font_color", Color("#ff9a72"))
 	_pause = _button(play, "Menú", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_pause.offset_left = -137
@@ -614,6 +613,13 @@ func _label(parent: Control, caption: String, font_size: int, font: Font = BODY)
 	label.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(label)
 	return label
+
+
+func _float_text(label: Label) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", Color("#fff2d6"))
+	label.add_theme_color_override("font_outline_color", Color("#1c1410"))
+	label.add_theme_constant_override("outline_size", 8)
 
 
 func _style(fill: Color, stroke: Color) -> StyleBoxFlat:
