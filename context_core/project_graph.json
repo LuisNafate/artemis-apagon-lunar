@@ -1,5 +1,5 @@
 {
-  "revision": 18,
+  "revision": 19,
   "nodes": [
     {
       "id": "config",
@@ -2865,13 +2865,18 @@
     ],
     [
       "lunar_opening",
-      "loops",
+      "plays",
       "lunar_opening_loop"
     ],
     [
-      "lunar_opening",
-      "falls_back_to",
+      "lunar_interface",
+      "uses_as_backdrop",
       "lunar_opening_poster"
+    ],
+    [
+      "lunar_interface",
+      "replays",
+      "lunar_opening"
     ],
     [
       "opening_encode",

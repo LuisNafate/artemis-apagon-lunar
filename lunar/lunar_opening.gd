@@ -2,23 +2,18 @@ class_name LunarOpening
 extends Control
 
 signal enter_requested
+
 const CONFIG := "res://context_core/state_registry.json"
-const DISPLAY := preload("res://assets/ui/fonts/BarlowCondensed-Bold.ttf")
 const BODY := preload("res://assets/ui/fonts/Barlow-SemiBold.ttf")
 const MONO := preload("res://assets/ui/fonts/IBMPlexMono-Medium.ttf")
-const INK := Color("#121620")
-const CREAM := Color("#f0e8d9")
-const AMBER := Color("#ffbb79")
-const CYAN := Color("#83d9ed")
+const CREAM := Color("#f5ecce")
 
 var opening: Dictionary
-var looping := false
-var _poster: TextureRect
+var landing := false
 var _film: VideoStreamPlayer
 var _caption: Label
 var _chapter: Label
-var _story: Button
-var _play: Button
+var _skip: Button
 var _transitioning := false
 
 
@@ -27,11 +22,10 @@ func _ready() -> void:
 	opening = parsed.campaign_2026.opening
 	_build()
 	_show_film(false)
-	_play.grab_focus()
 
 
 func _process(_delta: float) -> void:
-	if not looping and _film.is_playing():
+	if _film.is_playing():
 		_update_caption()
 
 
@@ -40,40 +34,37 @@ func _input(event: InputEvent) -> void:
 		return
 	var key_event := event as InputEventKey
 	var key := key_event.physical_keycode if key_event.physical_keycode else key_event.keycode
-	match key:
-		KEY_ENTER, KEY_KP_ENTER:
-			_play_game()
-		KEY_ESCAPE:
-			if not looping:
-				_show_film(true)
-		KEY_H:
-			_show_film(false)
-		_:
-			return
-	get_viewport().set_input_as_handled()
+	if key in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER]:
+		get_viewport().set_input_as_handled()
+		_enter_menu()
 
 
-func _show_film(idle: bool) -> void:
+func _show_film(is_landing: bool) -> void:
 	if _transitioning:
 		return
-	looping = idle
-	_poster.visible = idle
+	landing = is_landing
 	_film.stop()
-	var path: String = opening.loop if idle else opening.flight
+	var path: String = opening.landing if landing else opening.flight
 	_film.stream = load(path) if ResourceLoader.exists(path) else null
-	_film.loop = idle
 	if _film.stream:
 		_film.play()
-	elif not idle:
+		_update_caption()
+	else:
+		_advance.call_deferred()
+
+
+func _advance() -> void:
+	if landing:
+		_enter_menu()
+	else:
 		_show_film(true)
-		return
-	_story.text = "Repetir historia  [H]" if idle else "Saltar al alunizaje  [Esc]"
-	_update_caption()
 
 
 func _update_caption() -> void:
 	var active: Array = opening.captions[0]
-	var seconds := float(opening.loop_starts_at) if looping else _film.stream_position
+	var seconds := _film.stream_position
+	if landing:
+		seconds += float(opening.landing_starts_at)
 	for cue: Array in opening.captions:
 		if seconds >= float(cue[0]):
 			active = cue
@@ -81,7 +72,7 @@ func _update_caption() -> void:
 	_caption.text = active[2]
 
 
-func _play_game() -> void:
+func _enter_menu() -> void:
 	if _transitioning:
 		return
 	_transitioning = true
@@ -91,64 +82,50 @@ func _play_game() -> void:
 
 func _build() -> void:
 	var backdrop := ColorRect.new()
-	backdrop.color = INK
+	backdrop.color = Color("#121620")
 	add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	_poster = TextureRect.new()
-	_poster.texture = load(opening.poster) if ResourceLoader.exists(opening.poster) else null
-	_poster.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_poster.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_poster.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_poster)
-	_poster.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	_film = VideoStreamPlayer.new()
 	_film.expand = true
 	_film.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_film.finished.connect(func() -> void: _show_film(true))
+	_film.finished.connect(_advance)
 	add_child(_film)
 	_film.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 
-	var header := _panel(Rect2(30, 26, 305, 104), Color("#121620eb"))
-	_label(header, "ARTEMIS", Rect2(15, 7, 256, 24), MONO, 14, AMBER)
-	_label(header, "Última ventana", Rect2(13, 24, 277, 64), DISPLAY, 46, CREAM)
+	_skip = corner_button("Saltar")
+	add_child(_skip)
+	_skip.position = Vector2(24, 20)
+	_skip.size = Vector2(100, 48)
+	_skip.tooltip_text = "Saltar al menú (Esc)"
+	_skip.pressed.connect(_enter_menu)
 
-	var footer := _panel(Rect2(30, 589, 1220, 104), Color("#121620f4"))
-	_chapter = _label(footer, "", Rect2(19, 10, 675, 24), MONO, 14, CYAN)
-	_caption = _label(footer, "", Rect2(19, 35, 657, 53), BODY, 22, CREAM)
+	var subtitles := PanelContainer.new()
+	subtitles.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shade := StyleBoxFlat.new()
+	shade.bg_color = Color("#101017c9")
+	shade.set_corner_radius_all(8)
+	shade.content_margin_left = 20
+	shade.content_margin_right = 20
+	shade.content_margin_top = 10
+	shade.content_margin_bottom = 10
+	subtitles.add_theme_stylebox_override("panel", shade)
+	add_child(subtitles)
+	subtitles.set_anchors_and_offsets_preset(PRESET_CENTER_BOTTOM)
+	subtitles.offset_left = -360
+	subtitles.offset_right = 360
+	subtitles.offset_top = -107
+	subtitles.offset_bottom = -24
+	var lines := VBoxContainer.new()
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	subtitles.add_child(lines)
+	_chapter = _subtitle(lines, MONO, 13, Color("#e9c478"))
+	_caption = _subtitle(lines, BODY, 20, CREAM)
 	_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_story = _button(footer, Rect2(700, 26, 239, 50), false)
-	_story.pressed.connect(func() -> void: _show_film(not looping))
-	_play = _button(footer, Rect2(955, 26, 246, 50), true)
-	_play.text = "Entrar al puesto  [Intro]"
-	_play.pressed.connect(_play_game)
 
 
-func _panel(bounds: Rect2, fill: Color) -> Panel:
-	var panel := Panel.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.position = bounds.position
-	panel.size = bounds.size
-	panel.add_theme_stylebox_override("panel", _style(fill, Color("#41516a")))
-	add_child(panel)
-	return panel
-
-
-func _style(color: Color, edge: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = edge
-	style.set_border_width_all(1)
-	return style
-
-
-func _label(
-	parent: Control, title: String, bounds: Rect2, font: Font, font_size: int, color: Color
-) -> Label:
+func _subtitle(parent: Control, font: Font, font_size: int, color: Color) -> Label:
 	var label := Label.new()
-	label.text = title
-	label.position = bounds.position
-	label.size = bounds.size
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_override("font", font)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
@@ -156,22 +133,21 @@ func _label(
 	return label
 
 
-func _button(parent: Control, bounds: Rect2, primary: bool) -> Button:
+static func corner_button(caption: String) -> Button:
 	var button := Button.new()
-	button.position = bounds.position
-	button.size = bounds.size
+	button.text = caption
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.add_theme_font_override("font", BODY)
-	button.add_theme_font_size_override("font_size", 19)
-	button.add_theme_color_override("font_color", INK if primary else CREAM)
-	button.add_theme_color_override("font_hover_color", INK)
-	button.add_theme_color_override("font_focus_color", INK if primary else CREAM)
-	button.add_theme_color_override("font_pressed_color", INK)
-	button.add_theme_stylebox_override("normal", _style(AMBER if primary else INK, AMBER))
-	button.add_theme_stylebox_override("hover", _style(CREAM, CREAM))
-	button.add_theme_stylebox_override("pressed", _style(CYAN, CYAN))
-	var focus := _style(Color.TRANSPARENT, CYAN)
-	focus.set_border_width_all(3)
-	button.add_theme_stylebox_override("focus", focus)
-	parent.add_child(button)
+	button.add_theme_font_size_override("font_size", 17)
+	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+		button.add_theme_color_override(state, CREAM)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("#14151a78") if state == "normal" else Color("#14151ad1")
+		style.set_corner_radius_all(7)
+		if state == "focus":
+			style.bg_color = Color.TRANSPARENT
+			style.border_color = CREAM
+			style.set_border_width_all(2)
+		button.add_theme_stylebox_override(state, style)
 	return button

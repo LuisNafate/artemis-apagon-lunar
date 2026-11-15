@@ -160,3 +160,9 @@
 - Se integró la apertura en la portada de la campaña. El viaje dura 16 s y el alunizaje se repite cada 4 s. Hay subtítulos en español, entrada directa al menú con Intro, salto con Esc y repetición con H. Los dos OGV Theora de 1280 × 720 incluyen los 480 fotogramas a 24 fps del montaje original.
 - Se integró sobre la revisión del selector que incluye el modelo `luna_bases.glb`. El código de Blender y la codificación se conservan en `tools/`.
 - Godot 4.7.2 (Windows). Verificados formato, lint, importación, arranque, transición natural al bucle, repetición y acceso al menú con Intro. Academia 16/3910, Puesto 7/75 y 3D 3/35 sin fallos. Cresta conserva errores de compilación en su prueba antigua de rig. La suite de campaña comprueba la portada y reporta 17 fallos en los flujos de tutorial, lanzamiento y recompensas.
+
+## 2026-11-15 - Menú de modos inspirado en PEAK (revisión 19)
+
+- La intro reproduce viaje y alunizaje una vez. Saltar en la esquina superior izquierda y Esc abren el menú de modos. Repetir intro aparece como acción secundaria arriba a la derecha del menú.
+- Menú sobre la escena lunar a pantalla completa, con título crema y botones tipo cartel. Jugar solo, crear o unirse en línea, continuar, roles y archivo conservan sus flujos.
+- Godot 4.7.2 (Windows, Forward+). Capturas a 1280 × 720 y prueba de clic en ambos controles de esquina. Verificados fin natural, repetición, Esc y entrada al selector de bases. Formato, lint, importación, arranque y suites Academia, Puesto y 3D correctos. La prueba de rig Cresta sigue sin compilar y la suite de campaña mantiene los 17 fallos del corte anterior.

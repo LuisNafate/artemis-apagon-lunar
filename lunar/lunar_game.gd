@@ -102,14 +102,21 @@ func _ready() -> void:
 	if profile.error != OK:
 		ui.wait_for_guest("PERFIL LOCAL", "", "No se pudo leer el progreso guardado.")
 	else:
-		net = &"title"
-		var layer := CanvasLayer.new()
-		layer.layer = 2
-		add_child(layer)
-		opening = LunarOpening.new()
-		layer.add_child(opening)
-		opening.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		opening.enter_requested.connect(func() -> void: _choose("title_enter", ""))
+		_show_opening()
+
+
+func _show_opening() -> void:
+	if is_instance_valid(opening):
+		return
+	net = &"title"
+	ui.hide_lobby()
+	var layer := CanvasLayer.new()
+	layer.layer = 2
+	add_child(layer)
+	opening = LunarOpening.new()
+	opening.enter_requested.connect(func() -> void: _choose("title_enter", ""))
+	layer.add_child(opening)
+	opening.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _surface_camera() -> void:
@@ -187,6 +194,8 @@ func _choose(action: String, argument: String) -> void:
 			net = &"lobby"
 			_surface_camera()
 			ui.lobby(profile, "")
+		"title_replay":
+			_show_opening()
 		"lobby":
 			ui.lobby(profile, "")
 		"bases":

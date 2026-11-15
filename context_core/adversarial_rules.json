@@ -1,5 +1,5 @@
 {
-  "revision": 18,
+  "revision": 19,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -453,8 +453,8 @@
       "VAC-18"
     ],
     "opening": {
-      "rule": "La portada se puede omitir o repetir sin avanzar la misión. Entrar detiene el vídeo y abre el menú vigente.",
-      "fallback": "Si falta un clip se muestra el póster y se puede entrar."
+      "rule": "Saltar o completar ambos clips abre el menú de modos. Repetir intro vuelve a mostrar el viaje sin avanzar la misión.",
+      "fallback": "Si falta un clip se omite. El menú de modos usa el póster lunar."
     }
   },
   "distribution_checks": {
