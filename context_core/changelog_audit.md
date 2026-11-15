@@ -223,3 +223,8 @@
 
 - Godot 4.7.2 (Windows, headless). `OpenRoutes` (AStarGrid2D de celdas de 0,5 m con offset de media celda sobre los chunks cargados; lo no cargado es sólido) y `RoutePlanner`, que decide la ruta al tocar: dentro del rectángulo plano de la base, `LunarRoutes`; fuera y a ≤ `tap_route_radius`, `OpenRoutes`; base↔exterior, `LunarRoutes` hasta el borde plano y `OpenRoutes` desde él; más lejos, recta de un punto (destino en la base sin ventana cargada conserva `LunarRoutes`). La rejilla solo cubre los chunks a ≤ `tap_route_radius` + 2 m del origen y se reconstruye perezosamente al tocar (si cambió `loaded_coords` o la ventana); caminar no reconstruye (~7 ms por toque en escritorio). `tests/verify.ps1`: `--quit-after` de la suite abierta sube a 12000.
 - `tests/verify.ps1` en verde: Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 11 / 783, 0 fallos.
+
+## 2026-11-15 - Muro, puerta y flecha a la base (mundo abierto, tarea 4b)
+
+- Godot 4.7.2 (Windows, headless; capturas renderizadas en Forward+). `BaseEnclosure` (muro de 2,4 m con colision alrededor de `base_flat_rect`, murete sur de 1 m con cristal translucido, puerta corredera de 3 m en el muro este en (20,2; 1,9) que se abre a menos de 3 m de un piloto conectado) y `BaseArrow` (flecha plana junto al piloto propio hacia la puerta, con los metros; solo fuera de la base). Ajustes en `open_world.base_wall`. `RoutePlanner` cruza siempre por la puerta. `CrestWorld.open_settings` activa la campana; Cresta historica sin cambios. `lunar_game.gd` sigue en 1000 lineas.
+- `tests/verify.ps1` en verde: Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 12 / 873, 0 fallos.

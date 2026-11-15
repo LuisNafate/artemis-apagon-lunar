@@ -88,7 +88,7 @@ func _ready() -> void:
 	backdrop_layer.layer = -1
 	add_child(backdrop_layer)
 	backdrop_layer.add_child(sky)
-	world.campaign_layout = true
+	world.open_settings = sim.rules.open_world
 	add_child(world)
 	world.build()
 	world.build_lunar_workshop()
@@ -862,7 +862,7 @@ func _render(delta: float, player: int) -> void:
 		)
 		# Las cajas sueltas siguen en `sim.crates`; solo se ocultan si su chunk no esta cargado.
 		mesh.visible = crate.owner != -1 or streamer.is_ready_at(crate.point)
-	world.reflect(sim, _spots, delta)
+	world.reflect(sim, _spots, delta, _focus_points(), pilots[player].position)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
 	var view := sim.flight_stage()
 	var flight_phase := int(view.x)

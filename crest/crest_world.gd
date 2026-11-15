@@ -77,7 +77,14 @@ const NAMES := {
 ## En la campaña el hielo y el mineral se extraen de los depósitos del mundo abierto.
 static var campaign_stations := _without_quarries(STATIONS.merged(WORKSHOP))
 
+## Ajustes del mundo abierto: si se dan, la base es la de la campana (con muro, puerta y flecha).
+var open_settings: Dictionary = {}:
+	set(value):
+		open_settings = value
+		campaign_layout = not value.is_empty()
 var campaign_layout := false
+var enclosure: BaseEnclosure
+var base_arrow: BaseArrow
 var deck_index := 0
 var descent_stage: Node3D
 var ascent_stage: Node3D
@@ -116,6 +123,8 @@ static func _without_quarries(stations: Dictionary) -> Dictionary:
 func build() -> void:
 	_lighting()
 	_terrain()
+	if campaign_layout:
+		_build_enclosure()
 	nobile_relief = NOBILE_RELIEF.instantiate()
 	nobile_relief.position = (
 		Vector3(-10.0, 0.015, -14.6) if campaign_layout else Vector3(-6.0, 0.015, 8.77)
@@ -260,8 +269,15 @@ func nearest(point: Vector3, tutorial: bool, supply: bool = false) -> StringName
 	return result
 
 
-func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> void:
+func reflect(
+	sim: CrestSim,
+	active_spots: Array[StringName],
+	delta: float,
+	connected: Array[Vector3] = [],
+	own := Vector3.ZERO
+) -> void:
 	_mission_clock += delta
+	_update_base(connected, own)
 	var storm := sim.storm_active()
 	var power := 0.22 if sim.shadow_active() else 1.3
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
@@ -551,6 +567,24 @@ func _water_machine(point: Vector3) -> Node3D:
 		root.add_child(model)
 	_water_machine_full.hide()
 	return root
+
+
+## Puerta y flecha de regreso: se actualizan con los pilotos conectados y el piloto propio.
+func _update_base(connected: Array[Vector3], own: Vector3) -> void:
+	if enclosure == null:
+		return
+	enclosure.update_door(connected)
+	var platform := Rect2(-HALF_X, -HALF_Z, HALF_X * 2.0, HALF_Z * 2.0)
+	base_arrow.point_to(own, enclosure.door_point(), not platform.has_point(Vector2(own.x, own.z)))
+
+
+func _build_enclosure() -> void:
+	enclosure = BaseEnclosure.new(open_settings)
+	add_child(enclosure)
+	enclosure.build()
+	base_arrow = BaseArrow.new(open_settings)
+	add_child(base_arrow)
+	base_arrow.build()
 
 
 func _walkways() -> void:

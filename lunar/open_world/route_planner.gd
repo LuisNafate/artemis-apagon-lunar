@@ -3,11 +3,11 @@ extends RefCounted
 
 ## Decide como llega el piloto a un punto tocado.
 ## - Origen y destino dentro del rectangulo plano de la base: LunarRoutes (rejilla sondeada).
-## - Resto, con el destino a <= `tap_route_radius` y dentro de la ventana cargada: OpenRoutes.
-##   Si un extremo esta en la base y el otro fuera, la ruta pasa por el punto del borde plano
-##   mas cercano al extremo exterior: LunarRoutes dentro, OpenRoutes fuera.
-## - Destino mas lejos (o sin ruta): linea recta, un unico punto; si el destino esta en la base,
-##   LunarRoutes como siempre (el piloto cruza en recta hasta la rejilla y sigue la ruta).
+## - Un extremo en la base y el otro fuera: la ruta cruza el muro por la puerta. LunarRoutes
+##   dentro hasta la puerta; fuera, OpenRoutes desde la puerta si el punto esta a
+##   <= `tap_route_radius` y dentro de la ventana cargada, y si no, linea recta.
+## - Los dos fuera, a <= `tap_route_radius` y dentro de la ventana cargada: OpenRoutes.
+## - Los dos fuera y mas lejos (o sin ruta): linea recta, un unico punto.
 
 var open := OpenRoutes.new()
 var _streamer: ChunkStreamer
@@ -30,41 +30,56 @@ func update(streamer: ChunkStreamer) -> void:
 func plan(
 	base: LunarRoutes, start: Vector3, end: Vector3, settings: Dictionary
 ) -> PackedVector2Array:
-	var values: Array = settings.base_flat_rect
-	var flat := Rect2(float(values[0]), float(values[1]), float(values[2]), float(values[3]))
+	var flat := BaseEnclosure.flat_rect(settings)
 	var start_in := flat.has_point(Vector2(start.x, start.z))
 	var end_in := flat.has_point(Vector2(end.x, end.z))
 	if start_in and end_in:
 		return base.path(start, end)
-	# Sin ruta abierta: dentro de la base sigue valiendo LunarRoutes (como antes); fuera, recta.
-	var straight := base.path(start, end) if end_in else PackedVector2Array([Vector2(end.x, end.z)])
-	var radius := float(settings.tap_route_radius)
-	if Vector2(end.x - start.x, end.z - start.z).length() > radius:
-		return straight
-	if _streamer == null:
-		return straight
-	open.prepare(_streamer, start, radius, float(settings.chunk_size), _dirty)
-	_dirty = false
-	if not (open.covers(start) and open.covers(end)):
-		return straight
-	var result := PackedVector2Array()
 	if start_in or end_in:
-		var inner := start if start_in else end
-		var outer := end if start_in else start
-		var edge2 := _clamp(flat.grow(-open.cell_size()), Vector2(outer.x, outer.z))
-		var edge := Vector3(edge2.x, 0.0, edge2.y)
-		if start_in:
-			result = base.path(inner, edge)
-			result.append_array(open.path(edge, outer))
-		else:
-			result = open.path(outer, edge)
-			result.append_array(base.path(edge, inner))
+		return _through_door(base, start, end, start_in, settings)
+	return _outside(start, end, settings)
+
+
+## Entra o sale por la puerta: dentro, LunarRoutes hasta un punto antes de ella; fuera, la
+## ruta abierta desde otro punto despues de ella.
+func _through_door(
+	base: LunarRoutes, start: Vector3, end: Vector3, start_in: bool, settings: Dictionary
+) -> PackedVector2Array:
+	var door := BaseEnclosure.door_at(settings)
+	var gate := Vector3(float(settings.base_wall.gate_distance), 0.0, 0.0)
+	var door2 := Vector2(door.x, door.z)
+	var result := PackedVector2Array()
+	if start_in:
+		result = base.path(start, door - gate)
+		result.append(door2)
+		result.append_array(_outer_leg(door + gate, end, settings))
 	else:
-		result = open.path(start, end)
-	return result if not result.is_empty() else straight
+		result = _outer_leg(start, door + gate, settings)
+		result.append(door2)
+		result.append_array(base.path(door - gate, end))
+	return result
 
 
-static func _clamp(rect: Rect2, point: Vector2) -> Vector2:
-	return Vector2(
-		clampf(point.x, rect.position.x, rect.end.x), clampf(point.y, rect.position.y, rect.end.y)
-	)
+## Tramo de fuera entre un punto y la puerta (en cualquier sentido, `a` -> `b`): ruta abierta
+## si es corto y esta cargado; si no, linea recta al extremo.
+func _outer_leg(a: Vector3, b: Vector3, settings: Dictionary) -> PackedVector2Array:
+	var straight := PackedVector2Array([Vector2(b.x, b.z)])
+	var path := _open_path(a, b, settings)
+	return path if not path.is_empty() else straight
+
+
+func _outside(start: Vector3, end: Vector3, settings: Dictionary) -> PackedVector2Array:
+	var path := _open_path(start, end, settings)
+	return path if not path.is_empty() else PackedVector2Array([Vector2(end.x, end.z)])
+
+
+## Ruta de OpenRoutes entre dos puntos de fuera; vacia si estan lejos, sin chunks o sin camino.
+func _open_path(a: Vector3, b: Vector3, settings: Dictionary) -> PackedVector2Array:
+	var radius := float(settings.tap_route_radius)
+	if _streamer == null or Vector2(b.x - a.x, b.z - a.z).length() > radius:
+		return PackedVector2Array()
+	open.prepare(_streamer, a, radius, float(settings.chunk_size), _dirty)
+	_dirty = false
+	if not (open.covers(a) and open.covers(b)):
+		return PackedVector2Array()
+	return open.path(a, b)
