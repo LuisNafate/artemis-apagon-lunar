@@ -426,7 +426,7 @@ func _mode_selected(solo: bool) -> void:
 
 func _select_base(index: int) -> void:
 	sim.campaign.select(StringName(sim.campaign.data.order[index]))
-	world.set_base(sim.campaign.base.soil)
+	world.set_base(sim.campaign.base.soil, sim.campaign.id)
 	_show(&"briefing")
 	_refresh(0.0)
 

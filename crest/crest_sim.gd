@@ -16,7 +16,8 @@ const SCIENCE_TITLES := {
 	"neows_2016_ft14": "NeoWs · Asteroide 2016 FT14",
 	"tle_iss_25544": "ISS · Órbita terrestre",
 	"ntrs_life_support_mass": "ECLSS · Aire, agua y comida",
-	"ntrs_lunar_radio": "Radio · Hablar con la Tierra"
+	"ntrs_lunar_radio": "Radio · Hablar con la Tierra",
+	"nasa_lro_3d": "LRO · Cartografiar la Luna"
 }
 
 var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH)).coop_tycoon
@@ -253,6 +254,8 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 func science_text(record: Dictionary) -> String:
 	var values: Dictionary = record.get("observation", record.get("reference", {}))
 	match String(record.id):
+		"nasa_lro_3d":
+			return String(values.description)
 		"donki_sep_20240510":
 			return (
 				"NASA CCMC registró un aviso: %s. El refugio reduce la exposición en la demo."
@@ -324,6 +327,8 @@ func _valid_record(record: Dictionary) -> bool:
 	if not data is Dictionary:
 		return false
 	match String(record.get("id", "")):
+		"nasa_lro_3d":
+			return data.get("description") is String
 		"donki_sep_20240510":
 			return data.get("messageIssueTime") is String
 		"radlab_artemis_i_hera":

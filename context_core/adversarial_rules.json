@@ -1,5 +1,5 @@
 {
-  "revision": 10,
+  "revision": 13,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -227,6 +227,66 @@
         "effect": "El mapa termina su montaje visual y el tutorial arranca con tiempo cero.",
         "counter": "Usa Esc o deja terminar el relato.",
         "acceptance": "Comparar la llegada natural y la omisión."
+      }
+    ]
+  },
+  "art_integration_checks": {
+    "status": "specified",
+    "cases": [
+      {
+        "id": "AR01",
+        "condition": "La nueva malla invade el área de uso o el corredor.",
+        "check": "Comprobar entrada central al refugio, entrega de cajas y embarque con la física actual."
+      },
+      {
+        "id": "AR02",
+        "condition": "La vista de tres cuartos tapa al jugador, las cajas o el punto de interacción.",
+        "check": "Revisar cámara a 1280 × 720 y 1152 × 648 con un astronauta delante y otro detrás."
+      },
+      {
+        "id": "AR03",
+        "condition": "La noche o una alerta confunden refugio, yacimientos y rutas.",
+        "check": "Revisar contorno, pictograma e iluminación en día, noche y alerta."
+      },
+      {
+        "id": "AR04",
+        "condition": "Durante el montaje se mueve una raíz física o cambia la escala final.",
+        "check": "Comparar la pose final del montaje con el mapa tras omitir la introducción."
+      },
+      {
+        "id": "AR05",
+        "condition": "El modelo descargado alinea su malla en un punto distinto del origen de interacción.",
+        "check": "Verificar el alcance visual de las mallas de la antena y el receptor respecto del punto de radio y comprobar que la nave se oculta al omitir la introducción."
+      }
+    ]
+  },
+  "map_redesign_checks": {
+    "status": "specified",
+    "cases": [
+      {
+        "id": "MAP01",
+        "risk": "Una transición crea un escalón o deja a un jugador fuera del mapa.",
+        "check": "Recorrer subida, descanso y bajada cargando una caja en ambos sentidos. Verificar un retorno desde cada estación."
+      },
+      {
+        "id": "MAP02",
+        "risk": "La cota del equipo o las paredes bloquean la interacción y la cámara.",
+        "check": "Revisar puntos de acción a su altura local, zona de refugio y encuadres 1280 × 720 y 1152 × 648."
+      },
+      {
+        "id": "MAP03",
+        "risk": "Una sombra visual se interpreta como corte de radio, o viceversa.",
+        "check": "Mostrar los dos estados con símbolos independientes. Verificar la colocación de paneles y radio en su relieve."
+      },
+      {
+        "id": "MAP04",
+        "risk": "La falta de luz o de señal deja Haworth sin salida alcanzable.",
+        "check": "Demostrar un itinerario ganable con carga inicial mínima y un desvío, y definir una ventana de lanzamiento que pueda abrir en sombra."
+      },
+      {
+        "id": "MAP05",
+        "risk": "Se atribuyen a NASA alturas, ciclos, yacimientos o dificultades del juego.",
+        "check": "Etiquetar documentación de fuente, recorte geográfico si existe y parámetros de juego por separado."
       }
     ]
   }

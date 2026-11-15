@@ -21,6 +21,7 @@ func _ready() -> void:
 	_campaign()
 	await _input_and_world()
 	if "--crest-capture" in OS.get_cmdline_user_args():
+		await _capture_nobile()
 		await _capture_liftoff()
 	else:
 		await _map_route(false)
@@ -147,7 +148,7 @@ func _power_and_hazards() -> void:
 func _science() -> void:
 	cases += 1
 	var sim := CrestSim.new()
-	_check(sim.records.size() == 6, "todas las muestras disponibles offline")
+	_check(sim.records.size() == 7, "todas las muestras disponibles offline")
 	for record in sim.records:
 		_check(
 			(
@@ -232,10 +233,26 @@ func _input_and_world() -> void:
 	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("user://crest-lobby.png")
+	_tap(KEY_F1)
+	_tap(KEY_LEFT)
+	_check(game.hud._science_preview.visible, "archivo muestra el modelo LRO sin red")
+	_check(is_instance_valid(game.hud._science_model), "LRO fue instanciado")
+	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("user://crest-lro.png")
+	_tap(KEY_RIGHT)
+	_check(not game.hud._science_preview.visible, "otras fichas esconden el visor 3D")
+	_tap(KEY_F1)
 	_tap(KEY_2)
+	_tap(KEY_2)
+	_check(game.world.nobile_relief.visible, "el horizonte LOLA aparece en Nobile")
+	_tap(KEY_ESCAPE)
 	_tap(KEY_1)
+	_check(not game.world.nobile_relief.visible, "el relieve pertenece a un mapa")
 	_tap(KEY_1)
 	_check(game._menu == &"intro" and game.intro.visible, "historia tras elegir Cresta")
+	_check(game.world.transport.visible, "la nave derivada de Apolo aparece en el descenso")
 	_check(game.sim.elapsed == 0.0, "la animación no gasta tiempo")
 	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
 		game.intro._process(3.2)
@@ -245,6 +262,14 @@ func _input_and_world() -> void:
 		get_viewport().get_texture().get_image().save_png("user://crest-story.png")
 	_tap(KEY_ESCAPE)
 	await get_tree().physics_frame
+	_check(not game.world.transport.visible, "la nave se retira al salir de la introducción")
+	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
+	for part in ["satelliteDish_detailed", "machine_wirelessCable"]:
+		var model := game.world.find_child(part, true, false) as MeshInstance3D
+		_check(
+			model != null and radio.distance_to(model.global_position) < 1.6,
+			"modelo junto a la radio"
+		)
 	_check(game.sim.phase == &"tutorial" and not game.sim.solo, "selector cooperativo por teclado")
 	_tap(KEY_E)
 	await get_tree().physics_frame
@@ -309,6 +334,22 @@ func _input_and_world() -> void:
 		"en individual se pasa y entrega alternando"
 	)
 	solo.queue_free()
+
+
+func _capture_nobile() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var game := GAME.instantiate()
+	add_child(game)
+	await get_tree().physics_frame
+	_tap(KEY_2)
+	_tap(KEY_2)
+	_tap(KEY_3)
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("user://crest-nobile-lola.png")
+	game.queue_free()
+	await get_tree().process_frame
 
 
 func _capture_liftoff() -> void:

@@ -4,6 +4,7 @@ extends Control
 
 signal selected(action: StringName)
 
+const LRO := preload("res://assets/props_luna/nasa/lro_miniatura.glb")
 const DISPLAY := preload("res://assets/ui/fonts/BarlowCondensed-Bold.ttf")
 const MONO := CrestWorld.MONO
 const BODY := preload("res://assets/ui/fonts/Barlow-SemiBold.ttf")
@@ -39,6 +40,9 @@ var _dialog_kicker: Label
 var _dialog_body: Label
 var _dialog_note: Label
 var _buttons: Array[Button] = []
+var _science_preview: SubViewportContainer
+var _science_viewport: SubViewport
+var _science_model: Node3D
 var _mode := &""
 
 
@@ -98,6 +102,11 @@ func build() -> void:
 		player.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_players.append(player)
 	_build_dialog()
+
+
+func _process(delta: float) -> void:
+	if is_instance_valid(_science_model) and _science_preview.is_visible_in_tree():
+		_science_model.rotation.y += minf(delta, 0.1) * 0.45
 
 
 func update_status(
@@ -160,6 +169,7 @@ func update_status(
 func menu(mode: StringName, sim: CrestSim, science_index: int = 0) -> void:
 	_mode = mode
 	_shade.visible = mode != &""
+	_show_science_model(false)
 	if mode == &"":
 		return
 	var options: Array[String] = []
@@ -221,6 +231,7 @@ func menu(mode: StringName, sim: CrestSim, science_index: int = 0) -> void:
 				var record := sim.records[science_index]
 				_dialog_title.text = CrestSim.SCIENCE_TITLES[record.id]
 				_dialog_body.text = sim.science_text(record)
+				_show_science_model(record.id == "nasa_lro_3d")
 				_dialog_note.text = (
 					"%02d / %02d    %s    ·    Esc / F1 para cerrar"
 					% [science_index + 1, sim.records.size(), record.provider]
@@ -452,7 +463,52 @@ func _build_dialog() -> void:
 		_dialog.add_child(button)
 		_buttons.append(button)
 		button.pressed.connect(func() -> void: selected.emit(StringName("%s_%d" % [_mode, index])))
+	_build_science_preview()
 	_shade.hide()
+
+
+func _build_science_preview() -> void:
+	_science_preview = SubViewportContainer.new()
+	_science_preview.position = Vector2(466, 69)
+	_science_preview.size = Vector2(203, 123)
+	_science_preview.stretch = true
+	_science_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dialog.add_child(_science_preview)
+	_science_viewport = SubViewport.new()
+	_science_viewport.world_3d = World3D.new()
+	_science_viewport.transparent_bg = true
+	_science_preview.add_child(_science_viewport)
+	var camera := Camera3D.new()
+	camera.position = Vector3(2.5, 2.3, 4.3)
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 3.1
+	_science_viewport.add_child(camera)
+	camera.look_at(Vector3.ZERO)
+	camera.make_current()
+	var key := DirectionalLight3D.new()
+	key.rotation_degrees = Vector3(-45, 30, 0)
+	key.light_energy = 1.15
+	_science_viewport.add_child(key)
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-14, -145, 0)
+	fill.light_color = Color("#b2ccfa")
+	fill.light_energy = 0.65
+	_science_viewport.add_child(fill)
+	_show_science_model(false)
+
+
+func _show_science_model(display: bool) -> void:
+	_science_preview.visible = display
+	_science_viewport.render_target_update_mode = (
+		SubViewport.UPDATE_WHEN_VISIBLE if display else SubViewport.UPDATE_DISABLED
+	)
+	if display and not is_instance_valid(_science_model):
+		_science_model = LRO.instantiate()
+		_science_model.rotation_degrees.y = 33
+		_science_viewport.add_child(_science_model)
+	if is_instance_valid(_science_model):
+		_science_model.visible = display
+	_dialog_body.size.x = 425.0 if display else 640.0
 
 
 func _meter(parent: Control, bounds: Rect2, tint: Color) -> ProgressBar:

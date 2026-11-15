@@ -93,6 +93,16 @@ func _draw() -> void:
 	draw_string(
 		BODY, Vector2(68, 626), _dispatch if _beat == 2 else BEATS[_beat][1], 0, -1, 27, Color.WHITE
 	)
+	if _beat == 0:
+		draw_string(
+			MONO,
+			Vector2(68, 655),
+			"Descenso inspirado en Apolo · modelo NASA adaptado",
+			0,
+			-1,
+			13,
+			BLUE
+		)
 	draw_rect(Rect2(68, 674, 1144, 3), Color("#364966"))
 	draw_rect(Rect2(68, 674, 1144 * progress, 3), BLUE)
 	if _beat == 1:

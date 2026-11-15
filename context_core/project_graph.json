@@ -1,5 +1,5 @@
 {
-  "revision": 10,
+  "revision": 13,
   "nodes": [
     {
       "id": "config",
@@ -762,6 +762,187 @@
       "kind": "mechanic",
       "title": "Calendario independiente por base",
       "status": "implemented"
+    },
+    {
+      "id": "lunar_model_catalog",
+      "kind": "design",
+      "path": "context_core/catalogo_modelado_lunar.md",
+      "status": "specified"
+    },
+    {
+      "id": "south_pole_map_catalog",
+      "kind": "design",
+      "path": "context_core/catalogo_mapas_polo_sur.md",
+      "status": "specified",
+      "scope": "planned_map_redesign"
+    },
+    {
+      "id": "nasa_2024_regions",
+      "kind": "source",
+      "title": "NASA 24-136 · anuncio del 28 de octubre de 2024",
+      "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+    },
+    {
+      "id": "ntrs_south_pole_selection",
+      "kind": "source",
+      "title": "NASA NTRS 20250011660 · criterios de selección",
+      "url": "https://ntrs.nasa.gov/citations/20250011660"
+    },
+    {
+      "id": "nasa_artemis_nov_2026",
+      "kind": "source",
+      "title": "NASA · actualización de Artemis de noviembre de 2026",
+      "url": "https://www.nasa.gov/missions/artemis/nasa-shares-plans-to-accelerate-artemis-return-to-moon/"
+    },
+    {
+      "id": "pgda_lola_south_pole",
+      "kind": "source",
+      "title": "NASA PGDA · topografía LOLA del polo sur",
+      "url": "https://pgda.gsfc.nasa.gov/products/78"
+    },
+    {
+      "id": "pgda_sdem_south_pole",
+      "kind": "source",
+      "title": "NASA PGDA · topografía mejorada de trece regiones originales",
+      "url": "https://pgda.gsfc.nasa.gov/products/104"
+    },
+    {
+      "id": "nasa_haworth_ice_context",
+      "kind": "source",
+      "title": "NASA LRO · evidencia de hielo en regiones en sombra",
+      "url": "https://science.nasa.gov/solar-system/moon/nasas-lro-lunar-ice-deposits-are-widespread/"
+    },
+    {
+      "id": "region_slater_plain",
+      "kind": "landing_region",
+      "title": "Slater Plain",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "facil",
+      "gameplay_proposal": "llanura_logistica"
+    },
+    {
+      "id": "region_malapert_massif",
+      "kind": "landing_region",
+      "title": "Malapert Massif",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "facil",
+      "gameplay_proposal": "subida_con_enlace"
+    },
+    {
+      "id": "region_mons_mouton_plateau",
+      "kind": "landing_region",
+      "title": "Mons Mouton Plateau",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "facil",
+      "gameplay_proposal": "meseta_solar_con_hielo_lejano"
+    },
+    {
+      "id": "region_mons_mouton",
+      "kind": "landing_region",
+      "title": "Mons Mouton",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "medio",
+      "gameplay_proposal": "rampas_y_refugio_en_ladera"
+    },
+    {
+      "id": "region_peak_near_cabeus_b",
+      "kind": "landing_region",
+      "title": "Peak near Cabeus B",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "medio",
+      "gameplay_proposal": "cresta_iluminada_y_extraccion_en_sombra"
+    },
+    {
+      "id": "region_nobile_rim_1",
+      "kind": "landing_region",
+      "title": "Nobile Rim 1",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "medio",
+      "gameplay_proposal": "interrupciones_de_enlace"
+    },
+    {
+      "id": "region_de_gerlache_rim_2",
+      "kind": "landing_region",
+      "title": "de Gerlache Rim 2",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "dificil",
+      "gameplay_proposal": "noches_largas_y_baterias"
+    },
+    {
+      "id": "region_nobile_rim_2",
+      "kind": "landing_region",
+      "title": "Nobile Rim 2",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "dificil",
+      "gameplay_proposal": "relieve_irregular_y_contacto_escaso"
+    },
+    {
+      "id": "region_haworth",
+      "kind": "landing_region",
+      "title": "Haworth",
+      "status": "map_specified",
+      "selection_date": "2024-10-28",
+      "game_difficulty": "dificil",
+      "gameplay_proposal": "sombra_permanente_y_baterias"
+    },
+    {
+      "id": "nasa_3d_hub",
+      "kind": "source",
+      "title": "NASA 3D Resources",
+      "url": "https://science.nasa.gov/3d-resources/"
+    },
+    {
+      "id": "nasa_apollo_model",
+      "kind": "source",
+      "title": "NASA / Michael D. Carbajal · Apollo Lunar Module",
+      "url": "https://science.nasa.gov/3d-resources/apollo-lunar-module/"
+    },
+    {
+      "id": "nasa_lro_model",
+      "kind": "source",
+      "title": "NASA / Brian E. Kumanchik y Christian A. Lopez · LRO",
+      "url": "https://science.nasa.gov/3d-resources/lunar-reconnaissance-orbiter-b/"
+    },
+    {
+      "id": "apollo_descenso",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/apollo_descenso.glb",
+      "status": "implemented"
+    },
+    {
+      "id": "lro_miniatura",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/lro_miniatura.glb",
+      "status": "implemented"
+    },
+    {
+      "id": "nobile_lola_mesh",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/relieve_nobile_lola.glb",
+      "status": "implemented"
+    },
+    {
+      "id": "nasa_assets_provenance",
+      "kind": "data",
+      "path": "assets/props_luna/nasa/procedencia.md"
+    },
+    {
+      "id": "nasa_blender_tool",
+      "kind": "script",
+      "path": "tools/optimizar_modelos_nasa.py"
+    },
+    {
+      "id": "lola_terrain_tool",
+      "kind": "script",
+      "path": "tools/generar_relieve_nobile.py"
     }
   ],
   "edges": [
@@ -1894,6 +2075,261 @@
       "coop_test_first_run",
       "described_by",
       "junior_playtest"
+    ],
+    [
+      "lunar_model_catalog",
+      "takes_dimensions_from",
+      "crest_world"
+    ],
+    [
+      "lunar_model_catalog",
+      "takes_dimensions_from",
+      "field_pilot"
+    ],
+    [
+      "lunar_model_catalog",
+      "uses_camera_from",
+      "crest_game"
+    ],
+    [
+      "lunar_model_catalog",
+      "covers",
+      "coop_crest"
+    ],
+    [
+      "lunar_model_catalog",
+      "covers",
+      "coop_nobile"
+    ],
+    [
+      "lunar_model_catalog",
+      "covers",
+      "coop_taurus"
+    ],
+    [
+      "lunar_model_catalog",
+      "reuses",
+      "kenney_props"
+    ],
+    [
+      "lunar_model_catalog",
+      "references",
+      "lunar_asset_register"
+    ],
+    [
+      "lunar_model_catalog",
+      "uses_review_protocol",
+      "junior_playtest"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "ntrs_south_pole_selection"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "nasa_artemis_nov_2026"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "pgda_lola_south_pole"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "pgda_sdem_south_pole"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "nasa_haworth_ice_context"
+    ],
+    [
+      "region_slater_plain",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_slater_plain"
+    ],
+    [
+      "region_malapert_massif",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_malapert_massif"
+    ],
+    [
+      "region_mons_mouton_plateau",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_mons_mouton_plateau"
+    ],
+    [
+      "region_mons_mouton",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_mons_mouton"
+    ],
+    [
+      "region_peak_near_cabeus_b",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_peak_near_cabeus_b"
+    ],
+    [
+      "region_nobile_rim_1",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_nobile_rim_1"
+    ],
+    [
+      "region_de_gerlache_rim_2",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_de_gerlache_rim_2"
+    ],
+    [
+      "region_nobile_rim_2",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_nobile_rim_2"
+    ],
+    [
+      "region_haworth",
+      "documented_in",
+      "nasa_2024_regions"
+    ],
+    [
+      "south_pole_map_catalog",
+      "specifies_map_for",
+      "region_haworth"
+    ],
+    [
+      "south_pole_map_catalog",
+      "reuses_specs_from",
+      "lunar_model_catalog"
+    ],
+    [
+      "south_pole_map_catalog",
+      "uses_review_protocol",
+      "junior_playtest"
+    ],
+    [
+      "region_peak_near_cabeus_b",
+      "references_regional_context",
+      "source_lcross"
+    ],
+    [
+      "region_haworth",
+      "references_regional_context",
+      "nasa_haworth_ice_context"
+    ],
+    [
+      "apollo_descenso",
+      "derived_from",
+      "nasa_apollo_model"
+    ],
+    [
+      "lro_miniatura",
+      "derived_from",
+      "nasa_lro_model"
+    ],
+    [
+      "nasa_apollo_model",
+      "listed_in",
+      "nasa_3d_hub"
+    ],
+    [
+      "nasa_lro_model",
+      "listed_in",
+      "nasa_3d_hub"
+    ],
+    [
+      "nobile_lola_mesh",
+      "derived_from",
+      "pgda_lola_south_pole"
+    ],
+    [
+      "nobile_lola_mesh",
+      "depicts_part_of",
+      "region_nobile_rim_1"
+    ],
+    [
+      "crest_world",
+      "uses",
+      "apollo_descenso"
+    ],
+    [
+      "crest_world",
+      "uses_as_backdrop",
+      "nobile_lola_mesh"
+    ],
+    [
+      "crest_hud",
+      "displays",
+      "lro_miniatura"
+    ],
+    [
+      "nasa_blender_tool",
+      "generates",
+      "apollo_descenso"
+    ],
+    [
+      "nasa_blender_tool",
+      "generates",
+      "lro_miniatura"
+    ],
+    [
+      "lola_terrain_tool",
+      "generates",
+      "nobile_lola_mesh"
+    ],
+    [
+      "lunar_asset_register",
+      "references",
+      "nasa_assets_provenance"
+    ],
+    [
+      "south_pole_map_catalog",
+      "references",
+      "nasa_assets_provenance"
     ]
   ]
 }

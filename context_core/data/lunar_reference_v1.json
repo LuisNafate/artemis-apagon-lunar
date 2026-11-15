@@ -106,6 +106,15 @@
         "round_trip_seconds_rounded": 2.56
       },
       "use": "Retardo ideal de propagación. Procesamiento y pérdida de enlace tienen reglas separadas."
+    },
+    {
+      "id": "nasa_lro_3d",
+      "provider": "NASA",
+      "source_url": "https://science.nasa.gov/mission/lro/science-and-data/",
+      "reference": {
+        "description": "El orbitador LRO mide la superficie lunar con láser. Sus datos ayudan a estudiar pendientes e iluminación en el polo sur."
+      },
+      "use": "Miniatura adaptada del modelo de NASA 3D Resources."
     }
   ]
 }

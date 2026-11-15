@@ -1,5 +1,5 @@
 {
-  "revision": 10,
+  "revision": 13,
   "progress": "lunar_bases_campaign",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -377,7 +377,9 @@
     "radio_round_trip_seconds": 2.56,
     "data_snapshot": "context_core/data/lunar_reference_v1.json",
     "next": [
-      "Observar primeras partidas voluntarias con jugadores de 12 años"
+      "Observar primeras partidas voluntarias con jugadores de 12 años",
+      "Modelar y comprobar los tres prototipos de arte con las medidas y la cámara del catálogo",
+      "Validar el blockout de Slater Plain y el kit de rampas antes de producir el relieve de las demás regiones."
     ],
     "demo_zones": [
       "crest_habitat",
@@ -577,6 +579,62 @@
         "rations": 1
       },
       "intro_seconds": 14.5
+    },
+    "art_production": {
+      "status": "specified",
+      "catalog": "context_core/catalogo_modelado_lunar.md",
+      "briefs": 27,
+      "first_prototypes": [
+        "pasarela_kit",
+        "refugio_corte",
+        "carga_kit"
+      ],
+      "review_viewports": [
+        "1280x720",
+        "1152x648"
+      ],
+      "artwork_integration": "pending",
+      "nasa_assets": {
+        "status": "integrated",
+        "provenance": "assets/props_luna/nasa/procedencia.md",
+        "triangles": {
+          "apollo_descenso": {
+            "source": 97588,
+            "runtime": 8472
+          },
+          "lro_miniatura": {
+            "source": 8142,
+            "runtime": 1701
+          },
+          "relieve_nobile_lola": {
+            "runtime": 1536
+          }
+        }
+      }
+    },
+    "map_redesign": {
+      "status": "specified",
+      "catalog": "context_core/catalogo_mapas_polo_sur.md",
+      "shared_production_briefs": 18,
+      "regional_production_briefs": 27,
+      "region_order": [
+        "slater_plain",
+        "malapert_massif",
+        "mons_mouton_plateau",
+        "mons_mouton",
+        "peak_near_cabeus_b",
+        "nobile_rim_1",
+        "de_gerlache_rim_2",
+        "nobile_rim_2",
+        "haworth"
+      ],
+      "first_blockouts": [
+        "slater_plain",
+        "nobile_rim_1",
+        "peak_near_cabeus_b"
+      ],
+      "topographic_data_integration": "nobile_backdrop_verified",
+      "campaign_integration": "pending"
     }
   }
 }

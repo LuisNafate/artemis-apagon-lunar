@@ -85,3 +85,21 @@
 - Godot 4.7.2. Formato y lint de 34 scripts, importación, arranque y cuatro regresiones correctas. Academia 16 casos y 3682 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 267. Las partidas completas de Cresta usaron teclado simulado en ambos modos. Para Nobile y Taurus-Littrow se verificaron los eventos propios y el lanzamiento con la nave abastecida. La revisión renderizada a 1280 × 720 pasó 9 casos y 83 comprobaciones e incluyó llegada, tutorial y despegue.
 - Skill probar-juego-con-ninos instalada y validada con quick_validate.py. La evaluación experta identificó la necesidad de explicar propelente y distinguir falta de señal de pérdida de luz. Se ajustaron ambos textos y se repitió la revisión. Pendiente una primera partida observada con jugadores de 12 años.
 - El ejecutable Windows exportado abrió con código 0. El archivo ZIP incluye el juego, licencias y registro de modelos.
+
+## Revisión 11 · Catálogo de modelado lunar
+
+- Especificadas 27 fichas de producción con orden de trabajo, materiales, medidas, pivotes, estados animables y presupuestos iniciales. Se verificaron los 14 anclajes del documento contra CrestWorld, la cámara contra CrestGame, la cápsula contra FieldPilot, los enlaces locales y los tres archivos GLB reutilizados.
+- Godot 4.7.2. tests/verify.ps1 validó formato y lint de 34 scripts, importación y arranque. Pasaron las regresiones de Academia 16/3693, Tablero 7/75, Apagón lunar 3/35 y Estación Cresta 10/267. Los cocientes indican casos y comprobaciones. Este corte documenta la producción. La verificación visual de los modelos nuevos corresponde a su integración.
+
+## Revisión 12 · Catálogo de las nueve regiones
+
+- Registrados el orden y la dificultad de la propuesta, 18 fichas de kit común y 27 regionales. Se verificaron los nueve nombres con el anuncio NASA 24-136 de 2024 y los criterios con NTRS 20250011660. Se documentó el estado de Artemis III y Artemis IV según la actualización de noviembre de 2026.
+- Comprobados los nombres y las dificultades entre el catálogo y el registro, los enlaces locales y la integridad del grafo. Los nuevos mapas están especificados. La adquisición de recortes de elevación, el modelado y la integración quedan como trabajo de producción.
+- Godot 4.7.2. tests/verify.ps1 pasó formato y lint de 34 scripts, importación, arranque y las cuatro regresiones. Academia 16 casos y 3738 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Estación Cresta 10 y 267.
+
+## Revisión 13 · Arte a partir de recursos de NASA
+
+- Descargados dos GLB desde NASA 3D Resources y el modelo de elevación LOLA Site06 desde PGDA. Blender 5.2.2 redujo Apolo de 97 588 a 8 472 triángulos y el orbitador LRO de 8 142 a 1 701. El horizonte de Nobile usa 1 536 triángulos a partir de un recorte comprobado en el GeoTIFF de 5 m/píxel. Se registraron autoría, URLs, huellas, medidas y comandos.
+- Se revisó en el motor el aterrizaje, la miniatura giratoria de LRO y el paisaje de Nobile. Durante la revisión se encontró que los GLB de Kenney traían el plato y el receptor desplazados. Ambos quedaron alineados con el punto de servicio de la radio.
+- Godot 4.7.2. Pasaron formato y lint de 34 scripts, importación, arranque y las cuatro regresiones. Academia 16 casos y 3767 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Estación Cresta 10 y 277. Con gráficos a 1280 × 720 y 1152 × 648 pasaron 9 casos y 93 comprobaciones en cada resolución.
+- Se verificó la exportación Windows x64 con los tres GLB y los datos sin conexión. El ejecutable abrió sin errores. El ZIP incluye créditos y procedencia. Los nueve mapas nuevos siguen en producción. El recorte de Nobile se usa como paisaje en el mapa actual.

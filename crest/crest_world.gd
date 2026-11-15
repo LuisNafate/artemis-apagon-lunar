@@ -2,9 +2,11 @@ class_name CrestWorld
 extends Node3D
 
 const MONO := preload("res://assets/ui/fonts/IBMPlexMono-Medium.ttf")
-const TRANSPORT := preload("res://assets/props_luna/kenney/transporte.glb")
+const TRANSPORT := preload("res://assets/props_luna/nasa/apollo_descenso.glb")
+const NOBILE_RELIEF := preload("res://assets/props_luna/nasa/relieve_nobile_lola.glb")
 const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
 const RECEIVER := preload("res://assets/props_luna/kenney/consola.glb")
+const RADIO_PIVOT_CORRECTION := Vector3(2.0, 0.0, 1.5)
 const BLUE := Color("#82ddff")
 const LIME := Color("#acd891")
 const AMBER := Color("#ffbc76")
@@ -58,6 +60,7 @@ var drill_upgrade: Node3D
 var training_desk: Node3D
 var crops: Node3D
 var transport: Node3D
+var nobile_relief: Node3D
 var supply_pallet: Node3D
 var shelter_shell: Node3D
 var _floor_color: StandardMaterial3D
@@ -69,13 +72,18 @@ var _mission_clock := 0.0
 func build() -> void:
 	_lighting()
 	_terrain()
+	nobile_relief = NOBILE_RELIEF.instantiate()
+	nobile_relief.position = Vector3(-6.0, 0.015, 8.77)
+	nobile_relief.rotation.y = PI
+	nobile_relief.scale = Vector3(0.71, 0.58, 1.0)
+	add_child(nobile_relief)
+	nobile_relief.hide()
 	_walkways()
 	_stations()
 	_build_rocket()
 	transport = TRANSPORT.instantiate()
 	transport.position = Vector3(-4, 0.25, 6.1)
-	transport.rotation_degrees.y = 66
-	transport.scale = Vector3.ONE * 2.0
+	transport.rotation_degrees.y = 21
 	add_child(transport)
 	transport.hide()
 	supply_pallet = _console(&"supply", LIME)
@@ -88,15 +96,16 @@ func build() -> void:
 	supply_pallet.hide()
 
 
-func set_base(soil_color: String) -> void:
+func set_base(soil_color: String, base_id: StringName) -> void:
 	_soil = Color(soil_color)
 	_floor_color.albedo_color = _soil
+	nobile_relief.visible = base_id == &"nobile"
 
 
 func animate_intro(progress: float) -> void:
 	transport.visible = progress < 0.64
 	var arrival := smoothstep(0.0, 0.31, progress)
-	transport.position = Vector3(lerpf(-12.0, -3.5, arrival), lerpf(4.8, 0.15, arrival), 3.6)
+	transport.position = Vector3(lerpf(-12.0, -3.5, arrival), lerpf(4.8, 0.04, arrival), 3.6)
 	shelter_shell.scale = Vector3(1.0, maxf(0.01, smoothstep(0.29, 0.52, progress)), 1.0)
 	rocket.scale = Vector3.ONE * maxf(0.01, smoothstep(0.44, 0.68, progress))
 	for index in range(_equipment.size()):
@@ -266,8 +275,8 @@ func _stations() -> void:
 		_disc(self, plant + Vector3(x, 1.17, -1.36), 0.436, 0.16, AMBER, 12)
 	_solid(plant + Vector3(0, 0.75, -1.36), Vector3(1.92, 1.5, 0.78))
 	var radio: Vector3 = STATIONS[&"radio"]
-	_equipment.append(_prop(ANTENNA, radio + Vector3(0.77, 0.06, -1.16), 3.05))
-	_equipment.append(_prop(RECEIVER, radio + Vector3(-0.73, 0.055, -0.95), 1.22))
+	_equipment.append(_radio_prop(ANTENNA, radio + Vector3(0.77, 0.06, -1.16), 3.05))
+	_equipment.append(_radio_prop(RECEIVER, radio + Vector3(-0.73, 0.055, -0.95), 1.22))
 	var refine: Vector3 = STATIONS[&"refinery"]
 	FieldWorld.box(self, refine + Vector3(0, 0.69, -1.32), Vector3(2.35, 1.36, 0.82), WHITE)
 	FieldWorld.box(self, refine + Vector3(0, 0.77, -0.89), Vector3(1.63, 0.32, 0.07), BLUE, true)
@@ -363,15 +372,14 @@ func _quarry(key: StringName, color: Color) -> void:
 	_marker(key, color)
 
 
-func _prop(scene: PackedScene, point: Vector3, model_scale: float) -> Node3D:
-	var prop: Node3D = scene.instantiate()
-	add_child(prop)
-	prop.position = point
-	prop.scale = Vector3.ONE * model_scale
+func _radio_prop(scene: PackedScene, point: Vector3, model_scale: float) -> Node3D:
 	var stand := Node3D.new()
 	add_child(stand)
 	stand.position = point
-	prop.reparent(stand)
+	var prop: Node3D = scene.instantiate()
+	prop.scale = Vector3.ONE * model_scale
+	prop.position = RADIO_PIVOT_CORRECTION * model_scale
+	stand.add_child(prop)
 	return stand
 
 

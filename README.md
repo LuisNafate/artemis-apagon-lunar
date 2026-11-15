@@ -12,11 +12,11 @@ En Windows ejecuta `Artemis-Ultima-Ventana.exe` de la demo. Para editarla, abre 
 | Dos jugadores, J1 | WASD | E | Q |
 | Dos jugadores, J2 | Flechas | Intro | Mayús derecha o / |
 
-**Esc** pausa. **F1** abre el archivo científico. En el menú de pausa o en el informe, usa **R** para empezar de nuevo.
+**Esc** pausa. **F1** abre el archivo científico. Pulsa **←** desde la primera ficha para ver el orbitador LRO en 3D. En el menú de pausa o en el informe, usa **R** para empezar de nuevo.
 
 Los días y noches se aceleran para la misión. Usa las horas de luz para acumular energía y mira el aviso verde cuando llegue un suministro. El tutorial enseña a recoger y entregar una caja. En la misión, lleva hielo y mineral al refinado. Intercambia agua por aire, cosechas y lotes de propelente. Puedes invertir el mineral en un taladro más rápido o en una batería que te ayude durante el apagón. Para despegar, carga tres lotes y dos raciones, confirma la lista con Tierra y sienta a ambos astronautas.
 
-Las muestras históricas de NASA DONKI, RadLab y NeoWs, junto con un TLE terrestre de la ISS, funcionan sin Internet. Las magnitudes didácticas y la procedencia se explican en el [catálogo científico](context_core/science_catalog.md). El [diseño de Estación Cresta](context_core/coop_tycoon_design.md) describe los calendarios y las bases. El [registro de modelos](assets/props_luna/asset-register.md) identifica los objetos CC0 de Kenney.
+Las muestras históricas de NASA DONKI, RadLab y NeoWs, junto con un TLE terrestre de la ISS, funcionan sin Internet. Las magnitudes didácticas y la procedencia se explican en el [catálogo científico](context_core/science_catalog.md). El [diseño de Estación Cresta](context_core/coop_tycoon_design.md) describe los calendarios y las bases. El [registro de modelos](assets/props_luna/asset-register.md) identifica los objetos CC0 de Kenney y las adaptaciones NASA de Apolo, LRO y el relieve de Nobile.
 
 ## Apagón lunar
 

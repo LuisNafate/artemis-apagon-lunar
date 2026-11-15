@@ -125,3 +125,15 @@ Las escenas de Apagón lunar, Academia y Tablero se mantienen editables para rec
 CrestGame abre el selector de astronautas y el mapa de bases. CrestIntro reproduce una secuencia de aterrizaje, montaje y mensaje de Tierra sobre CrestWorld. Al terminar restaura la cámara ortográfica y pasa al tutorial. La escena se puede omitir desde el botón o con Esc. CrestCampaign lee noches, avisos y reabastecimientos de state_registry.json. El mismo conjunto de locomoción y estaciones interpreta Cresta, Nobile y Taurus-Littrow. El núcleo de las estaciones mantiene la misma distribución.
 
 Los tres objetos Kenney se importan desde assets/props_luna/kenney. El registro de modelos identifica su procedencia, licencia y uso. El protocolo de observación de jugadores nuevos está en tools/skills/probar-juego-con-ninos/SKILL.md.
+
+## Producción de modelos · revisión 11
+
+[Catálogo de modelado lunar](catalogo_modelado_lunar.md) especifica el kit compartido, las variantes de Cresta, Nobile y Taurus-Littrow, los accesorios originales y la reutilización de los tres GLB de Kenney. Las medidas del mundo y sus puntos de interacción proceden de CrestWorld. La cápsula se toma de FieldPilot y la cámara de CrestGame. Los assets nuevos se integrarán después de la prueba de pasarela, refugio y caja de hielo.
+
+## Rediseño de mapas del polo sur · revisión 12
+
+[Catálogo de mapas](catalogo_mapas_polo_sur.md) especifica nueve escenarios inspirados en una lista histórica de regiones candidatas de aterrizaje. Los campamentos del juego usan un kit común de infraestructura. Cada composición tendrá terreno, anclajes a distintas cotas e información de luz y radio propia. El registro conserva estas propuestas bajo `coop_tycoon.map_redesign`. La campaña jugable actual sigue usando la configuración de Estación Cresta, Puesto Nobile y Base Taurus-Littrow.
+
+## Recursos NASA · revisión 13
+
+CrestWorld instancia la adaptación de Apolo durante el aterrizaje y muestra el relieve LOLA en Puesto Nobile. La vista científica de CrestHUD muestra LRO en un viewport con World3D propio. Los accesorios de radio se colocan desde un origen de servicio local que compensa el desplazamiento interno de los GLB de Kenney. Las notas de procedencia y los comandos de regeneración están en [assets/props_luna/nasa/procedencia.md](../assets/props_luna/nasa/procedencia.md).
