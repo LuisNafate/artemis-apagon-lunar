@@ -1,5 +1,5 @@
 {
-  "revision": 22,
+  "revision": 23,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -319,7 +319,7 @@
           "MEJ-3"
         ],
         "cause": "Un astronauta conectado agota el aire",
-        "effect": "Restaurar estado y posiciones del amanecer, cancelar confirmación y descartar progreso sin asegurar."
+        "effect": "Restaurar el amanecer y descartar progreso sin asegurar. Si el modo individual restaura poco aire y el piloto queda fuera del refugio o no tiene agua suficiente para recuperarlo, reubicarlo en el refugio con la reserva de emergencia."
       },
       {
         "id": "LUN-03",
@@ -440,7 +440,7 @@
           "NASA NTRS 20070030988"
         ],
         "cause": "La cuenta regresiva llega a cero",
-        "effect": "La etapa superior del módulo lunar sale, el descenso queda en el suelo y se muestra el acoplamiento, viaje y entrada. El turno de superficie se detiene y el bono se acredita tras la secuencia."
+        "effect": "La etapa superior del módulo lunar sale, el descenso queda en el suelo y se muestra el acoplamiento, viaje y entrada. El turno de superficie se detiene y el bono se acredita tras la secuencia. La victoria descarta los asientos y la cuenta regresiva del punto de control."
       }
     ],
     "open": [
@@ -452,6 +452,10 @@
       "VAC-17",
       "VAC-18"
     ],
+    "mvp_individual": {
+      "scope": "Nueve bases; entrada individual y desbloqueo por monedas ganadas.",
+      "completion": "El perfil anuncia el final cuando confirma un regreso a Tierra por cada base."
+    },
     "wallet": {
       "duplicate": "El mismo recibo acredita una vez, incluso tras reconexión o al alcanzar el tope.",
       "write_failure": "La compra revierte saldo y propiedad. El punto de control y el abono se guardan juntos; si fallan se reintenta antes de avanzar.",

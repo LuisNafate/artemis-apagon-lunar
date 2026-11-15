@@ -40,6 +40,7 @@ var location: Label
 var alert: Label
 var next_step: Label
 var feedback: Label
+var _objective_hint: Label
 var _title_tween: Tween
 var _zone_panel: PanelContainer
 var _zone_title: Label
@@ -158,6 +159,11 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
+	_objective_hint = _label(notes, "", 17)
+	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_float_text(_objective_hint)
+	_objective_hint.hide()
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
@@ -369,6 +375,8 @@ func flight_status(phase: int, progress: float) -> void:
 
 func lobby(profile: LunarProfile, status: String) -> void:
 	var subtitle := "ÚLTIMA VENTANA"
+	if profile.campaign_finished():
+		subtitle += "\nCampaña completada"
 	if not status.is_empty():
 		subtitle += "\n" + status
 	_prepare_menu("ARTEMIS", subtitle)
@@ -387,20 +395,12 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_message.add_theme_font_size_override("font_size", 18)
 
 	var solo := _lobby_button(_list, "Jugar solo · sin conexión", "bases", "solo", true)
-	_lobby_button(_list, "Crear partida en línea", "bases", "host")
-
-	var join_controls := HBoxContainer.new()
-	join_controls.add_theme_constant_override("separation", 8)
-	_list.add_child(join_controls)
-	address = LineEdit.new()
-	address.custom_minimum_size.y = 48
-	address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	address.add_theme_font_size_override("font_size", 17)
-	address.max_length = 100
-	address.placeholder_text = "Dirección del anfitrión"
-	address.text_submitted.connect(func(_text: String) -> void: selected.emit("join", ""))
-	join_controls.add_child(address)
-	_lobby_button(join_controls, "Unirme", "join")
+	var recent := String(profile.data.recent)
+	if profile.data.recent_mode == "solo" and profile.saved_bases(true).has(recent):
+		_lobby_button(_list, "Continuar misión", "solo", recent)
+	address = null
+	if profile.rules.solo_mode.get("show_online", true):
+		_online_choices()
 
 	var extras := HBoxContainer.new()
 	extras.add_theme_constant_override("separation", 18)
@@ -415,6 +415,23 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	var balance := _label(_list, "%s monedas" % profile.balance_text(), 16)
 	balance.add_theme_color_override("font_color", Color("#fff0cf"))
 	solo.grab_focus()
+
+
+func _online_choices() -> void:
+	_lobby_button(_list, "Crear partida en línea", "bases", "host")
+
+	var join_controls := HBoxContainer.new()
+	join_controls.add_theme_constant_override("separation", 8)
+	_list.add_child(join_controls)
+	address = LineEdit.new()
+	address.custom_minimum_size.y = 48
+	address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	address.add_theme_font_size_override("font_size", 17)
+	address.max_length = 100
+	address.placeholder_text = "Dirección del anfitrión"
+	address.text_submitted.connect(func(_text: String) -> void: selected.emit("join", ""))
+	join_controls.add_child(address)
+	_lobby_button(join_controls, "Unirme", "join")
 
 
 func _lobby_button(
@@ -617,6 +634,8 @@ func sync(
 				mission.required_seats()
 			]
 		)
+	_objective_hint.text = _solo_objective(mission, player)
+	_objective_hint.visible = not _objective_hint.text.is_empty()
 	_show_alert(mission)
 	var deposit := String(spot).begins_with("dep:")
 	var named: StringName = mission.deposit_kind(spot) if deposit else spot
@@ -636,6 +655,9 @@ func sync(
 	else:
 		_zone_title.text = _tapped_name
 	action_button.text = _action_caption(named)
+	action_button.disabled = mission.returned and spot == &"pad"
+	if action_button.disabled:
+		action_button.text = "Misión completada"
 	if deposit and mission.deposit_left(spot) <= 0:
 		action_button.text = "Depósito vacío"
 	if seated:
@@ -647,6 +669,47 @@ func sync(
 			)
 		elif mission.tutorial_step == 2 and player == 1:
 			action_button.text = "Entregar muestra"
+
+
+func _solo_objective(mission: LunarMission, player: int) -> String:
+	if (
+		not mission.solo
+		or mission.phase in [&"tutorial", &"flight", &"countdown"]
+		or mission.returned
+	):
+		return ""
+	var cargo := mission.cargo_kind(player)
+	if cargo == &"ice":
+		return "Lleva el hielo a Refinado y toca Soltar / entregar."
+	if cargo in [&"fuel", &"food"]:
+		return "Lleva la caja a la nave y toca Soltar / entregar."
+	if cargo != &"":
+		return "Entrega tu carga o suéltala antes de preparar la nave."
+	var requirements: Dictionary = mission.rules.mission
+	return _preparation_hint(mission, requirements)
+
+
+func _preparation_hint(mission: LunarMission, requirements: Dictionary) -> String:
+	var fuel_needed := mission.fuel_loaded < int(requirements.propellant)
+	var food_needed := mission.food_loaded < int(requirements.food)
+	if fuel_needed or food_needed:
+		var station := &"fuel" if fuel_needed else &"crop"
+		var ready := mission.fuel_ready if fuel_needed else mission.food
+		if ready > 0:
+			return (
+				"Recoge un lote en Propelente." if fuel_needed else "Recoge una ración en Cultivos."
+			)
+		if mission.jobs[station] > 0:
+			return "Espera a que se prepare la carga y vuelve a recogerla."
+		var water := float(
+			mission.resources.fuel_water if fuel_needed else mission.resources.crop_water
+		)
+		if mission.water < water * float(mission.difficulty.consumption):
+			return "Sal por la puerta, extrae hielo y llévalo a Refinado para obtener agua."
+		return "Prepara un lote en Propelente." if fuel_needed else "Siembra en Cultivos."
+	if not mission.earth_ok:
+		return "Envía la lista de vuelo desde la radio y espera la respuesta."
+	return "Entra en la nave para iniciar la cuenta regresiva."
 
 
 func _show_alert(mission: LunarMission) -> void:

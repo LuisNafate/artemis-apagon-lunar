@@ -111,6 +111,12 @@ func restore(saved: Dictionary) -> void:
 	withdrew = false
 	if not saved.has("world_deltas"):
 		world_deltas = {}
+	if returned:
+		phase = &"active"
+		countdown = 0.0
+		launch_fx = 0.0
+		for pilot in pilots:
+			pilot.seated = false
 
 
 static func deposit_key(coord: Vector2i, id: int) -> StringName:
@@ -473,6 +479,7 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 			phase = &"active"
 			pilots[0].seated = false
 			pilots[1].seated = false
+			_seal_return()
 		return
 	elapsed += delta
 	if elapsed >= float(rules.cycle.period):
@@ -491,6 +498,18 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 		radio_left = maxf(0.0, radio_left - delta)
 		earth_ok = radio_left == 0.0
 	_tick_launch(delta)
+
+
+func _seal_return() -> void:
+	# A countdown can cross dawn, so its checkpoint may still contain occupied seats.
+	checkpoint.returned = true
+	checkpoint.phase = &"active"
+	checkpoint.countdown = 0.0
+	checkpoint.launch_fx = 0.0
+	checkpoint.earth_ok = false
+	checkpoint.radio_left = 0.0
+	for pilot: Dictionary in checkpoint.pilots:
+		pilot.seated = false
 
 
 func _tick_power(delta: float) -> void:

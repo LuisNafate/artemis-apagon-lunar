@@ -195,3 +195,7 @@ CrestPilot usa las texturas originales de AstroCat y aplica solo al traje el tin
 ## Economía de campaña · revisión 22
 
 LunarMission calcula las recompensas existentes. LunarGame confirma conjuntamente el punto de control y los abonos en LunarProfile, y entrega los recibos cooperativos mediante ENet. LunarInterface muestra el saldo confirmado y el importe recién acreditado. Si el perfil no se puede escribir, el punto de control pendiente queda en espera de reintento y las compras fallidas se revierten.
+
+## MVP individual · revisión 23
+
+El menú público muestra la campaña sin conexión y Continuar misión. LunarInterface vincula el objetivo inmediato a la carga, el agua y la radio. LunarMission normaliza el punto de control al completar el regreso. LunarGame conserva la retirada al amanecer y habilita una reserva de emergencia para rescatar una partida individual sin agua y con poco aire. LunarProfile identifica el final de la campaña a partir de los regresos ya acreditados.

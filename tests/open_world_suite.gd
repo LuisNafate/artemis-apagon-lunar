@@ -440,7 +440,8 @@ func _campaign() -> void:
 	var crate_id: int = game.sim.crates.keys()[0]
 	var far := Vector3(300, 2, 300)
 	game._set_positions([far, Vector3.ZERO])
-	await _frames(1)
+	_check(not game.streamer.is_ready_at(far), "teleport target starts unloaded")
+	game._move_pilot(0, 1.0 / 60.0)
 	_check(game.pilots[0].position == far, "pilot waits while its chunk loads")
 	await _until(func() -> bool: return game.streamer.is_ready_at(far))
 	await _frames(240)
@@ -585,8 +586,10 @@ func _jump() -> void:
 	# Sin chunk listo no hay salto ni gravedad.
 	var unloaded := Vector3(400, 5, 400)
 	game._set_positions([unloaded, Vector3.ZERO])
+	_check(not game.streamer.is_ready_at(unloaded), "test chunk has no collision yet")
 	game._jump[0] = true
-	await _frames(3)
+	# Run the movement guard before the async streamer can install the chunk.
+	game._move_pilot(0, 1.0 / 60.0)
 	_check(pilot.position == unloaded and not game._jump[0], "no jump while the chunk loads")
 	var plain := FieldPilot.new()
 	_check(

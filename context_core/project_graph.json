@@ -1,5 +1,5 @@
 {
-  "revision": 22,
+  "revision": 23,
   "nodes": [
     {
       "id": "config",
@@ -1018,6 +1018,11 @@
     {
       "id": "lunar_unlocks",
       "kind": "system"
+    },
+    {
+      "id": "solo_mvp_walkthrough",
+      "kind": "test",
+      "path": "tests/mvp_suite.tscn"
     },
     {
       "id": "lunar_wallet_receipts",
@@ -2762,6 +2767,21 @@
       "lunar_suite_script",
       "tests",
       "lunar_solo"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "plays",
+      "lunar_scene"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "verifies",
+      "lunar_unlocks"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "verifies",
+      "lunar_return"
     ],
     [
       "live_campaign_design",

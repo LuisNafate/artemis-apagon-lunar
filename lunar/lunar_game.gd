@@ -341,7 +341,8 @@ func _choose(action: String, argument: String) -> void:
 		"solo", "host":
 			_load_base(argument, action == "solo")
 		"join":
-			join(ui.address.text.strip_edges())
+			if is_instance_valid(ui.address):
+				join(ui.address.text.strip_edges())
 		"leave":
 			_leave()
 		"menu":
@@ -678,21 +679,15 @@ func _local_frame(delta: float) -> void:
 	var had_returned := sim.returned
 	sim.tick(delta, _sheltered(), _spots)
 	if sim.withdrew:
-		_set_positions(positions_at_dawn)
-		_route[0].clear()
-		_route[1].clear()
+		_recover_crew()
 		if not sim.dawn:
 			_coins_by_guest.clear()
-		_notice("Sin aire. Regreso al último amanecer.")
 	if sim.dawn:
 		positions_at_dawn = _positions()
 		_pending_reward = {"day": sim.days, "amount": day_rate, "guests": _coins_by_guest}
 		_coins_by_guest = {}
 		_commit_reward()
 	if not had_returned and sim.returned:
-		sim.checkpoint.returned = true
-		sim.checkpoint.earth_ok = false
-		sim.checkpoint.radio_left = 0.0
 		_pending_reward = {"difficulty": int(sim.difficulty.coins), "guest": guest_id}
 		_commit_reward()
 	_render(delta, 0)
@@ -700,6 +695,31 @@ func _local_frame(delta: float) -> void:
 	if _sync_left <= 0.0:
 		_sync_left = SAMPLE_RATE
 		_send_snapshot()
+
+
+func _recover_crew() -> void:
+	var points := positions_at_dawn.duplicate()
+	var message := "Sin aire. Regreso al último amanecer."
+	var reserve := float(sim.rules.solo_mode.get("emergency_air", 0.0))
+	if sim.solo and sim.pilots[0].air < reserve and _needs_emergency_air(points[0], reserve):
+		points[0] = CrestWorld.STATIONS[&"life"] + Vector3.UP * 0.1
+		sim.pilots[0].air = minf(reserve, float(sim.resources.air))
+		message = "Regresaste al refugio con aire de emergencia. Busca hielo para recuperar agua."
+	_set_positions(points)
+	_route[0].clear()
+	_route[1].clear()
+	_notice(message)
+
+
+func _needs_emergency_air(point: Vector3, reserve: float) -> bool:
+	if not world.sheltered(point):
+		return true
+	var deficit := reserve - float(sim.pilots[0].air)
+	var seconds := deficit / float(sim.resources.air_recovery)
+	return (
+		sim.water
+		<= seconds * float(sim.difficulty.consumption) / float(sim.resources.life_water_seconds)
+	)
 
 
 func _commit_reward() -> bool:
@@ -724,6 +744,8 @@ func _commit_reward() -> bool:
 	_pending_reward.clear()
 	_send_awards()
 	var message := "Amanecer. Progreso asegurado." if daily else "¡Misión de regreso completada!"
+	if not daily and sim.solo and profile.campaign_finished():
+		message = "¡Campaña completada! Regresaste desde las nueve bases."
 	_show_reward(int(profile.data.balance) - before, message)
 	return true
 
@@ -941,12 +963,16 @@ func _alert_if_changed() -> void:
 		kind = "power"
 	elif sim.radio_warning() or sim.radio_cut():
 		kind = "radio"
-	if kind != _alert_kind and not kind.is_empty():
+	if kind != _alert_kind and not kind.is_empty() and _alert_audio.stream != null:
 		_alert_audio.play()
 	_alert_kind = kind
 
 
 func _build_alert_audio() -> void:
+	add_child(_alert_audio)
+	add_child(_reward_audio)
+	if DisplayServer.get_name() == "headless":
+		return
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)
@@ -957,10 +983,8 @@ func _build_alert_audio() -> void:
 	stream.mix_rate = 22050
 	stream.data = buffer
 	_alert_audio.stream = stream
-	add_child(_alert_audio)
 	_reward_audio.stream = stream
 	_reward_audio.pitch_scale = 1.5
-	add_child(_reward_audio)
 
 
 func _send_snapshot() -> void:
@@ -1022,7 +1046,8 @@ func _remote_notice(message: String) -> void:
 
 func _show_reward(amount: int, message: String) -> void:
 	if amount > 0:
-		_reward_audio.play()
+		if _reward_audio.stream != null:
+			_reward_audio.play()
 		message += " +%.2f monedas" % (float(amount) / LunarProfile.SCALE)
 	ui.show_balance(profile.balance_text())
 	_notice(message, false)
