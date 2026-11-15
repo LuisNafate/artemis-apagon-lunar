@@ -21,6 +21,10 @@ const MODEL_GREENHOUSE := preload("res://assets/props_luna/estaciones/invernader
 const MODEL_SOLAR := preload("res://assets/props_luna/estaciones/paneles.glb")
 const MODEL_ROVER_ANTENNA := preload("res://assets/props_luna/estaciones/antena_rover.glb")
 const MODEL_WATER_TANK := preload("res://assets/props_luna/estaciones/tanque_agua.glb")
+const MODEL_WATER_TANK_EMPTY := preload(
+	"res://assets/props_luna/estaciones/tanque_agua_vacio.glb"
+)
+const WATER_TANK_SCALE := 2.4
 const MODEL_TRAINING_TABLE := preload("res://assets/props_luna/estaciones/mesa_azul.glb")
 const MODEL_WOOD_TABLE := preload("res://assets/props_luna/estaciones/mesa_madera.glb")
 const MODEL_FUEL_TANK := preload("res://assets/props_luna/estaciones/deposito_propelente.glb")
@@ -109,6 +113,10 @@ var shelter_shell: Node3D
 var refuge_alert: MeshInstance3D
 var _water_machine_empty: Node3D
 var _water_machine_full: Node3D
+var _water_tank_empty: Node3D
+var _water_tank_full: Node3D
+var _water_ready := false
+var _was_refining := false
 var _craters: Node3D
 var _detail: Node3D
 var _floor_color: PaperMaterial
@@ -281,14 +289,19 @@ func reflect(
 	var light_color := Color("#93b9f5") if sim.shadow_active() else Color("#fff4dc")
 	sun.light_color = sun.light_color.lerp(light_color, minf(1.0, delta * 2.0))
 	var refining: Variant = sim.get("refining")
-	# Vacia mientras la refinadora rellena; llena cuando termina y hay agua en el deposito.
+	# Ambos tanques empiezan vacios; se llenan al terminar de rellenar y se vacian al
+	# volver a refinar o cuando el agua se acaba.
+	var refining_now := refining is Array and not (refining as Array).is_empty()
+	if _was_refining and not refining_now:
+		_water_ready = true
+	_was_refining = refining_now
 	var stored: Variant = sim.get("water")
-	var machine_full := (
-		(not refining is Array or (refining as Array).is_empty())
-		and (stored == null or float(stored) > 0.0)
-	)
-	_water_machine_empty.visible = not machine_full
-	_water_machine_full.visible = machine_full
+	if refining_now or (stored != null and float(stored) <= 0.0):
+		_water_ready = false
+	_water_machine_empty.visible = not _water_ready
+	_water_machine_full.visible = _water_ready
+	_water_tank_empty.visible = not _water_ready
+	_water_tank_full.visible = _water_ready
 	for lamp in night_lights:
 		lamp.visible = sim.shadow_active()
 	_floor_color.albedo_color = _floor_color.albedo_color.lerp(
@@ -555,6 +568,23 @@ static func station_prop(
 	return root
 
 
+func _water_tank(point: Vector3) -> Node3D:
+	# Tanque de agua junto a la refinadora: vacio por defecto, lleno con el agua refinada.
+	var root := Node3D.new()
+	root.position = point
+	root.rotation_degrees.y = 90.0
+	add_child(root)
+	_water_tank_empty = MODEL_WATER_TANK_EMPTY.instantiate()
+	_water_tank_full = MODEL_WATER_TANK.instantiate()
+	for model: Node3D in [_water_tank_empty, _water_tank_full]:
+		PaperMaterial.restyle(model, false)
+		model.scale = Vector3.ONE * WATER_TANK_SCALE
+		model.position.y = 0.5 * WATER_TANK_SCALE
+		root.add_child(model)
+	_water_tank_full.hide()
+	return root
+
+
 func _water_machine(point: Vector3) -> Node3D:
 	# Maquina agua-hielo: vacia mientras la refinadora rellena, llena al terminar.
 	var root := Node3D.new()
@@ -640,6 +670,8 @@ func _stations() -> void:
 	var refine: Vector3 = STATIONS[&"refinery"]
 	_equipment.append(_water_machine(refine + Vector3(0, 0, 2.5)))
 	_solid(refine + Vector3(0, 1.05, 2.5), Vector3(3.5, 2.1, 3.5))
+	_equipment.append(_water_tank(refine + Vector3(3.1, 0, 2.5)))
+	_solid(refine + Vector3(3.1, 1.2, 2.5), Vector3(2.35, 2.4, 1.75))
 	aux_module = Node3D.new()
 	add_child(aux_module)
 	aux_module.position = STATIONS[&"battery"] + Vector3(2.4, 0, -1.2)

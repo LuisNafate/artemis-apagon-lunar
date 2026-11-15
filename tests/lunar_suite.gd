@@ -694,7 +694,9 @@ func _item_controls() -> void:
 			game.sim.water > before + 0.8 and game.sim.crates.is_empty(),
 			"refined water credited once"
 		)
+		await get_tree().physics_frame
 		_check(game.world._water_machine_full.visible, "completed refinery shows loaded model")
+		_check(game.world._water_tank_full.visible, "water tank fills with the refined water")
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame
