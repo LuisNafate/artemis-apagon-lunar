@@ -230,4 +230,11 @@ const TEXT := {
 	"%s monedas · Elige una base lunar.": "%s coins · Choose a lunar base.",
 	"%s monedas · Un rol por partida. Elige antes de entrar.": "%s coins · One role per game. Choose before you enter.",
 	"%s perderá sus días y mejoras. Tus monedas globales se conservan.": "%s will lose its days and upgrades. Your global coins are kept.",
+	"Alerta de partículas solares": "Solar particle alert",
+	"Artemis I · Detector HERA": "Artemis I · HERA detector",
+	"NeoWs · Asteroide 2016 FT14": "NeoWs · Asteroid 2016 FT14",
+	"ISS · Órbita terrestre": "ISS · Earth orbit",
+	"ECLSS · Aire, agua y comida": "ECLSS · Air, water and food",
+	"Radio · Hablar con la Tierra": "Radio · Talking to Earth",
+	"LRO · Cartografiar la Luna": "LRO · Mapping the Moon",
 }

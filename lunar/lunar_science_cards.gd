@@ -20,6 +20,10 @@ const MONTHS := [
 	"noviembre",
 	"diciembre"
 ]
+const MONTHS_EN := [
+	"January", "February", "March", "April", "May", "June", "July", "August", "September",
+	"October", "November", "December"
+]
 const ENGLISH := [
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
@@ -28,6 +32,8 @@ const ENGLISH := [
 ## Texto de la ficha para la campaña, o vacío si la ficha conserva su texto original.
 static func text(record: Dictionary, donki_storms: bool) -> String:
 	var values: Dictionary = record.get("observation", record.get("reference", {}))
+	if LunarLanguage.current() == "en":
+		return _english(record, values, donki_storms)
 	match String(record.id):
 		"donki_sep_20240510":
 			if not donki_storms:
@@ -254,3 +260,179 @@ static func _thousands(number: int) -> String:
 			result += " "
 		result += digits[index]
 	return result
+
+
+## Las mismas fichas en ingles: cada una conserva los numeros de la NASA.
+static func _english(record: Dictionary, values: Dictionary, donki_storms: bool) -> String:
+	match String(record.id):
+		"donki_sep_20240510":
+			if not donki_storms:
+				return ""
+			return _card_en(
+				(
+					"Sometimes the Sun has explosions called solar flares. Some of them throw out "
+					+ "particles so fast they can hurt astronauts and ships. On %s at %s UTC "
+					+ "(universal time), NASA sent alert %s because those particles were on their way."
+				)
+				% [
+					_english_date(String(values.messageIssueTime)),
+					String(values.messageIssueTime).substr(11, 5),
+					values.messageID
+				],
+				[
+					"DONKI (Database Of Notifications, Knowledge, Information): NASA's database where space weather is recorded.",
+					"CCMC (Community Coordinated Modeling Center): the NASA center that studies space weather and publishes the alerts.",
+					"Class C, M or X: how strong a flare is. Each letter is 10 times stronger.",
+					"SEP (Solar Energetic Particles): energetic particles from the Sun, the dangerous \"rain\".",
+				],
+				(
+					"each storm uses a real DONKI flare with its date. Not all of them are dangerous: "
+					+ "between May and June 2024 there were 243 flares and only 16 threw out particles. "
+					+ "If in real life they took little time to arrive, you have little time to run to the "
+					+ "shelter. In the game everything happens faster than in reality."
+				)
+			)
+		"radlab_artemis_i_hera":
+			var sample: Dictionary = values.samples[0]
+			return _card_en(
+				(
+					"In 2022 the Orion ship flew around the Moon with no astronauts on the Artemis I "
+					+ "mission. It carried sensors to measure radiation. On %s, minutes after liftoff, "
+					+ "the %s detector measured %.3f µGy/h."
+				)
+				% [
+					_english_date(String(sample.timestamp_utc)),
+					values.instrument_id,
+					sample.absorbed_dose_rate
+				],
+				[
+					"Radiation: invisible energy that travels through space and can harm the body.",
+					"HERA (Hybrid Electronic Radiation Assessor): the radiation detector Orion carries.",
+					"µGy/h (microgray per hour): how much radiation the body absorbs each hour.",
+				],
+				(
+					"the shelter stands for the shielding that protects the crew. The game does not "
+					+ "measure radiation in grays: it represents it with alerts."
+				)
+			)
+		"neows_2016_ft14":
+			var distance := float(values.miss_distance_km)
+			return _card_en(
+				(
+					"Asteroid %s passed close to Earth on %s, %.2f million km away. It sounds like a "
+					+ "lot, but it is about %d times the distance between Earth and the Moon."
+				)
+				% [
+					values.name,
+					_english_date(String(values.datetime_as_reported)),
+					distance / 1000000.0,
+					roundi(distance / MOON_KM)
+				],
+				[
+					"Asteroid: a rock that orbits the Sun.",
+					"NEO (Near-Earth Object): an object close to Earth.",
+					"NeoWs (Near Earth Object Web Service): NASA's service that tells which asteroids will pass nearby.",
+				],
+				(
+					"this data is about Earth, not the lunar base. It is here so you can see how NASA "
+					+ "watches nearby space every day."
+				)
+			)
+		"tle_iss_25544":
+			var derived: Dictionary = record.get("derived", {})
+			return _card_en(
+				(
+					"The International Space Station (ISS) circles the Earth in about %.1f minutes, at "
+					+ "around 400 km high. That is about %.1f laps a day! This calculation uses its orbit from %s."
+				)
+				% [
+					derived.estimated_period_minutes,
+					derived.mean_motion_revs_per_day,
+					_english_date(String(values.date))
+				],
+				[
+					"Orbit: the path a ship follows around a planet.",
+					"TLE (Two-Line Element set): two lines of numbers that describe an orbit.",
+					"NORAD 25544: the ISS's ID number.",
+				],
+				(
+					"there is no station like this on the Moon. This card shows how an orbit is "
+					+ "calculated with real data. The data comes from CelesTrak, a service that publishes "
+					+ "satellite orbits, not from NASA."
+				)
+			)
+		"ntrs_life_support_mass":
+			return _card_en(
+				(
+					"Each astronaut needs %.2f kg of oxygen every day, %.2f kg of water to drink and "
+					+ "cook (about %.1f liters) and %.2f kg of dry food. They also breathe out %.2f kg of "
+					+ "carbon dioxide that must be cleaned from the air."
+				)
+				% [
+					values.oxygen,
+					values.drinking_and_food_water,
+					values.drinking_and_food_water,
+					values.food_solids,
+					values.carbon_dioxide_produced
+				],
+				[
+					"ECLSS (Environmental Control and Life Support System): a ship's environmental control and life support system.",
+					"Life support: everything that keeps astronauts alive.",
+					"O₂ and CO₂: oxygen, which we breathe in, and carbon dioxide, which we breathe out.",
+				],
+				(
+					"on the Space Station they recycle water and split it to get oxygen. That is why in "
+					+ "the game ice turns into water and water keeps the air going."
+				)
+			)
+		"ntrs_lunar_radio":
+			return _card_en(
+				(
+					"The Moon is about %s km away. Radio waves travel at the speed of light, almost "
+					+ "300,000 km per second, so a message takes %.2f s to reach Earth and %.2f s to go and come back."
+				)
+				% [
+					_thousands(int(values.nominal_earth_moon_distance_km)).replace(" ", ","),
+					values.one_way_seconds_rounded,
+					values.round_trip_seconds_rounded
+				],
+				[
+					"Latency: the time a message takes to arrive.",
+					"Speed of light: the fastest thing in the universe.",
+					"Round trip: how long your message takes plus the reply.",
+				],
+				(
+					"when you send the flight checklist by radio, the game really waits those "
+					+ "%.2f s before Earth answers." % values.round_trip_seconds_rounded
+				)
+			)
+		"nasa_lro_3d":
+			return _card_en(
+				(
+					"Since 2009, the LRO ship has been orbiting the Moon and measuring it. One of its "
+					+ "instruments fires a laser at the ground and works out the height of mountains and "
+					+ "craters. With that we know where the Sun shines most at the south pole."
+				),
+				[
+					"LRO (Lunar Reconnaissance Orbiter): the lunar reconnaissance orbiter.",
+					"LOLA (Lunar Orbiter Laser Altimeter): LRO's laser altimeter, which measures heights.",
+					"Lunar south pole: the area where NASA wants to land on Artemis.",
+				],
+				(
+					"the landscape around the Nobile bases uses real heights measured by LOLA, and the "
+					+ "9 bases are real candidate regions."
+				)
+			)
+	return ""
+
+
+static func _card_en(story: String, words: Array, game: String) -> String:
+	var glossary := "\n".join(words.map(func(word: String) -> String: return "• " + word))
+	return "%s\n\nScientist words:\n%s\n\nIn the game: %s" % [story, glossary, game]
+
+
+## "2024-05-10T13:46Z" o "2024-May-10 13:55" -> "May 10, 2024".
+static func _english_date(text: String) -> String:
+	var parts := text.left(text.find("-", 5) + 3).split("-")
+	var month := int(parts[1]) if parts[1].is_valid_int() else ENGLISH.find(parts[1]) + 1
+	return "%s %d, %s" % [MONTHS_EN[month - 1], int(parts[2]), parts[0]]
