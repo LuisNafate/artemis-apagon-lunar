@@ -802,7 +802,7 @@
       "starter_deposit_range": [25, 40],
       "starter_deposit_ids": [90, 91],
       "base_flat_rect": [-15.45, -8.7, 30.9, 17.4],
-      "base_flat_transition": 8,
+      "base_flat_transition": 24,
       "base_exclusion_rect": [-23.45, -16.7, 46.9, 33.4],
       "max_walk_slope": 0.6,
       "relief_amplitude": 8.0,

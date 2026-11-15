@@ -56,6 +56,7 @@ static func starter_deposits(world_seed: int, settings: Dictionary) -> Array[Dic
 					point = Vector3(point.x, 0.0, point.y),
 					capacity = int(settings.deposit_distance_curve.min_capacity),
 					near_base = true,
+					shadow = false,
 				}
 			)
 		)
@@ -281,6 +282,7 @@ static func _place_deposits(
 					point = Vector3(point.x, data.height_at(point - origin), point.y),
 					capacity = capacity_at(settings, distance),
 					near_base = distance < float(settings.deposit_near_radius),
+					shadow = shadow,
 				}
 			)
 		)
