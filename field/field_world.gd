@@ -88,8 +88,8 @@ func _light() -> void:
 	fill.light_energy = 0.52
 	add_child(fill)
 	var earth := ball(self, Vector3(-21, 12, -135), Vector3(15, 15, 15), Color("#426f9c"), true)
-	var planet: StandardMaterial3D = earth.material_override
-	planet.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var planet: PaperMaterial = earth.material_override
+	planet.unlit = 1.0
 	planet.albedo_color = Color("#547da6")
 	for mark in [Vector3(-23.7, 13.0, -128.3), Vector3(-19.1, 10.2, -128.2)]:
 		ball(self, mark, Vector3(2.65, 1.2, 0.5), Color("#82aba7"), true)
@@ -321,13 +321,7 @@ static func ball(
 static func _mesh(
 	parent: Node3D, point: Vector3, mesh: Mesh, color: Color, glow: bool
 ) -> MeshInstance3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = 0.83
-	if glow:
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = 0.38
+	var material := PaperMaterial.solid(color, glow)
 	var item := MeshInstance3D.new()
 	item.mesh = mesh
 	item.material_override = material

@@ -7,6 +7,9 @@ const APOLLO_BASE := preload("res://assets/props_luna/nasa/apollo_base_lunar.glb
 const APOLLO_ASCENT := preload("res://assets/props_luna/nasa/apollo_etapa_ascenso.glb")
 const NOBILE_RELIEF := preload("res://assets/props_luna/nasa/relieve_nobile_lola.glb")
 const LRO_MODEL := preload("res://assets/props_luna/nasa/lro_miniatura.glb")
+const WATER_MACHINE_EMPTY := preload("res://assets/props_luna/agua_hielo/maquina_agua_hielo_vacio.glb")
+const WATER_MACHINE_FULL := preload("res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb")
+const WATER_MACHINE_SCALE := 1.55
 const GUIDE_MODEL := preload("res://assets/pilotos/astrocat_guia.glb")
 const TRANSPORT_PARK := Vector3(-11.9, 0.04, 7.45)
 const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
@@ -19,7 +22,8 @@ const PURPLE := Color("#c4acf7")
 const WHITE := Color("#e4e8f3")
 const FRAME := Color("#273345")
 const DECK := Color("#4d5970")
-const SOIL := Color("#5c586c")
+const SOIL := Color("#6d6888")
+const LAVENDER := Color("#756f8e")
 const STATIONS := {
 	&"supply": Vector3(-3.7, 0, 6.55),
 	&"training": Vector3(0, 0, 5.3),
@@ -80,8 +84,11 @@ var supply_pallet: Node3D
 var shelter_shell: Node3D
 var refuge_alert: MeshInstance3D
 var _lro_display: Node3D
+var _water_machine_empty: Node3D
+var _water_machine_full: Node3D
 var _craters: Node3D
-var _floor_color: StandardMaterial3D
+var _detail: Node3D
+var _floor_color: PaperMaterial
 var _equipment: Array[Node3D] = []
 var _soil := SOIL
 var _mission_clock := 0.0
@@ -96,6 +103,7 @@ func build() -> void:
 	)
 	nobile_relief.rotation.y = PI
 	nobile_relief.scale = Vector3(0.71, 0.58, 1.0)
+	PaperMaterial.restyle(nobile_relief)
 	add_child(nobile_relief)
 	nobile_relief.hide()
 	_walkways()
@@ -105,6 +113,7 @@ func build() -> void:
 	else:
 		_build_rocket()
 	transport = TRANSPORT.instantiate()
+	PaperMaterial.restyle(transport)
 	transport.position = Vector3(-4, 0.25, 6.1)
 	transport.rotation_degrees.y = 21
 	add_child(transport)
@@ -178,6 +187,7 @@ func _build_field_models() -> void:
 		field_models, display_point + Vector3.UP * 0.38, Vector3(1.53, 0.06, 1.03), BLUE, true
 	)
 	_lro_display = LRO_MODEL.instantiate()
+	PaperMaterial.restyle(_lro_display)
 	_lro_display.position = display_point + Vector3.UP * 1.19
 	_lro_display.rotation_degrees = Vector3(8, -25, 0)
 	_lro_display.scale = Vector3.ONE * 0.64
@@ -204,7 +214,7 @@ func _model_label(caption: String, point: Vector3, color: Color) -> Label3D:
 
 
 func set_base(soil_color: String, base_id: StringName) -> void:
-	_soil = Color(soil_color)
+	_soil = Color(soil_color).lerp(LAVENDER, 0.5)
 	_floor_color.albedo_color = _soil
 	nobile_relief.visible = base_id in [&"nobile", &"nobile_rim_1", &"nobile_rim_2"]
 	_build_craters(base_id)
@@ -253,10 +263,14 @@ func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> vo
 	if field_models.visible:
 		_lro_display.rotate_y(delta * 0.55)
 	var storm := sim.storm_active()
-	var power := 0.22 if sim.shadow_active() else 1.03
+	var power := 0.22 if sim.shadow_active() else 1.3
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
 	var light_color := Color("#93b9f5") if sim.shadow_active() else Color("#fff4dc")
 	sun.light_color = sun.light_color.lerp(light_color, minf(1.0, delta * 2.0))
+	var refining: Variant = sim.get("refining")
+	var machine_full := refining is Array and not (refining as Array).is_empty()
+	_water_machine_empty.visible = not machine_full
+	_water_machine_full.visible = machine_full
 	for lamp in night_lights:
 		lamp.visible = sim.shadow_active()
 	_floor_color.albedo_color = _floor_color.albedo_color.lerp(
@@ -294,17 +308,28 @@ func _lighting() -> void:
 		env.background_mode = Environment.BG_CANVAS
 		env.background_canvas_max_layer = -1
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#afb9e1")
-	env.ambient_light_energy = 0.61
+	env.ambient_light_color = Color("#c9bfd6")
+	env.ambient_light_energy = 0.52
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_white = 6.0
+	env.ssao_enabled = true
+	env.ssao_radius = 1.6
+	env.ssao_intensity = 2.2
+	env.ssao_power = 1.6
+	env.ssao_detail = 0.6
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
 	sun = DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-47, -54, 0)
-	sun.light_color = Color("#fff4dc")
-	sun.light_energy = 1.03
+	sun.rotation_degrees = Vector3(-38, -95, 0)
+	sun.light_color = Color("#fff0d8")
+	sun.light_energy = 1.3
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 70
+	sun.shadow_blur = 2.2
+	sun.shadow_bias = 0.04
+	sun.shadow_normal_bias = 1.4
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun.directional_shadow_max_distance = 60
 	add_child(sun)
 
 
@@ -321,9 +346,7 @@ func _terrain() -> void:
 		_border(Vector3(0, 0.13, z), Vector3(30.9, 0.26, 0.32))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 91258
-	var fleck_material := StandardMaterial3D.new()
-	fleck_material.vertex_color_use_as_albedo = true
-	fleck_material.roughness = 1.0
+	var fleck_material := PaperMaterial.new()
 	var fleck := CylinderMesh.new()
 	fleck.top_radius = 0.5
 	fleck.bottom_radius = 0.5
@@ -374,9 +397,8 @@ func _build_ground_sheet() -> void:
 			surface.add_vertex(point)
 	var ground := MeshInstance3D.new()
 	ground.mesh = surface.commit()
-	_floor_color = StandardMaterial3D.new()
-	_floor_color.albedo_color = SOIL
-	_floor_color.roughness = 1.0
+	_floor_color = PaperMaterial.new(SOIL)
+	_floor_color.set_shader_parameter("facet_variation", 0.035)
 	ground.material_override = _floor_color
 	add_child(ground)
 
@@ -385,6 +407,12 @@ func _build_craters(base_id: StringName) -> void:
 	if is_instance_valid(_craters):
 		remove_child(_craters)
 		_craters.queue_free()
+	if is_instance_valid(_detail):
+		remove_child(_detail)
+		_detail.queue_free()
+	_detail = Node3D.new()
+	_detail.name = "DetalleSuperficie"
+	add_child(_detail)
 	_craters = Node3D.new()
 	_craters.name = "CrateresLaterales"
 	add_child(_craters)
@@ -421,6 +449,62 @@ func _build_craters(base_id: StringName) -> void:
 			placement[1], float(placement[2]) * height_scale, hash([base_id, index]), _soil
 		)
 		_craters.add_child(crater)
+	_scatter_surface_detail(base_id, placements)
+
+
+func _scatter_surface_detail(base_id: StringName, placements: Array) -> void:
+	# Crateres menores y rocas fuera de la cubierta transitable.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([base_id, "detalle"])
+	var walkable := Rect2(-15.24, -8.35, 30.48, 16.70)
+	var minor := Node3D.new()
+	minor.name = "CrateresMenores"
+	_detail.add_child(minor)
+	var placed := 0
+	var attempts := 0
+	while placed < 16 and attempts < 400:
+		attempts += 1
+		var radius := rng.randf_range(0.45, 1.05)
+		var spot := Vector3(rng.randf_range(-31, 31), 0.015, rng.randf_range(-12.5, 24.0))
+		var reach := radius * 1.3 + 0.4
+		if walkable.grow(reach).has_point(Vector2(spot.x, spot.z)):
+			continue
+		var crowded := false
+		for placement: Array in placements:
+			var other: Vector3 = placement[0]
+			if spot.distance_to(other) < reach + float(placement[1]) * 1.4:
+				crowded = true
+		for other_minor: LunarCrater in minor.get_children():
+			if spot.distance_to(other_minor.position) < reach + other_minor.get_meta("reach"):
+				crowded = true
+		if crowded:
+			continue
+		var small := LunarCrater.new()
+		small.position = spot
+		small.set_meta("reach", reach)
+		small.build(radius, radius * rng.randf_range(0.14, 0.24), rng.randi(), _soil)
+		minor.add_child(small)
+		placed += 1
+	var rocks := MultiMesh.new()
+	rocks.transform_format = MultiMesh.TRANSFORM_3D
+	rocks.use_colors = true
+	rocks.mesh = LunarCrater.rock_mesh(11)
+	rocks.instance_count = 70
+	for index in range(rocks.instance_count):
+		var pos := Vector3(rng.randf_range(-30, 30), 0.0, rng.randf_range(-12.0, 23.0))
+		while walkable.grow(1.2).has_point(Vector2(pos.x, pos.z)):
+			pos = Vector3(rng.randf_range(-30, 30), 0.0, rng.randf_range(-12.0, 23.0))
+		var size := rng.randf_range(0.16, 0.55)
+		var basis := Basis(Vector3.UP, rng.randf_range(0, TAU)).scaled(
+			Vector3(size, size * rng.randf_range(0.7, 1.3), size)
+		)
+		rocks.set_instance_transform(index, Transform3D(basis, pos))
+		rocks.set_instance_color(index, _soil.lightened(rng.randf_range(0.06, 0.26)))
+	var rock_field := MultiMeshInstance3D.new()
+	rock_field.name = "Rocas"
+	rock_field.multimesh = rocks
+	rock_field.material_override = PaperMaterial.new()
+	_detail.add_child(rock_field)
 
 
 func show_refuge_alert(show_alert: bool) -> void:
@@ -434,6 +518,22 @@ func present_lander(flight_phase: int, progress: float, returned: bool) -> void:
 	)
 	plume.visible = flight_phase == 0
 	plume.scale.y = 1.05 + sin(_mission_clock * 40.0) * 0.21
+
+
+func _water_machine(point: Vector3) -> Node3D:
+	# Maquina agua-hielo: vacia en reposo, llena mientras la refinadora trabaja.
+	var root := Node3D.new()
+	root.position = point
+	add_child(root)
+	_water_machine_empty = WATER_MACHINE_EMPTY.instantiate()
+	_water_machine_full = WATER_MACHINE_FULL.instantiate()
+	for model: Node3D in [_water_machine_empty, _water_machine_full]:
+		PaperMaterial.restyle(model, false)
+		model.scale = Vector3.ONE * WATER_MACHINE_SCALE
+		model.position.y = 0.73
+		root.add_child(model)
+	_water_machine_full.hide()
+	return root
 
 
 func _walkways() -> void:
@@ -492,8 +592,7 @@ func _stations() -> void:
 	_equipment.append(_radio_prop(ANTENNA, radio + Vector3(0.77, 0.06, -1.16), 3.05))
 	_equipment.append(_radio_prop(RECEIVER, radio + Vector3(-0.73, 0.055, -0.95), 1.22))
 	var refine: Vector3 = STATIONS[&"refinery"]
-	FieldWorld.box(self, refine + Vector3(0, 0.69, -1.32), Vector3(2.35, 1.36, 0.82), WHITE)
-	FieldWorld.box(self, refine + Vector3(0, 0.77, -0.89), Vector3(1.63, 0.32, 0.07), BLUE, true)
+	_equipment.append(_water_machine(refine + Vector3(0, 0, -1.55)))
 	_solid(refine + Vector3(0, 0.69, -1.32), Vector3(2.35, 1.36, 0.82))
 	aux_module = Node3D.new()
 	add_child(aux_module)
@@ -593,6 +692,7 @@ func _radio_prop(scene: PackedScene, point: Vector3, model_scale: float) -> Node
 	add_child(stand)
 	stand.position = point
 	var prop: Node3D = scene.instantiate()
+	PaperMaterial.restyle(prop)
 	prop.scale = Vector3.ONE * model_scale
 	prop.position = RADIO_PIVOT_CORRECTION * model_scale
 	stand.add_child(prop)
@@ -649,6 +749,8 @@ func _build_lander() -> void:
 		_disc(self, corner, 0.095, 0.14, AMBER, 8, true)
 	descent_stage = APOLLO_BASE.instantiate()
 	ascent_stage = APOLLO_ASCENT.instantiate()
+	PaperMaterial.restyle(descent_stage)
+	PaperMaterial.restyle(ascent_stage)
 	for stage in [descent_stage, ascent_stage]:
 		add_child(stage)
 		stage.position = pad
