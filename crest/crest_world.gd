@@ -670,14 +670,10 @@ func _shelter() -> void:
 			BLUE,
 			true
 		)
-	for side in [-1.0, 1.0]:
-		var pos := Vector3(center.x + side * 1.6, 0.34, center.y - half.y + 1.3)
-		FieldWorld.box(shelter_shell, pos, Vector3(0.85, 0.69, 1.5), FRAME)
-		FieldWorld.box(shelter_shell, pos + Vector3.UP * 0.4, Vector3(0.78, 0.14, 1.4), BLUE)
-		_solid(pos, Vector3(0.85, 0.69, 1.5))
-	var table := Vector3(center.x, 0.03, center.y + 2.4)
-	station_prop(shelter_shell, MODEL_WOOD_TABLE, table, 2.4, 0.162, 90.0)
-	_solid(table + Vector3.UP * 0.39, Vector3(2.4, 0.78, 0.85))
+	# Mesa de la racion: ocupa el sitio de los dos bloques que habia aqui.
+	var table := Vector3(center.x, 0.03, center.y - half.y + 1.3)
+	station_prop(shelter_shell, MODEL_WOOD_TABLE, table, 2.6, 0.162, 90.0)
+	_solid(table + Vector3.UP * 0.42, Vector3(2.6, 0.84, 0.92))
 	var cross := Vector3(center.x, 0.12, center.y + 0.5)
 	FieldWorld.box(shelter_shell, cross, Vector3(0.23, 0.08, 0.77), BLUE, true)
 	FieldWorld.box(shelter_shell, cross, Vector3(0.76, 0.08, 0.23), BLUE, true)
