@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -183,49 +183,149 @@ def stars():
     mesh("Campo estelar", vertices, faces, starlight)
 
 
+MODELS = ROOT / "assets" / "cinematica" / "modelos"
+
+
+def textured_toon(name, image, gamma=1.0, tint=(1, 1, 1)):
+    """Mismo sombreado plano de toon(), pero con la textura del modelo de NASA."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    nodes.clear()
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    texture.interpolation = "Cubic"
+    bright = nodes.new("ShaderNodeGamma")
+    bright.inputs["Gamma"].default_value = gamma
+    paint = nodes.new("ShaderNodeMix")
+    paint.data_type, paint.blend_type = "RGBA", "MULTIPLY"
+    paint.inputs["Factor"].default_value = 1
+    paint.inputs[7].default_value = (*tint, 1)
+    diffuse = nodes.new("ShaderNodeBsdfDiffuse")
+    shade = nodes.new("ShaderNodeShaderToRGB")
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.interpolation = "CONSTANT"
+    ramp.color_ramp.elements[0].color = (.60, .60, .60, 1)
+    ramp.color_ramp.elements[1].position = .47
+    ramp.color_ramp.elements[1].color = (1, 1, 1, 1)
+    # Tres escalones de luz, como el resto de la pelicula.
+    mid = ramp.color_ramp.elements.new(.24)
+    mid.color = (.77, .77, .77, 1)
+    light = nodes.new("ShaderNodeMix")
+    light.data_type, light.blend_type = "RGBA", "MULTIPLY"
+    light.inputs["Factor"].default_value = 1
+    output = nodes.new("ShaderNodeOutputMaterial")
+    links.new(texture.outputs["Color"], bright.inputs["Color"])
+    links.new(bright.outputs["Color"], paint.inputs[6])
+    links.new(diffuse.outputs[0], shade.inputs[0])
+    links.new(shade.outputs[0], ramp.inputs[0])
+    links.new(paint.outputs[2], light.inputs[6])
+    links.new(ramp.outputs["Color"], light.inputs[7])
+    links.new(light.outputs[2], output.inputs["Surface"])
+    return mat
+
+
+def base_image(mat):
+    if mat and mat.use_nodes:
+        for node in mat.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and node.image:
+                return node.image
+    return None
+
+
+def import_planet(name, path, location, radius, facing, gamma=1.0, tint=(1, 1, 1)):
+    """Importa un GLB de NASA, lo escala a `radius` y gira el punto (u, v) hacia arriba."""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(path))
+    new = [o for o in bpy.data.objects if o not in before]
+    parts = [o for o in new if o.type == "MESH"]
+    for extra in new:
+        if extra.type != "MESH":
+            bpy.data.objects.remove(extra)
+    for part in parts:
+        world = part.matrix_world.copy()
+        part.parent = None
+        part.matrix_world = world
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in parts:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    points = [part.matrix_world @ v.co for part in parts for v in part.data.vertices]
+    center = sum(points, Vector()) / len(points)
+    size = max((p - center).length for p in points)
+    anchor = max(parts, key=lambda o: len(o.data.vertices))
+    uv_layer = anchor.data.uv_layers.active
+    best, best_distance = None, 9.0
+    for poly in anchor.data.polygons:
+        for loop in poly.loop_indices:
+            u, v = uv_layer.data[loop].uv
+            distance = (u - facing[0]) ** 2 + (v - facing[1]) ** 2
+            if distance < best_distance:
+                best, best_distance = anchor.data.vertices[anchor.data.loops[loop].vertex_index].co - center, distance
+    root = empty(name, location)
+    root.scale = (radius / size,) * 3
+    root.rotation_mode = "QUATERNION"
+    root.rotation_quaternion = best.normalized().rotation_difference(Vector((0, 0, 1)))
+    for part in parts:
+        part.data.transform(Matrix.Translation(-center))
+        part.parent = root
+        image = base_image(part.active_material)
+        part.data.materials.clear()
+        part.data.materials.append(textured_toon(name + " " + part.name, image, gamma, tint) if image else toon(name, "7A7E89"))
+        for polygon in part.data.polygons:
+            polygon.use_smooth = True
+    return root
+
+
 stars()
-earth = ico("Earth_Curvature", (0, 0, -15), (15, 15, 15), toon("Océano", "3677A2"), subdivisions=5)
+EARTH_MODEL = MODELS / "tierra_nasa.glb"
+if EARTH_MODEL.exists():
+    earth = import_planet("Tierra NASA", EARTH_MODEL, (0, 0, -15), 15, (.22, .61), gamma=1.0)
+else:
+    earth = ico("Earth_Curvature", (0, 0, -15), (15, 15, 15), toon("Océano", "3677A2"), subdivisions=5)
 
 
-def earth_patch(name, azimuth, latitude, width, height, mat):
-    def project(a, b):
-        elevation, heading = rad(b), rad(a)
-        the_rad = 15.035
-        return (
-            the_rad * math.cos(elevation) * math.cos(heading),
-            the_rad * math.cos(elevation) * math.sin(heading),
-            -15 + the_rad * math.sin(elevation),
-        )
-    vertices = [project(azimuth, latitude)]
-    for i in range(32):
-        angle = math.tau * i / 32
-        factor = 1 + .16 * math.sin(angle * 3) + .10 * math.cos(angle * 5)
-        vertices.append(project(azimuth + width * math.cos(angle) * factor, latitude + height * math.sin(angle) * factor))
-    faces = [(0, i + 1, ((i + 1) % 32) + 1) for i in range(32)]
-    obj = mesh(name, vertices, faces, mat)
-    # Keep the patches above the curved terrain between perimeter vertices.
-    bpy.context.view_layer.objects.active = obj
-    subdivide = obj.modifiers.new("Proyección terrestre", "SUBSURF")
-    subdivide.subdivision_type = "SIMPLE"
-    subdivide.levels = subdivide.render_levels = 2
-    shrink = obj.modifiers.new("Piel terrestre", "SHRINKWRAP")
-    shrink.target = earth
-    shrink.wrap_mode = "OUTSIDE_SURFACE"
-    shrink.offset = .024
+    def earth_patch(name, azimuth, latitude, width, height, mat):
+        def project(a, b):
+            elevation, heading = rad(b), rad(a)
+            the_rad = 15.035
+            return (
+                the_rad * math.cos(elevation) * math.cos(heading),
+                the_rad * math.cos(elevation) * math.sin(heading),
+                -15 + the_rad * math.sin(elevation),
+            )
+        vertices = [project(azimuth, latitude)]
+        for i in range(32):
+            angle = math.tau * i / 32
+            factor = 1 + .16 * math.sin(angle * 3) + .10 * math.cos(angle * 5)
+            vertices.append(project(azimuth + width * math.cos(angle) * factor, latitude + height * math.sin(angle) * factor))
+        faces = [(0, i + 1, ((i + 1) % 32) + 1) for i in range(32)]
+        obj = mesh(name, vertices, faces, mat)
+        # Keep the patches above the curved terrain between perimeter vertices.
+        bpy.context.view_layer.objects.active = obj
+        subdivide = obj.modifiers.new("Proyección terrestre", "SUBSURF")
+        subdivide.subdivision_type = "SIMPLE"
+        subdivide.levels = subdivide.render_levels = 2
+        shrink = obj.modifiers.new("Piel terrestre", "SHRINKWRAP")
+        shrink.target = earth
+        shrink.wrap_mode = "OUTSIDE_SURFACE"
+        shrink.offset = .024
 
 
-green = toon("Continentes", "519979")
-mint = toon("Islas", "79AF83")
-cloud_color = toon("Nubes altas", "C0D1CA")
-for spec in [(-66, 43, 26, 22, green), (-113, 28, 22, 19, mint), (-58, 8, 13, 27, green), (25, 37, 25, 20, green), (56, 64, 26, 10, mint), (-25, 65, 35, 4, cloud_color), (-138, 37, 32, 5, cloud_color)]:
-    earth_patch("Relieve terrestre", *spec)
+    green = toon("Continentes", "519979")
+    mint = toon("Islas", "79AF83")
+    cloud_color = toon("Nubes altas", "C0D1CA")
+    for spec in [(-66, 43, 26, 22, green), (-113, 28, 22, 19, mint), (-58, 8, 13, 27, green), (25, 37, 25, 20, green), (56, 64, 26, 10, mint), (-25, 65, 35, 4, cloud_color), (-138, 37, 32, 5, cloud_color)]:
+        earth_patch("Relieve terrestre", *spec)
+
 
 pad = cone("Plataforma terrestre", (0, 0, .035), 2.1, 2.0, .17, ink, sides=12)
 cone("Círculo de partida", (0, 0, .132), 1.45, 1.45, .027, orange, sides=24)
 cone("Centro de plataforma", (0, 0, .153), 1.21, 1.21, .024, glass, sides=24)
 
 moon_x, moon_z, moon_radius = 18, 43, 12
-ico("Moon_Curvature", (moon_x, 0, moon_z), (12, 12, 12), moon_mat, subdivisions=5)
+import_planet("Luna NASA LRO", MODELS / "luna_lro.glb", (moon_x, 0, moon_z), moon_radius, (.586, .544), gamma=.62, tint=(1.0, .96, .90))
 
 
 def surface(x, y):
@@ -253,10 +353,6 @@ def lunar_crater(x, y, radius):
         polygon.material_index = int(polygon.index >= sides)
 
 
-for spec in [(14.6, -.2, .74), (16.9, -1.65, .42), (20.8, -.95, .83), (20, 2.0, .57),
-             (17.2, 2.5, 1.07), (22.2, 1.6, 1.04), (14, 2.2, .7), (18.2, 4, .9), (21, -2.9, .61),
-             (13, -1.6, .48), (18.4, -2.75, .7), (23, -3.9, .68)]:
-    lunar_crater(*spec)
 for i in range(52):
     x, y = moon_x + rng.uniform(-6.6, 6.6), rng.uniform(-4.9, 6.7)
     if abs(x - 16.75) < .72 and abs(y + 1.1) < .9 or abs(x - 19.4) < .82 and abs(y) < .85:
