@@ -12,9 +12,10 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const CHIP_FILL := Color("#ecd5a8")
+const AIR_ICON := preload("res://assets/ui/hud/aire.png")
 const CHIP_ICONS := [
-	preload("res://assets/ui/hud/aire.png"),
-	preload("res://assets/ui/hud/aire.png"),
+	AIR_ICON,
+	AIR_ICON,
 	preload("res://assets/ui/hud/bateria.png"),
 	preload("res://assets/ui/hud/agua.png"),
 	preload("res://assets/ui/hud/hambre.png")
@@ -28,12 +29,6 @@ const PROMPTS := [
 
 var joystick := LunarTouch.new()
 var play: Control
-var _title_tween: Tween
-var _zone_panel: PanelContainer
-var _zone_title: Label
-var _zone_buttons: VBoxContainer
-var _tapped_name := ""
-var _tapped_until := 0
 var globe: LunarGlobe
 var menu: PanelContainer
 var address: LineEdit
@@ -44,6 +39,12 @@ var location: Label
 var alert: Label
 var next_step: Label
 var feedback: Label
+var _title_tween: Tween
+var _zone_panel: PanelContainer
+var _zone_title: Label
+var _zone_buttons: VBoxContainer
+var _tapped_name := ""
+var _tapped_until := 0
 var _lobby_backdrop: Control
 var _heading: Label
 var _message: Label
@@ -111,7 +112,9 @@ func _build_play(root: Control) -> void:
 	_resources.position = Vector2(18, 8)
 	_resources.add_theme_constant_override("h_separation", 12)
 	_resources.add_theme_constant_override("v_separation", 0)
-	var colors := [Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")]
+	var colors := [
+		Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")
+	]
 	for index in range(colors.size()):
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -156,9 +159,10 @@ func _build_play(root: Control) -> void:
 	alert = _label(content, "", 19, TITLE)
 	_float_text(alert)
 	alert.add_theme_color_override("font_color", Color("#ff9a72"))
-	play.visibility_changed.connect(func() -> void:
-		if play.visible:
-			show_title()
+	play.visibility_changed.connect(
+		func() -> void:
+			if play.visible:
+				show_title()
 	)
 	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -576,11 +580,13 @@ func sync(
 			]
 		)
 	_show_alert(mission)
+	var deposit := String(spot).begins_with("dep:")
+	var named: StringName = mission.deposit_kind(spot) if deposit else spot
 	feedback.text = message
 	feedback.visible = not message.is_empty()
 	var carrying: bool = mission.pilots[player].cargo != 0
 	var seated: bool = mission.pilots[player].seated
-	var spot_name := String(CrestWorld.NAMES.get(spot, ""))
+	var spot_name := String(CrestWorld.NAMES.get(named, ""))
 	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
 	var actionable := not spot_name.is_empty() or carrying or seated
 	_zone_buttons.visible = actionable
@@ -591,7 +597,11 @@ func sync(
 		_zone_title.text = "Llevas carga" if carrying else "A bordo"
 	else:
 		_zone_title.text = _tapped_name
-	action_button.text = "Bajar" if mission.pilots[player].seated else _action_caption(spot)
+	action_button.text = _action_caption(named)
+	if deposit and mission.deposit_left(spot) <= 0:
+		action_button.text = "Depósito vacío"
+	if seated:
+		action_button.text = "Bajar"
 	if mission.phase == &"tutorial" and spot == &"training":
 		if mission.solo:
 			action_button.text = (

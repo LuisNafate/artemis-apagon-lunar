@@ -4,6 +4,8 @@ const GAME := preload("res://crest/crest.tscn")
 const NO_SPOTS: Array[StringName] = [&"", &""]
 const INDOORS: Array[bool] = [true, true]
 const OUTSIDE: Array[bool] = [false, false]
+# La cantera de hielo queda en el borde norte del refugio: se extrae desde dentro.
+const ICE_BAY := Vector3(14.9, 0.0, -2.2)
 
 var cases := 0
 var checks := 0
@@ -268,12 +270,14 @@ func _input_and_world() -> void:
 	)
 	_check(game.world.field_models.visible, "las maquetas están visibles en el mapa")
 	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
-	for part in ["satelliteDish_detailed", "machine_wirelessCable"]:
-		var model := game.world.find_child(part, true, false) as MeshInstance3D
-		_check(
-			model != null and radio.distance_to(model.global_position) < 1.6,
-			"modelo junto a la radio"
-		)
+	var antenna: Node3D = null
+	for node in game.world.find_children("*", "Node3D", true, false):
+		if node.scene_file_path.ends_with("antena_rover.glb"):
+			antenna = node
+	_check(
+		antenna != null and radio.distance_to(antenna.global_position) < 2.6,
+		"la antena del rover está junto a la radio"
+	)
 	_check(game.sim.phase == &"tutorial" and not game.sim.solo, "selector cooperativo por teclado")
 	var blue: CrestPilot = game.pilots[0]
 	var orange: CrestPilot = game.pilots[1]
@@ -480,21 +484,26 @@ func _map_route(solo: bool) -> void:
 	_tap(KEY_1 if solo else KEY_2)
 	_tap(KEY_1)
 	_tap(KEY_3)
-	await _walk(game, 0, Vector3(-10.9, 0.0, 5.0))
-	await _walk(game, 0, CrestWorld.STATIONS[&"ice"])
+	await _walk(game, 0, Vector3(12.0, 0, -0.9))
+	await _walk(game, 0, Vector3(14.9, 0, 0.2))
+	await _walk(game, 0, ICE_BAY)
 	_act(game, 0)
 	for frame in range(370):
 		await get_tree().physics_frame
 	_check(game.sim.cargo_kind(0) == &"ice", "extraer hielo con movimiento y E")
+	await _walk(game, 0, Vector3(14.9, 0, 0.2))
+	await _walk(game, 0, Vector3(12.0, 0, -0.9))
 	await _walk(game, 0, CrestWorld.STATIONS[&"refinery"])
 	_act(game, 0)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(game.sim.water == 3 and game.sim.cargo_kind(0) == &"", "trayecto de cantera a refinado")
 	await _walk(game, 0, Vector3(-0.7, 0, 0.35))
-	await _walk(game, 0, Vector3(0.05, 0, 2.5))
-	await _walk(game, 0, Vector3(0.05, 0, 4.85))
+	await _walk(game, 0, Vector3(12.0, 0, -0.9))
+	await _walk(game, 0, Vector3(15.0, 0, 1.5))
 	_check(game.world.sheltered(game.pilots[0].position), "vuelta desde cantera por refugio")
+	await _walk(game, 1, Vector3(12.0, 0, -0.9))
+	await _walk(game, 1, Vector3(9.0, 0, -0.9))
 	await _walk(game, 1, CrestWorld.STATIONS[&"radio"])
 	_act(game, 1)
 	for frame in range(165):
@@ -510,10 +519,14 @@ func _map_route(solo: bool) -> void:
 	for batch in range(3):
 		while game.sim.water < 3:
 			await _walk(game, 0, Vector3(-2.0, 0, 0.1))
-			await _walk(game, 0, CrestWorld.STATIONS[&"ice"])
+			await _walk(game, 0, Vector3(12.0, 0, -0.9))
+			await _walk(game, 0, Vector3(14.9, 0, 0.2))
+			await _walk(game, 0, ICE_BAY)
 			_act(game, 0)
 			for frame in range(370):
 				await get_tree().physics_frame
+			await _walk(game, 0, Vector3(14.9, 0, 0.2))
+			await _walk(game, 0, Vector3(12.0, 0, -0.9))
 			await _walk(game, 0, CrestWorld.STATIONS[&"refinery"])
 			_act(game, 0)
 			await get_tree().physics_frame
@@ -524,13 +537,16 @@ func _map_route(solo: bool) -> void:
 				return
 		await _walk(game, 0, Vector3(-0.7, 0, 0.5))
 		await _walk(game, 0, Vector3(0.05, 0, 2.5))
+		if game.world.sheltered(game.pilots[1].position):
+			await _walk(game, 1, Vector3(14.5, 0, 1.5))
+			await _walk(game, 1, Vector3(12.0, 0, 1.0))
 		await _walk(game, 1, CrestWorld.STATIONS[&"fuel"])
 		_act(game, 1)
 		await get_tree().physics_frame
 		await get_tree().physics_frame
 		_check(game.sim.jobs[&"fuel"] > 0.0, "receta iniciada con agua")
-		await _walk(game, 1, Vector3(6.8, 0, 0.85))
-		await _walk(game, 1, Vector3(0.15, 0, 2.4))
+		await _walk(game, 1, Vector3(12.0, 0, -0.9))
+		await _walk(game, 1, Vector3(15.0, 0, 1.5))
 		for frame in range(3400):
 			if game.sim.fuel_ready > 0 or game.sim.terminal():
 				break
@@ -571,7 +587,6 @@ func _take_to_pad(game, player: int, station: StringName) -> void:
 	await get_tree().physics_frame
 	if station == &"fuel":
 		await _walk(game, player, Vector3(6.8, 0, 0.5))
-		await _walk(game, player, Vector3(9.4, 0, 0.7))
 	await _walk(game, player, CrestWorld.STATIONS[&"pad"])
 	_act(game, player)
 	await get_tree().physics_frame

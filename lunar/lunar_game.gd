@@ -1,4 +1,5 @@
 # gdlint: disable=max-returns,max-public-methods
+class_name LunarGame
 extends Node3D
 
 const PORT := 44260
@@ -6,6 +7,16 @@ const SAMPLE_RATE := 0.10
 const CAMERA_ELEVATION := 34.0
 const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
+const CAMERA_DISTANCE := 26.0
+const PLAY_V_OFFSET := 2.9
+const FOLLOW_FOV := 45.0
+const FOLLOW_HEIGHT := 0.8
+const BASE_HYSTERESIS := 1.0
+const HORIZON_SPAN := 400.0
+const DEPOSIT_REACH := 1.63
+const LOOKAHEAD_FRAMES := 4.0
+const SINK_TOLERANCE := 0.25
+const TERRAIN_WAIT_MSEC := 8000
 const CARGO_MODELS := {
 	&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62],
 	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
@@ -27,6 +38,7 @@ var camera := Camera3D.new()
 var ui := LunarInterface.new()
 var sky := LunarBackdrop.new()
 var flight := LunarFlightView.new()
+var streamer := ChunkStreamer.new()
 var pilots: Array[CrestPilot] = []
 var net := &"lobby"
 var guest_peer := 0
@@ -46,6 +58,7 @@ var _routes := ROUTES.new()
 var _routes_ready := false
 var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
+var _cargo_templates: Dictionary = {}
 var _coins_by_guest: Dictionary = {}
 var _science_index := 0
 var _science_from_session := false
@@ -82,6 +95,8 @@ func _ready() -> void:
 	world.show_field_models("")
 	for station: Node3D in world.markers.values():
 		station.hide()
+	add_child(streamer)
+	_configure_streamer(starting_id)
 	sky.configure(starting_id, initial.horizon)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	add_child(camera)
@@ -119,16 +134,28 @@ func _show_opening() -> void:
 	opening.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
+## La intro se cierra al entrar al menu o al abrir una base por cualquier camino: si
+## siguiera viva, al terminar devolveria la partida al lobby.
+func _close_opening() -> void:
+	if is_instance_valid(opening):
+		opening.get_parent().queue_free()
+		opening = null
+
+
 func _surface_camera() -> void:
 	var view := Vector2(0.228, 0.974).normalized()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.position = Vector3(
-		view.x * 26.0, 26.0 * tan(deg_to_rad(CAMERA_ELEVATION)), view.y * 26.0
+		view.x * CAMERA_DISTANCE,
+		CAMERA_DISTANCE * tan(deg_to_rad(CAMERA_ELEVATION)),
+		view.y * CAMERA_DISTANCE
 	)
 	camera.look_at(Vector3.ZERO)
 	_camera_home = camera.position
 	camera.size = SURFACE_SIZE
 	camera.h_offset = 0.0
-	camera.v_offset = 2.9
+	camera.v_offset = PLAY_V_OFFSET
+	sky.pan = 0.0
 
 
 func _process(delta: float) -> void:
@@ -146,6 +173,7 @@ func _physics_process(delta: float) -> void:
 	if not _routes_ready:
 		_routes.build(get_world_3d().direct_space_state)
 		_routes_ready = true
+	streamer.update(_focus_points())
 	if net == &"host" and play_started:
 		_local_frame(delta)
 	elif net == &"solo" and ui.play.visible:
@@ -157,11 +185,63 @@ func _physics_process(delta: float) -> void:
 
 
 func _follow_camera(delta: float) -> void:
-	# Zoom de juego: camara cercana que sigue a los pilotos sin salir de la plataforma.
-	var focus := (pilots[0].position + pilots[1].position) * 0.5
-	var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -6.0, 6.0))
-	camera.position = camera.position.lerp(_camera_home + shift, minf(1.0, delta * 4.0))
-	camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
+	# Cada dispositivo sigue a su propio piloto; la orientacion nunca cambia.
+	var own := pilots[1 if net == &"guest" else 0].position
+	var outside := _camera_outside(own)
+	if outside != (camera.projection == Camera3D.PROJECTION_PERSPECTIVE):
+		_switch_projection(outside)
+	var blend := minf(1.0, delta * 4.0)
+	if outside:
+		var target := own + Vector3.UP * FOLLOW_HEIGHT + camera.basis.z * _follow_distance()
+		camera.position = camera.position.lerp(target, blend)
+		camera.v_offset = lerpf(camera.v_offset, 0.0, blend)
+	else:
+		# Zoom de juego: camara cercana que sigue a los pilotos conectados sin salir de la
+		# plataforma (en solo, el piloto ausente no cuenta).
+		var points := _focus_points()
+		var focus := Vector3.ZERO
+		for point in points:
+			focus += point
+		focus /= maxf(1.0, float(points.size()))
+		# En z llega hasta el borde de la plataforma: con el desplazamiento vertical de la
+		# vista, un tope menor dejaba al piloto bajo el borde inferior de la pantalla.
+		var reach_z := CrestWorld.HALF_Z
+		var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -reach_z, reach_z))
+		camera.position = camera.position.lerp(_camera_home + shift, blend)
+		camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
+		camera.v_offset = lerpf(camera.v_offset, PLAY_V_OFFSET, blend)
+	sky.pan = camera.position.dot(camera.basis.x) / HORIZON_SPAN
+
+
+## Fuera de la plataforma plana (con histeresis para no alternar en el borde).
+func _camera_outside(point: Vector3) -> bool:
+	var values: Array = sim.rules.open_world.base_flat_rect
+	var flat := Rect2(float(values[0]), float(values[1]), float(values[2]), float(values[3]))
+	var perspective := camera.projection == Camera3D.PROJECTION_PERSPECTIVE
+	var margin := -BASE_HYSTERESIS if perspective else BASE_HYSTERESIS
+	return not flat.grow(margin).has_point(Vector2(point.x, point.z))
+
+
+## Distancia en perspectiva que encuadra lo mismo que la ortografica de juego.
+func _follow_distance() -> float:
+	return PLAY_SIZE / (2.0 * tan(deg_to_rad(FOLLOW_FOV) * 0.5))
+
+
+## Cambia de proyeccion conservando el punto mirado y el encuadre, para que el paso
+## por el borde de la base sea una mezcla y no un salto.
+func _switch_projection(perspective: bool) -> void:
+	var back := camera.basis.z
+	if perspective:
+		var look := camera.position - back * CAMERA_DISTANCE
+		var zoom := camera.size / PLAY_SIZE
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = FOLLOW_FOV
+		camera.position = look + back * _follow_distance() * zoom
+	else:
+		var look := camera.position - back * _follow_distance()
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = PLAY_SIZE
+		camera.position = look + back * CAMERA_DISTANCE
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -203,9 +283,7 @@ func _choose(action: String, argument: String) -> void:
 		return
 	match action:
 		"title_enter":
-			if is_instance_valid(opening):
-				opening.get_parent().queue_free()
-				opening = null
+			_close_opening()
 			net = &"lobby"
 			_surface_camera()
 			ui.lobby(profile, "")
@@ -283,7 +361,32 @@ func _load_base(id: String, single_player: bool) -> void:
 		_start_solo(id)
 	else:
 		host(id)
+	if net in [&"solo", &"host"]:
+		await _await_terrain(base_name)
 	_loading = false
+
+
+## Mantiene la pantalla de carga hasta que haya suelo bajo las posiciones restauradas.
+func _await_terrain(base_name: String) -> void:
+	if _terrain_ready():
+		return
+	ui.loading(base_name, "Generando el terreno", 0.86)
+	var deadline := Time.get_ticks_msec() + TERRAIN_WAIT_MSEC
+	while not _terrain_ready() and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	if net in [&"solo", &"host"]:
+		_show_session()
+
+
+func _terrain_ready() -> bool:
+	return _focus_points().all(streamer.is_ready_at)
+
+
+func _show_session() -> void:
+	if net == &"host" and not play_started:
+		ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+	else:
+		ui.playing()
 
 
 func host(id: String, port: int = PORT) -> void:
@@ -298,7 +401,7 @@ func host(id: String, port: int = PORT) -> void:
 	play_started = false
 	_open_base(id)
 	_address = _lan_address(port)
-	ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+	_show_session()
 
 
 func _start_solo(id: String) -> void:
@@ -306,7 +409,7 @@ func _start_solo(id: String) -> void:
 		return
 	net = &"solo"
 	_open_base(id)
-	ui.playing()
+	_show_session()
 
 
 func _open_base(id: String) -> void:
@@ -342,12 +445,14 @@ func join(address: String, port: int = PORT) -> void:
 
 
 func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> void:
+	_close_opening()
 	sim = LunarMission.new()
 	sim.prepare(id, seed_value, single_player)
 	_feedback_time = 0.0
 	sim.roles[0] = String(profile.data.active_role)
 	world.set_base(sim.base.soil, StringName(id))
 	world.show_field_models("")
+	_configure_streamer(id)
 	sky.configure(id, sim.base.horizon)
 	_surface_camera()
 	_set_positions(CrestWorld.SPAWNS)
@@ -358,8 +463,36 @@ func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> 
 	_alert_kind = ""
 
 
+func _configure_streamer(id: String) -> void:
+	var settings: Dictionary = sim.rules.open_world
+	streamer.configure(sim, settings, settings.regions[id], world.soil_color())
+	streamer.ground_material = world.ground_material()
+
+
 func _positions() -> Array:
 	return [pilots[0].position, pilots[1].position]
+
+
+## Puntos alrededor de los que se carga el mundo: los pilotos conectados.
+func _focus_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for index in range(2):
+		if sim.connected[index]:
+			points.append(pilots[index].position)
+	return points
+
+
+## Estación de la base al alcance o, si no hay, el depósito del mundo más cercano.
+func _spot_at(point: Vector3) -> StringName:
+	var tutorial := sim.phase == &"tutorial"
+	var spot := world.nearest(point, tutorial)
+	if spot == &"" and not tutorial:
+		spot = streamer.nearest_deposit(point, DEPOSIT_REACH)
+	return spot
+
+
+func crate_visible(id: int) -> bool:
+	return _boxes.has(id) and (_boxes[id] as Node3D).visible
 
 
 func _set_positions(points: Array) -> void:
@@ -398,6 +531,7 @@ func _leave() -> void:
 
 func _close_network() -> void:
 	net = &"lobby"
+	_surface_camera()
 	play_started = false
 	guest_peer = 0
 	guest_id = ""
@@ -505,7 +639,7 @@ func _local_frame(delta: float) -> void:
 		_vectors[1] = Vector2.ZERO
 	for index in range(2):
 		_move_pilot(index, delta)
-		_spots[index] = world.nearest(pilots[index].position, sim.phase == &"tutorial")
+		_spots[index] = _spot_at(pilots[index].position)
 
 	if guest_peer != 0 and sim.phase not in [&"tutorial", &"flight"]:
 		var period := float(sim.rules.cycle.period)
@@ -567,7 +701,7 @@ func _guest_frame(delta: float) -> void:
 			sim.pilots[index].cargo != 0,
 			sim.pilots[index].seated
 		)
-		_spots[index] = world.nearest(pilot.position, sim.phase == &"tutorial")
+		_spots[index] = _spot_at(pilot.position)
 	_render(delta, 1)
 
 
@@ -633,6 +767,14 @@ func _move_pilot(index: int, delta: float) -> void:
 	if sim.phase == &"flight" or not sim.connected[index] or sim.pilots[index].seated:
 		pilot.velocity = Vector3.ZERO
 		return
+	# Sin colision bajo los pies el piloto espera quieto a que llegue su chunk.
+	if not streamer.is_ready_at(pilot.position):
+		pilot.velocity = Vector3.ZERO
+		return
+	var ground := streamer.height_at(pilot.position)
+	if pilot.position.y < ground - SINK_TOLERANCE:
+		pilot.position.y = ground + 0.1
+		pilot.velocity.y = 0.0
 	var input: Vector2 = _vectors[index]
 	var direction := Vector2.ZERO
 	if input.length_squared() > 0.012:
@@ -642,6 +784,12 @@ func _move_pilot(index: int, delta: float) -> void:
 		direction = (right * input.x + back * input.y).limit_length(input.length())
 	else:
 		direction = _follow_path(index, pilot.position)
+	var heading := Vector3(direction.x, 0.0, direction.y) * FieldPilot.WALK_SPEED
+	for motion: Vector3 in [pilot.velocity, heading]:
+		if not streamer.is_ready_at(pilot.position + motion * delta * LOOKAHEAD_FRAMES):
+			direction = Vector2.ZERO
+			pilot.velocity.x = 0.0
+			pilot.velocity.z = 0.0
 	pilot.drive(delta, direction * sim.speed_factor(index), false, false)
 	pilot.animate_gait(delta, sim.pilots[index].cargo != 0, false)
 
@@ -679,11 +827,7 @@ func _render(delta: float, player: int) -> void:
 		if not _boxes.has(id):
 			var box := Node3D.new()
 			if CARGO_MODELS.has(crate.kind):
-				var info: Array = CARGO_MODELS[crate.kind]
-				var model: Node3D = (info[0] as PackedScene).instantiate()
-				PaperMaterial.restyle(model, false)
-				model.scale = Vector3.ONE * float(info[1])
-				box.add_child(model)
+				box.add_child(_cargo_model(crate.kind))
 			else:
 				FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
 				FieldWorld.box(
@@ -697,6 +841,8 @@ func _render(delta: float, player: int) -> void:
 			if crate.owner == -1
 			else pilots[crate.owner].carrying.global_position
 		)
+		# Las cajas sueltas siguen en `sim.crates`; solo se ocultan si su chunk no esta cargado.
+		mesh.visible = crate.owner != -1 or streamer.is_ready_at(crate.point)
 	world.reflect(sim, _spots, delta)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
 	var view := sim.flight_stage()
@@ -707,6 +853,22 @@ func _render(delta: float, player: int) -> void:
 	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
 	ui.flight_status(flight_phase, view.y)
 	_alert_if_changed()
+
+
+## Copia del modelo de carga. Las copias comparten los materiales de una plantilla oculta:
+## liberar una caja con materiales propios deja errores del servidor de render (headless).
+func _cargo_model(kind: StringName) -> Node3D:
+	if not _cargo_templates.has(kind):
+		var info: Array = CARGO_MODELS[kind]
+		var template: Node3D = (info[0] as PackedScene).instantiate()
+		PaperMaterial.restyle(template, false)
+		template.scale = Vector3.ONE * float(info[1])
+		template.hide()
+		add_child(template)
+		_cargo_templates[kind] = template
+	var model: Node3D = (_cargo_templates[kind] as Node3D).duplicate()
+	model.show()
+	return model
 
 
 func _alert_if_changed() -> void:

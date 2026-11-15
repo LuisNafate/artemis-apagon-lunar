@@ -155,6 +155,42 @@
 - AstroCat guia eliminado del mapa; su diseno (astrocat_guia.glb, animaciones Idle/Walk) se aplica a los pilotos en crest_pilot.gd.
 - Camara de juego PLAY_SIZE 9.8 con seguimiento (lunar_game.gd). Godot 4.7.2 Forward+: verificado a ojo en laptop; tests crest_suite/lunar_suite pendientes de actualizar (guide_animator, huesos del gato anterior).
 
+## Mundo abierto: generador de chunks
+
+- Godot 4.7.2. Se añadieron `lunar/open_world/chunk_data.gd` y `chunk_generator.gd` (generador determinista, sin escena) y `campaign_2026.open_world` en `state_registry.json` con las nueve regiones, `max_walk_slope` y `deposit_distance_curve`. Suite nueva `tests/open_world_suite.tscn` y paso `Regresión mundo abierto` en `verify.ps1`.
+- Comprobado: `tests/verify.ps1` pasó formato y lint, importación, arranque y seis suites. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 1 caso y 49 comprobaciones, 0 fallos.
+
+## Mundo abierto: estado de depósitos
+
+- Godot 4.7.2. `LunarMission` guarda `world_deltas` (clave `"cx:cz:id"` → `left`, `emptied_day`), fija `world_seed` en `prepare()` y ofrece `deposit_key`, `register_deposit`, `deposit_left` y la señal `deposit_changed`. `use_station` con clave `dep:` mina el depósito; se rellena tras `deposit_refill_dawns` amaneceres (por `deposit_near_factor` cerca de la base). El bono del geólogo no resta del depósito. Los puestos fijos `ice`/`ore` siguen intactos.
+- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 5 casos y 699 comprobaciones, 0 fallos.
+
+## Reparar suites tras el plano 40x22 y adaptar el generador
+
+- Godot 4.7.2. Causa de los 17 fallos de `lunar_suite`: la prueba daba por hecho que el astronauta sale junto al puesto de práctica; con el plano nuevo `SPAWNS` queda a 3,9 m de `STATIONS.training` y el alcance del tutorial es 2,1 m (`CrestWorld.nearest`). Es una suposición vieja de la prueba, no un fallo del juego (el jugador camina hasta el puesto): ahora la prueba coloca a los pilotos en el puesto leyendo `STATIONS`. Los fallos posteriores eran en cascada.
+- `crest_suite`: caso de pilotos reescrito para `AnimationPlayer` (modelo y reproductor propios, clips `Idle`/`Walk`/`Run` en bucle, tinte `BLUE`/`AMBER` con `TINT_STRENGTH`, `Walk` al caminar e `Idle` en reposo). Se quitaron las comprobaciones de `guide_animator` y de los modelos Kenney de la radio (ahora antena del rover), los pilotos del tutorial se colocan en el puesto de práctica y las rutas dan rodeos por el nuevo refugio, los bancos y el cohete. El hielo se extrae desde el borde del refugio (`ICE_BAY`) porque fuera de él la exposición de tormenta mata en unos 30 s. La suite necesita más fotogramas (el recorrido hielo-refinado ahora mide más de 20 m): `verify.ps1` usa `--quit-after 60000`.
+- Registro `campaign_2026.open_world`: `base_flat_rect` [-20, -11, 40, 22] y `base_exclusion_rect` [-28, -19, 56, 38]. `open_world_suite` lee la exclusión del registro.
+- Comprobado: `tests/verify.ps1` (resultados en el informe de la tarea).
+
+## Mundo abierto: ChunkStreamer y ChunkView
+
+- Godot 4.7.2. `ChunkStreamer` genera `ChunkData` y la malla en `WorkerThreadPool` y solo toca el árbol en `update()` (máximo `chunks_per_frame` por llamada; histéresis `load_radius`/`unload_radius`; `clear()` y `_exit_tree` esperan las tareas en vuelo). `data_at` responde con cualquier chunk cargado y, para los recién descargados, con una caché LRU de 32. `ChunkView` crea malla facetada, `StaticBody3D` en capa 1 con `HeightMapShape3D`, rocas en `MultiMesh` y marcadores de depósito (`set_deposit` llena/vacío). Pared invisible a 1 m del borde. Aún no está conectado a la escena (Tarea 4).
+- La suite espera la carga con tiempo de reloj (`_pump`, 20 s) porque la generación es asíncrona y los fotogramas headless son muy rápidos.
+- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 419, Mundo abierto 7 casos y 691 comprobaciones, 0 fallos.
+
+## Mundo abierto: integración en la campaña
+
+- Godot 4.7.2. `LunarGame` crea `streamer: ChunkStreamer` y lo configura con la región de cada base (también en la portada, para que la base no flote). `streamer.update` corre una vez por fotograma de física con los pilotos conectados como focos. `_load_base` mantiene la pantalla de carga ("Generando el terreno") hasta que hay suelo bajo las posiciones restauradas. `_move_pilot` deja quieto al piloto si su chunk no tiene colisión, lo sube a la superficie si quedó por debajo del relieve y frena el avance si el punto a 4 fotogramas no está listo. `_spots` usa el depósito más cercano (alcance 1,63 m) cuando no hay estación. Las cajas sueltas se ocultan si su chunk no está cargado, sin salir de `sim.crates`.
+- `CrestWorld` en modo campaña: `campaign_stations` sin `ice` ni `ore`, sin los dos `deposito_hielo` ni las canteras de la base, sin `superficie_lunar.glb` (se quitó `_build_moon_surface`), sin `CrateresLaterales`, motas, montículos ni relieve de Nobile, y sin las barandillas del borde: la plataforma queda abierta al mundo. El material del suelo se comparte con los chunks para conservar el tinte de tormenta. La escena histórica de Cresta no cambia.
+- `ChunkStreamer` monta primero los chunks terminados más cercanos a los focos y ofrece `height_at` y `ground_material`. `ChunkView.set_deposit` tiñe los materiales propios del marcador en vez de cambiarlos, y las cajas de carga comparten materiales con una plantilla oculta: cambiar o liberar materiales propios de modelos importados dejaba `Parameter "material" is null` del servidor de render en headless.
+- Interfaz: "Extraer hielo" / "Extraer mineral" o "Depósito vacío" sobre un depósito. `lunar_suite` ya no exige `ice`/`ore` como anclas, el recorrido sale del depósito de arranque de hielo y las esperas de carga usan reloj real.
+- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 363, Mundo abierto 8 casos y 705 comprobaciones, 0 fallos. Captura con render en Windows (Forward+, Vulkan): sin costuras visibles entre chunks; falta la prueba a mano de cruzar chunks caminando.
+
+## Mundo abierto: cámara que sigue al piloto
+
+- Godot 4.7.2. `LunarGame` (ahora `class_name LunarGame`) amplía `_follow_camera`. Dentro de la plataforma plana (`base_flat_rect`, con 1 m de histéresis) se mantiene la cámara ortográfica de equipo (`PLAY_SIZE` 9,8, desplazamiento limitado), que ahora promedia solo a los pilotos conectados: en solo el piloto ausente ya no descentra la vista. Fuera, cámara en perspectiva con FOV 45 y la misma orientación (34°, sin girar nunca), que sigue con suavizado al piloto propio de cada dispositivo (el invitado sigue al 2). Al cruzar el borde, el cambio de proyección conserva el punto mirado y el encuadre, y después la posición se mezcla. Al volver al lobby se restaura la vista ortográfica. El cambio se hace en el borde de la plataforma y no en el de la exclusión porque con la cámara limitada el piloto salía de pantalla entre x = 20,7 y 28.
+- `LunarBackdrop.pan`: las crestas del horizonte se repiten cada pantalla y se desplazan con la cámara (paralaje, 400 m por ancho de pantalla); estrellas y Tierra quedan fijas.
+- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 363, Mundo abierto 9 casos y 715 comprobaciones, 0 fallos. Captura con render en Windows (Forward+, Vulkan) saliendo de la base con el joystick y volviendo; falta probar a mano el salto (Tarea 5, aún sin hacer).
 ## 2026-11-15 - Cinemática Última ventana (revisión 18)
 
 - Se integró la apertura en la portada de la campaña. El viaje dura 16 s y el alunizaje se repite cada 4 s. Hay subtítulos en español, entrada directa al menú con Intro, salto con Esc y repetición con H. Los dos OGV Theora de 1280 × 720 incluyen los 480 fotogramas a 24 fps del montaje original.
