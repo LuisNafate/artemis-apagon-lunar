@@ -655,7 +655,7 @@
         "consumption": 0.75,
         "alerts": 1,
         "alert_every": 2,
-        "warning": 30,
+        "warning": 18,
         "outage_every": 3
       },
       "medium": {
@@ -664,7 +664,7 @@
         "consumption": 1,
         "alerts": 1,
         "alert_every": 1,
-        "warning": 20,
+        "warning": 13,
         "outage_every": 2
       },
       "hard": {
@@ -673,7 +673,7 @@
         "consumption": 1.25,
         "alerts": 2,
         "alert_every": 1,
-        "warning": 20,
+        "warning": 13,
         "outage_every": 1
       }
     },
@@ -912,7 +912,7 @@
       "irrigation": 3
     },
     "events": {
-      "alert_seconds": 45,
+      "alert_seconds": 25,
       "outage_seconds": 60,
       "outage_warning": 30,
       "dawn_margin": 60,
@@ -928,9 +928,9 @@
         "long": 1440
       },
       "warning_seconds": {
-        "short": 15,
-        "medium": 25,
-        "long": 35
+        "short": 10,
+        "medium": 15,
+        "long": 20
       },
       "pools": {
         "easy": {
@@ -1031,11 +1031,11 @@
       "source": "pasos facilitados por el usuario, alerta solar basada en datos NASA, otros efectos sintetizados",
       "events": ["botón", "pasos", "proximidad a estaciones y depósitos", "extracción", "alerta", "recompensa"],
       "footsteps": "tres fragmentos de dragon-studio-creepy-distant-footsteps-482883.mp3, alternados",
-      "solar_alert": "adaptación del audio Solar CME Growl, datos Parker Solar Probe, Robert Alexander, CC BY 4.0",
+      "solar_alert": "tormentas: adaptación de Solar CME Growl, Parker Solar Probe, Robert Alexander, CC BY 4.0; llamaradas sin partículas: sonificación SOHO, ver assets/props_luna/nasa/procedencia.md; pitidos finales y efectos visuales",
       "local_player_only": true,
       "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
       "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",
-      "pending": ["escucha y mezcla en dispositivos"]
+      "pending": ["escucha y mezcla en dispositivos", "revisar ruta bloqueada y colisiones de Cresta presentes en main"]
     },
     "objective_guidance": {
       "audit": "context_core/auditoria_objetivos_mvp.md",

@@ -1,3 +1,4 @@
+# gdlint: disable=max-file-lines,max-public-methods
 class_name LunarInterface
 extends CanvasLayer
 
@@ -12,8 +13,22 @@ const SOFT := Color("#755f52")
 const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
+const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
+const LOGO := preload("res://assets/ui/titulo_artemis.png")
+const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
+const ROLE_CARDS := {
+	"engineer": preload("res://assets/ui/roles/engineer.png"),
+	"botanist": preload("res://assets/ui/roles/botanist.png"),
+	"geologist": preload("res://assets/ui/roles/geologist.png")
+}
+const ROLE_PERKS := {
+	"engineer": "Montaje un 10% más rápido",
+	"botanist": "Una ración extra cada 5 cosechas",
+	"geologist": "Una caja extra cada 10 extracciones"
+}
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
+const STRENGTH := {"X": "muy fuerte", "M": "fuerte", "C": "mediana"}
 const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const CHIP_ICONS := [
 	AIR_ICON,
@@ -60,6 +75,15 @@ var _readouts: Array[Label] = []
 var _controls: HBoxContainer
 var _pause: Button
 var _wallet_balance: Label
+var _wallet_icon: TextureRect
+var _logo: TextureRect
+var _poster: TextureRect
+var _sparks: CPUParticles2D
+var _lobby_tweens: Array[Tween] = []
+var _paper: Control
+var _storm_edges: TextureRect
+var _flash: ColorRect
+var _flash_tween: Tween
 
 
 func build() -> void:
@@ -100,17 +124,12 @@ func _build_play(root: Control) -> void:
 	root.add_child(play)
 	play.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_build_storm_layers()
 	_objective_marker = _button(play, "", "objective_route")
 	_objective_marker.focus_mode = Control.FOCUS_NONE
 	_objective_marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_objective_marker.custom_minimum_size = Vector2(196, 46)
-	_objective_marker.add_theme_font_size_override("font_size", 18)
-	_objective_marker.add_theme_stylebox_override(
-		"normal", _style(Color("#124741"), Color("#ffe3a0"))
-	)
-	_objective_marker.add_theme_stylebox_override(
-		"hover", _style(Color("#25665f"), Color("#ffe3a0"))
-	)
+	LunarButtonKit.apply(_objective_marker, &"seguimiento", 18)
 	_objective_marker.tooltip_text = "Toca para caminar hasta el objetivo."
 	_objective_marker.hide()
 	var header := PanelContainer.new()
@@ -180,13 +199,16 @@ func _build_play(root: Control) -> void:
 	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(_objective_hint)
+	_objective_hint.add_theme_constant_override("outline_size", 2)
+	_objective_hint.add_theme_stylebox_override("normal", _tag_style(Color("#e8821c")))
 	_objective_hint.hide()
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
 	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	next_step.custom_minimum_size.x = 580
-	next_step.add_theme_constant_override("outline_size", 6)
+	next_step.add_theme_constant_override("outline_size", 2)
+	next_step.add_theme_stylebox_override("normal", _tag_style(Color("#47c9c4")))
 	alert = _label(content, "", 19, TITLE)
 	_float_text(alert)
 	alert.add_theme_color_override("font_color", Color("#ff9a72"))
@@ -197,13 +219,24 @@ func _build_play(root: Control) -> void:
 	)
 	_wallet_balance = _label(play, "", 20, TITLE)
 	_wallet_balance.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_wallet_balance.offset_left = -320
-	_wallet_balance.offset_right = -106
+	_wallet_balance.offset_left = -310
+	_wallet_balance.offset_right = -128
 	_wallet_balance.offset_top = 26
 	_wallet_balance.offset_bottom = 67
 	_wallet_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_wallet_balance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_float_text(_wallet_balance)
+	_wallet_icon = TextureRect.new()
+	_wallet_icon.texture = COIN_ICON
+	_wallet_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_wallet_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_wallet_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play.add_child(_wallet_icon)
+	_wallet_icon.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_wallet_icon.offset_left = -144
+	_wallet_icon.offset_right = -98
+	_wallet_icon.offset_top = 20
+	_wallet_icon.offset_bottom = 66
 	_wallet_balance.add_theme_color_override("font_color", Color("#ffda7a"))
 	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -270,12 +303,11 @@ func _build_play(root: Control) -> void:
 	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
 	action_button.custom_minimum_size = Vector2(200, 50)
-	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
 	release_button.custom_minimum_size = Vector2(200, 50)
 	jump_button = _button(play, "Saltar", "jump")
 	jump_button.custom_minimum_size = Vector2(110, 56)
-	_emphasize(jump_button)
+	LunarButtonKit.apply(jump_button, &"mejorar")
 	jump_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	jump_button.offset_left = -382
 	jump_button.offset_right = -266
@@ -297,6 +329,18 @@ func _build_menu(root: Control) -> void:
 	content.add_theme_constant_override("separation", 8)
 	menu.add_child(content)
 	_heading = _label(content, "", 43, TITLE)
+	_logo = TextureRect.new()
+	_logo.texture = LOGO
+	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_logo.custom_minimum_size = Vector2(500.0, 175.0)
+	var waves := ShaderMaterial.new()
+	waves.shader = LOGO_WAVES
+	_logo.material = waves
+	content.add_child(_logo)
+	content.move_child(_logo, 1)
+	_logo.hide()
 	_message = _label(content, "", 22)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var scroll := ScrollContainer.new()
@@ -319,6 +363,7 @@ func _build_lobby_backdrop(root: Control) -> void:
 	poster.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	poster.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	poster.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_poster = poster
 	_lobby_backdrop.add_child(poster)
 	poster.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -338,8 +383,30 @@ func _build_lobby_backdrop(root: Control) -> void:
 	_lobby_backdrop.add_child(shade)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	var fade := Gradient.new()
+	fade.offsets = PackedFloat32Array([0.0, 0.25, 0.75, 1.0])
+	fade.colors = PackedColorArray(
+		[Color("#ffe9b000"), Color("#ffe9b0d0"), Color("#ffe9b0d0"), Color("#ffe9b000")]
+	)
+	_sparks = CPUParticles2D.new()
+	_sparks.amount = 60
+	_sparks.lifetime = 16.0
+	_sparks.preprocess = 16.0
+	_sparks.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_sparks.emission_rect_extents = Vector2(640.0, 8.0)
+	_sparks.direction = Vector2(0.18, -1.0)
+	_sparks.spread = 14.0
+	_sparks.gravity = Vector2.ZERO
+	_sparks.initial_velocity_min = 16.0
+	_sparks.initial_velocity_max = 44.0
+	_sparks.scale_amount_min = 1.5
+	_sparks.scale_amount_max = 4.5
+	_sparks.color_ramp = fade
+	_lobby_backdrop.add_child(_sparks)
+
 	var replay := LunarOpening.corner_button("Repetir intro")
 	_lobby_backdrop.add_child(replay)
+	_pop_on_hover(replay)
 	replay.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	replay.offset_left = -176
 	replay.offset_right = -24
@@ -350,8 +417,25 @@ func _build_lobby_backdrop(root: Control) -> void:
 
 
 func hide_lobby() -> void:
+	_close_dossier()
 	_lobby_backdrop.hide()
 	menu.hide()
+
+
+func dossier(profile: LunarProfile) -> void:
+	_prepare_menu("", "")
+	menu.hide()
+	var sheet := LunarDossier.new()
+	menu.get_parent().add_child(sheet)
+	sheet.build(profile)
+	sheet.closed.connect(func() -> void: selected.emit("close_dossier", ""))
+	_paper = sheet
+
+
+func _close_dossier() -> void:
+	if _paper != null:
+		_paper.queue_free()
+		_paper = null
 
 
 func loading(base_name: String, status: String, progress: float) -> void:
@@ -375,6 +459,7 @@ func flight_status(phase: int, progress: float) -> void:
 		_zone_panel.hide()
 	_pause.visible = not flying
 	_wallet_balance.visible = not flying
+	_wallet_icon.visible = not flying
 	_resources.visible = not flying
 	details.visible = flying
 	if not flying:
@@ -403,6 +488,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 		subtitle += "\n" + status
 	_prepare_menu("ARTEMIS", subtitle)
 	_lobby_backdrop.show()
+	_start_backdrop()
 	menu.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	menu.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
 	menu.offset_left = 58
@@ -411,8 +497,8 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	menu.offset_bottom = -28
 	_heading.modulate = Color.WHITE
 	_heading.add_theme_color_override("font_color", Color("#fff0cf"))
-	_heading.rotation = -0.037
-	_heading.add_theme_font_size_override("font_size", 120)
+	_heading.hide()
+	_logo.show()
 	_message.add_theme_color_override("font_color", Color("#fff0cf"))
 	_message.add_theme_font_size_override("font_size", 18)
 
@@ -431,13 +517,31 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	var archive := LunarOpening.corner_button("Archivo científico")
 	var sound := LunarOpening.corner_button("Sonido")
 	for link in [roles, archive, sound]:
-		link.custom_minimum_size = Vector2(110, 48)
+		link.custom_minimum_size = Vector2(150, 50)
+		LunarButtonKit.apply(link, &"soltar", 20)
 		extras.add_child(link)
+		_animate_button(link, _list.get_child_count() + 1, false)
 	roles.pressed.connect(func() -> void: selected.emit("roles", ""))
 	archive.pressed.connect(func() -> void: selected.emit("science", ""))
 	sound.pressed.connect(func() -> void: selected.emit("sound_options", ""))
-	var balance := _label(_list, "%s monedas" % profile.balance_text(), 16)
-	balance.add_theme_color_override("font_color", Color("#fff0cf"))
+	var wallet := HBoxContainer.new()
+	wallet.add_theme_constant_override("separation", 8)
+	_list.add_child(wallet)
+	var coin := TextureRect.new()
+	coin.texture = COIN_ICON
+	coin.custom_minimum_size = Vector2(38.0, 38.0)
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.pivot_offset = Vector2(19.0, 19.0)
+	wallet.add_child(coin)
+	var balance := _label(wallet, "%s monedas" % profile.balance_text(), 22, TITLE)
+	_float_text(balance)
+	balance.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var spin := coin.create_tween().set_loops()
+	spin.tween_interval(1.8)
+	spin.tween_property(coin, "scale:x", 0.12, 0.28).set_trans(Tween.TRANS_SINE)
+	spin.tween_property(coin, "scale:x", 1.0, 0.28).set_trans(Tween.TRANS_SINE)
+	_animate_lobby()
 	solo.grab_focus()
 
 
@@ -465,28 +569,101 @@ func _lobby_button(
 	button.custom_minimum_size.y = 48
 	button.focus_mode = Control.FOCUS_ALL
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.add_theme_font_override("font", TITLE)
-	button.add_theme_font_size_override("font_size", 24)
-	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, Color("#251911"))
-	var paper := Color("#ffd05b") if primary else Color("#e6c9a0")
-	for state in ["normal", "hover", "pressed", "focus"]:
-		var fill := paper
-		if state == "hover":
-			fill = paper.lightened(0.26)
-		elif state == "pressed":
-			fill = paper.darkened(0.13)
-		var sign := _style(fill, Color("#4e3624"))
-		sign.set_corner_radius_all(2)
-		sign.skew = Vector2(-0.12, 0.0)
-		if state == "focus":
-			sign.bg_color = Color.TRANSPARENT
-			sign.border_color = Color("#fff0cf")
-			sign.shadow_size = 0
-			sign.set_border_width_all(2)
-		button.add_theme_stylebox_override(state, sign)
+	LunarButtonKit.apply(button, &"mejorar" if primary else &"accion", 26)
+	_animate_button(button, _list.get_child_count(), primary)
 	return button
+
+
+func _animate_button(button: Button, index: int, primary: bool) -> void:
+	button.pivot_offset = Vector2(0.0, 24.0)
+	button.scale = Vector2(0.5, 1.0)
+	button.modulate.a = 0.0
+	var wait := 0.55 + index * 0.11
+	var intro := button.create_tween().set_parallel(true)
+	(
+		intro
+		. tween_property(button, "scale", Vector2.ONE, 0.55)
+		. set_delay(wait)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
+	intro.tween_property(button, "modulate:a", 1.0, 0.3).set_delay(wait)
+	_pop_on_hover(button)
+	if primary:
+		var glow := button.create_tween().set_loops()
+		glow.tween_property(button, "self_modulate", Color(1.2, 1.12, 0.8), 0.8).set_trans(
+			Tween.TRANS_SINE
+		)
+		glow.tween_property(button, "self_modulate", Color.WHITE, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _pop_on_hover(button: Control) -> void:
+	var grow := Vector2(1.07, 1.07)
+	button.mouse_entered.connect(func() -> void: _pop(button, grow, 0.18))
+	button.mouse_exited.connect(func() -> void: _pop(button, Vector2.ONE, 0.18))
+	button.focus_entered.connect(func() -> void: _pop(button, grow, 0.18))
+	button.focus_exited.connect(func() -> void: _pop(button, Vector2.ONE, 0.18))
+	var press := button as BaseButton
+	if press != null:
+		press.button_down.connect(func() -> void: _pop(button, Vector2(0.94, 0.94), 0.07))
+		press.button_up.connect(func() -> void: _pop(button, grow, 0.12))
+
+
+func _pop(button: Control, target: Vector2, time: float) -> void:
+	if button.has_meta("pop"):
+		var old: Tween = button.get_meta("pop")
+		if old.is_valid():
+			old.kill()
+	var tween := button.create_tween()
+	tween.tween_property(button, "scale", target, time).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	button.set_meta("pop", tween)
+
+
+func _start_backdrop() -> void:
+	var size := get_viewport().get_visible_rect().size
+	_poster.pivot_offset = size * 0.5
+	_poster.scale = Vector2.ONE
+	var drift := create_tween().set_loops()
+	drift.tween_property(_poster, "scale", Vector2(1.07, 1.07), 16.0).set_trans(Tween.TRANS_SINE)
+	drift.tween_property(_poster, "scale", Vector2.ONE, 16.0).set_trans(Tween.TRANS_SINE)
+	_lobby_tweens.append(drift)
+	_sparks.position = Vector2(size.x * 0.5, size.y + 10.0)
+	_sparks.emission_rect_extents = Vector2(size.x * 0.5, 8.0)
+	_sparks.restart()
+	_sparks.emitting = true
+
+
+func _animate_lobby() -> void:
+	_logo.pivot_offset = Vector2(0.0, 88.0)
+	_logo.scale = Vector2(0.3, 0.3)
+	_logo.rotation = -0.2
+	_logo.modulate.a = 0.0
+	var intro := create_tween().set_parallel(true)
+	intro.tween_property(_logo, "scale", Vector2.ONE, 1.1).set_trans(Tween.TRANS_ELASTIC).set_ease(
+		Tween.EASE_OUT
+	)
+	intro.tween_property(_logo, "rotation", -0.037, 0.9).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	intro.tween_property(_logo, "modulate:a", 1.0, 0.35)
+	_lobby_tweens.append(intro)
+	var sway := create_tween().set_loops()
+	sway.tween_interval(1.2)
+	sway.tween_property(_logo, "rotation", -0.055, 2.2).set_trans(Tween.TRANS_SINE)
+	sway.tween_property(_logo, "rotation", -0.02, 2.2).set_trans(Tween.TRANS_SINE)
+	_lobby_tweens.append(sway)
+	_message.modulate.a = 0.0
+	var reveal := create_tween()
+	reveal.tween_property(_message, "modulate:a", 1.0, 0.6).set_delay(0.5)
+	_lobby_tweens.append(reveal)
+	var tagline := create_tween().set_loops()
+	tagline.tween_property(_message, "self_modulate", Color(1, 1, 1, 0.6), 1.2).set_trans(
+		Tween.TRANS_SINE
+	)
+	tagline.tween_property(_message, "self_modulate", Color.WHITE, 1.2).set_trans(Tween.TRANS_SINE)
+	_lobby_tweens.append(tagline)
 
 
 func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
@@ -551,20 +728,140 @@ func roles(profile: LunarProfile) -> void:
 	_prepare_menu(
 		"ROLES", "%s monedas · Un rol por partida. Elige antes de entrar." % profile.balance_text()
 	)
-	_button(_list, "Volver", "lobby")
-	for id in ["", "engineer", "botanist", "geologist"]:
-		var entry: Dictionary = profile.rules.roles.get(id, {"label": "Sin rol"})
-		var owned: bool = id.is_empty() or id in profile.data.roles
-		var picked: bool = id == profile.data.active_role
-		var suffix := " · elegido" if picked else ("" if owned else " · 250 monedas")
-		_button(_list, entry.label + suffix, "choose_role" if owned else "buy_role", id)
-		var description: Dictionary = {
-			"engineer": "Montaje un 10% más rápido",
-			"botanist": "Una ración extra cada 5 cosechas",
-			"geologist": "Una caja extra cada 10 extracciones"
-		}
-		if description.has(id):
-			_label(_list, description[id], 20).modulate = SOFT
+	menu.offset_left = -435.0
+	menu.offset_right = 435.0
+	menu.offset_top = -345.0
+	menu.offset_bottom = 345.0
+	var price := int(profile.rules.wallet.role_price)
+	var coins := float(profile.data.balance) / float(LunarProfile.SCALE)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 22)
+	_list.add_child(row)
+	var index := 0
+	for id in ["engineer", "botanist", "geologist"]:
+		_role_card(row, profile, id, index, price, coins >= price)
+		index += 1
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_CENTER
+	footer.add_theme_constant_override("separation", 18)
+	_list.add_child(footer)
+	var none_picked: bool = String(profile.data.active_role).is_empty()
+	var none := _button(
+		footer, "Sin rol · elegido" if none_picked else "Sin rol", "choose_role", ""
+	)
+	none.custom_minimum_size = Vector2(200, 50)
+	var back := _button(footer, "Volver", "lobby")
+	back.custom_minimum_size = Vector2(200, 50)
+
+
+func _role_card(
+	row: Control, profile: LunarProfile, id: String, index: int, price: int, can_afford: bool
+) -> void:
+	var owned: bool = id in profile.data.roles
+	var picked: bool = id == profile.data.active_role
+	var action := "choose_role" if owned else "buy_role"
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 6)
+	card.pivot_offset = Vector2(120.0, 190.0)
+	row.add_child(card)
+
+	var art := Button.new()
+	art.custom_minimum_size = Vector2(240.0, 340.0)
+	art.focus_mode = Control.FOCUS_ALL
+	art.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for state in ["normal", "pressed", "disabled"]:
+		art.add_theme_stylebox_override(state, _card_frame(picked, false))
+	for state in ["hover", "focus"]:
+		art.add_theme_stylebox_override(state, _card_frame(picked, true))
+	card.add_child(art)
+	var picture := TextureRect.new()
+	picture.texture = ROLE_CARDS[id]
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not owned:
+		picture.modulate = Color(0.5, 0.48, 0.55)
+	art.add_child(picture)
+	picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	picture.offset_left = 4.0
+	picture.offset_top = 4.0
+	picture.offset_right = -4.0
+	picture.offset_bottom = -4.0
+	if not owned:
+		var tag := HBoxContainer.new()
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.alignment = BoxContainer.ALIGNMENT_CENTER
+		tag.add_theme_constant_override("separation", 6)
+		art.add_child(tag)
+		tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		tag.offset_left = -70.0
+		tag.offset_right = 70.0
+		tag.offset_top = -26.0
+		tag.offset_bottom = 26.0
+		var coin := TextureRect.new()
+		coin.texture = COIN_ICON
+		coin.custom_minimum_size = Vector2(44.0, 44.0)
+		coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.add_child(coin)
+		var cost := _label(tag, str(price), 40, TITLE)
+		_float_text(cost)
+	art.pressed.connect(func() -> void: selected.emit(action, id))
+
+	var perk := _label(card, ROLE_PERKS[id], 17)
+	perk.custom_minimum_size = Vector2(240.0, 48.0)
+	perk.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	perk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	perk.modulate = SOFT
+	var caption := "Elegido" if picked else ("Elegir" if owned else "Comprar · %d" % price)
+	var button := _button(card, caption, action, id)
+	button.custom_minimum_size = Vector2(240.0, 50.0)
+	button.focus_mode = Control.FOCUS_ALL
+	if picked:
+		LunarButtonKit.apply(button, &"construir")
+	elif owned:
+		LunarButtonKit.apply(button, &"accion")
+	else:
+		LunarButtonKit.apply(button, &"mejorar" if can_afford else &"bloqueado")
+		button.icon = COIN_ICON
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 26)
+
+	art.mouse_entered.connect(func() -> void: _pop(card, Vector2(1.04, 1.04), 0.18))
+	art.mouse_exited.connect(func() -> void: _pop(card, Vector2.ONE, 0.18))
+	card.scale = Vector2(0.6, 0.6)
+	card.modulate.a = 0.0
+	var wait := 0.08 + index * 0.12
+	var intro := card.create_tween().set_parallel(true)
+	(
+		intro
+		. tween_property(card, "scale", Vector2.ONE, 0.5)
+		. set_delay(wait)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
+	intro.tween_property(card, "modulate:a", 1.0, 0.3).set_delay(wait)
+	if picked:
+		var glow := art.create_tween().set_loops()
+		glow.tween_property(art, "self_modulate", Color(1.3, 1.2, 0.8), 0.8).set_trans(
+			Tween.TRANS_SINE
+		)
+		glow.tween_property(art, "self_modulate", Color.WHITE, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _card_frame(picked: bool, hover: bool) -> StyleBoxFlat:
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color.TRANSPARENT
+	frame.set_corner_radius_all(16)
+	frame.set_border_width_all(6 if picked else (3 if hover else 0))
+	frame.border_color = Color("#ffd05b") if picked else Color("#fff0cf")
+	if picked:
+		frame.shadow_color = Color("#ffd05b99")
+		frame.shadow_size = 14
+	return frame
 
 
 func wait_for_guest(base_name: String, host_address: String, status: String) -> void:
@@ -607,13 +904,13 @@ func _sfx_control(volume: float) -> void:
 
 
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
-	_prepare_menu("ARCHIVO CIENTÍFICO", "%02d/%02d · %s" % [index + 1, count, record_title])
-	_button(_list, "Volver", "close_science")
-	var card := _label(_list, "", 22)
-	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	card.text = description
-	_button(_list, "Ficha anterior", "previous_science")
-	_button(_list, "Ficha siguiente", "next_science")
+	_prepare_menu("", "")
+	menu.hide()
+	var archive := LunarArchive.new()
+	menu.get_parent().add_child(archive)
+	archive.build(record_title, description, index, count)
+	archive.chosen.connect(func(action: String) -> void: selected.emit(action, ""))
+	_paper = archive
 
 
 func confirm_reset(base_name: String, id: String) -> void:
@@ -626,7 +923,7 @@ func confirm_reset(base_name: String, id: String) -> void:
 
 
 func show_balance(balance: String) -> void:
-	_wallet_balance.text = "%s monedas" % balance
+	_wallet_balance.text = balance
 
 
 func playing() -> void:
@@ -744,31 +1041,79 @@ func show_objective(instruction: String, title: String = "", projected := Vector
 	_objective_marker.size = marker_size
 
 
-## "Llamarada X8.2 · 10 sep 2017" a partir de un registro del catálogo DONKI.
+## "Llamarada real del 10 sep 2017 · muy fuerte (X8.2)" a partir del catálogo DONKI.
 static func flare_label(record: Dictionary) -> String:
 	var date := String(record.begin)
 	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
+	var kind := String(record.class_type)
 	return (
-		"Llamarada %s · %d %s %s" % [record.class_type, int(date.substr(8, 2)), month, date.left(4)]
+		"Llamarada real del %d %s %s · %s (%s)"
+		% [int(date.substr(8, 2)), month, date.left(4), STRENGTH.get(kind.left(1), "pequeña"), kind]
 	)
+
+
+## Capas de la tormenta: bordes rojos mientras caen las partículas y un destello corto
+## cuando el Sol lanza una llamarada. Quedan debajo del HUD y no reciben toques.
+func _build_storm_layers() -> void:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.86, 0.13, 0.10, 0.0))
+	gradient.set_color(1, Color(0.86, 0.13, 0.10, 0.62))
+	gradient.add_point(0.6, Color(0.86, 0.13, 0.10, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(0.5, 0.0)
+	_storm_edges = TextureRect.new()
+	_storm_edges.texture = texture
+	_storm_edges.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_storm_edges.stretch_mode = TextureRect.STRETCH_SCALE
+	_storm_edges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_storm_edges.modulate.a = 0.0
+	play.add_child(_storm_edges)
+	_storm_edges.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_flash = ColorRect.new()
+	_flash.color = Color(1.0, 0.95, 0.82)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.modulate.a = 0.0
+	play.add_child(_flash)
+	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## Un solo destello suave, sin parpadeos, cuando aparece una llamarada nueva.
+func flash() -> void:
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_flash.modulate.a = 0.45
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash, "modulate:a", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
+
+
+## Intensidad de los bordes rojos: 0 sin tormenta, 1 con partículas cayendo.
+func storm_edges(level: float) -> void:
+	_storm_edges.modulate.a = clampf(level, 0.0, 1.0)
 
 
 func _show_alert(mission: LunarMission, safe: bool) -> void:
 	alert.show()
+	alert.add_theme_color_override("font_color", Color("#ff9a72"))
 	var flare := mission.storm_flare()
 	var quiet := mission.flare_notice()
+	var real := "" if flare.is_empty() else "\n" + flare_label(flare)
 	if mission.storm_active():
-		var source := "llamarada %s" % flare.class_type if not flare.is_empty() else "solares"
-		alert.text = "⚠ Partículas %s · %s" % [source, "A cubierto" if safe else "Ve al refugio"]
+		alert.text = (
+			"⚠ Lluvia de partículas del Sol · "
+			+ ("Estás a salvo aquí" if safe else "¡Entra al refugio!")
+			+ real
+		)
 	elif mission.storm_warning() > 0:
 		var seconds := ceili(mission.storm_warning())
-		alert.text = (
-			"⚠ %s · Al refugio en %d s" % [flare_label(flare), seconds]
-			if not flare.is_empty()
-			else "⚠ Al refugio en %d s" % seconds
-		)
+		alert.text = "☀ ¡Explosión en el Sol! Corre al refugio: %d s%s" % [seconds, real]
 	elif not quiet.is_empty():
-		alert.text = "☀ %s · Sin partículas, sigue trabajando" % flare_label(quiet)
+		alert.add_theme_color_override("font_color", Color("#ffd36b"))
+		alert.text = (
+			"☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n" + flare_label(quiet)
+		)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
 	elif mission.outage_warning() > 0:
@@ -784,6 +1129,18 @@ func _show_alert(mission: LunarMission, safe: bool) -> void:
 
 
 func _prepare_menu(title: String, status: String) -> void:
+	_close_dossier()
+	for tween in _lobby_tweens:
+		tween.kill()
+	_lobby_tweens.clear()
+	_logo.hide()
+	_logo.scale = Vector2.ONE
+	_logo.rotation = 0.0
+	_logo.modulate.a = 1.0
+	_heading.show()
+	_message.modulate.a = 1.0
+	_message.self_modulate = Color.WHITE
+	_sparks.emitting = false
 	joystick.clear()
 	play.hide()
 	if globe != null:
@@ -814,15 +1171,10 @@ func _button(parent: Control, caption: String, action: String, argument: String 
 	button.text = caption
 	button.custom_minimum_size = Vector2(54, 50)
 	button.focus_mode = Control.FOCUS_NONE
+	LunarButtonKit.apply(button, LunarButtonKit.kind_for(caption))
 	parent.add_child(button)
 	button.pressed.connect(func() -> void: selected.emit(action, argument))
 	return button
-
-
-func _emphasize(button: Button) -> void:
-	button.add_theme_stylebox_override("normal", _style(TEAL, Color("#163c38")))
-	button.add_theme_stylebox_override("hover", _style(Color("#286f63"), TEAL))
-	button.add_theme_stylebox_override("pressed", _style(Color("#183e39"), TEAL))
 
 
 func _label(parent: Control, caption: String, font_size: int, font: Font = BODY) -> Label:
@@ -869,6 +1221,30 @@ func _input(event: InputEvent) -> void:
 			height = touch.position.y
 	if height < 80.0:
 		show_title()
+
+
+func _process(_delta: float) -> void:
+	# La etiqueta de seguimiento solo se dibuja cuando tiene texto.
+	if next_step != null:
+		next_step.visible = not next_step.text.is_empty()
+
+
+func _tag_style(accent: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#14262cdd")
+	style.border_color = accent
+	style.set_border_width_all(2)
+	style.border_width_left = 7
+	style.set_corner_radius_all(9)
+	style.corner_detail = 1
+	style.shadow_color = Color("#00000077")
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0.0, 3.0)
+	style.content_margin_left = 20.0
+	style.content_margin_right = 16.0
+	style.content_margin_top = 6.0
+	style.content_margin_bottom = 7.0
+	return style
 
 
 func _float_text(label: Label) -> void:

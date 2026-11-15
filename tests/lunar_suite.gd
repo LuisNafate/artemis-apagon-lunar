@@ -77,7 +77,9 @@ func _cycle() -> void:
 				elif event[0] == "flare":
 					_check(event[2] == 8, "false alarm notice length")
 				else:
-					_check(event[2] == 45, "solar alert duration")
+					_check(
+						event[2] == int(mission.rules.events.alert_seconds), "solar alert duration"
+					)
 					alerts += 1
 				for other: Array in mission.events:
 					if event != other:
@@ -678,7 +680,7 @@ func _item_controls() -> void:
 			game.ui.action_button.disabled and "0:05" in game.ui._zone_detail.text,
 			"timer reads the actual refinery job"
 		)
-		_check(game.world._water_machine_full.visible, "working refinery uses loaded model")
+		_check(game.world._water_machine_empty.visible, "working refinery shows empty model")
 		game.ui.selected.emit("menu", "")
 		for frame in range(5):
 			await get_tree().physics_frame
@@ -694,7 +696,9 @@ func _item_controls() -> void:
 			game.sim.water > before + 0.8 and game.sim.crates.is_empty(),
 			"refined water credited once"
 		)
-		_check(game.world._water_machine_empty.visible, "completed refinery shows empty model")
+		await get_tree().physics_frame
+		_check(game.world._water_machine_full.visible, "completed refinery shows loaded model")
+		_check(game.world._water_tank_full.visible, "water tank fills with the refined water")
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame
@@ -817,12 +821,10 @@ func _network() -> void:
 		"failed dawn leaves neither wallet nor checkpoint committed"
 	)
 	_check(host.profile.data.guest_awards.is_empty(), "failed dawn cannot release guest award")
-	_check(host.ui._wallet_balance.text == "0.00 monedas", "uncommitted reward is hidden from HUD")
+	_check(host.ui._wallet_balance.text == "0.00", "uncommitted reward is hidden from HUD")
 	host.profile.path = host_path
 	_check(host._commit_reward(), "dawn saved exactly once on retry")
-	_check(
-		host.ui._wallet_balance.text == host.profile.balance_text() + " monedas", "host HUD updated"
-	)
+	_check(host.ui._wallet_balance.text == host.profile.balance_text(), "host HUD updated")
 	_check(host.profile.data.balance == 187500, "75 percent day reward for host")
 	for index in range(6):
 		OS.delay_msec(2)
@@ -837,10 +839,7 @@ func _network() -> void:
 		OS.delay_msec(2)
 		await get_tree().physics_frame
 	_check(guest.profile.data.balance == 187500, "guest receives the same 75 percent at dawn")
-	_check(
-		guest.ui._wallet_balance.text == guest.profile.balance_text() + " monedas",
-		"guest HUD updated"
-	)
+	_check(guest.ui._wallet_balance.text == guest.profile.balance_text(), "guest HUD updated")
 	var reloaded := LunarProfile.new(guest.sim.rules, guest.profile_path)
 	_check(reloaded.data.balance == 187500, "guest persisted before acknowledgment")
 	for index in range(40):

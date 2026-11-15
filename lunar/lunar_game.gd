@@ -9,6 +9,10 @@ const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
 const CAMERA_DISTANCE := 26.0
 const PLAY_V_OFFSET := 2.9
+const STORM_BEEPS := 5.0
+const SHAKE_SECONDS := 0.6
+const SHAKE_SIZE := 0.22
+const FLARE_SOUND := "res://assets/props_luna/nasa/sol_sonificacion_soho.ogg"
 const FOLLOW_FOV := 45.0
 const FOLLOW_HEIGHT := 0.8
 const BASE_HYSTERESIS := 1.0
@@ -81,6 +85,13 @@ var _alert_audio := AudioStreamPlayer.new()
 var _solar_audio := AudioStreamPlayer.new()
 var _audio := AUDIO.new()
 var _music := MUSIC.new()
+var _beep_audio := AudioStreamPlayer.new()
+var _flare_audio := AudioStreamPlayer.new()
+var _solar_key := ""
+var _beep_second := 0
+var _storm_was_active := false
+var _storm_glow := 0.0
+var _shake := 0.0
 var _reward_audio := AudioStreamPlayer.new()
 
 
@@ -442,6 +453,10 @@ func _choose(action: String, argument: String) -> void:
 				_guest_action.rpc_id(1, action == "release")
 		"science":
 			_science_from_session = net in [&"host", &"guest", &"solo"]
+			_show_science(0)
+		"dossier":
+			ui.dossier(profile)
+		"close_dossier":
 			_show_science(0)
 		"previous_science":
 			_show_science(-1)
@@ -1058,6 +1073,7 @@ func _render(delta: float, player: int) -> void:
 		ui.show_objective("")
 		_objective_destination = Vector3.INF
 	_alert_if_changed()
+	_storm_effects(delta)
 
 
 func _build_cargo_visual(box: Node3D, kind: StringName) -> void:
@@ -1107,21 +1123,49 @@ func _alert_if_changed() -> void:
 		kind = "power"
 	elif sim.radio_warning() or sim.radio_cut():
 		kind = "radio"
-	if kind != _alert_kind and not kind.is_empty():
-		if kind in ["solar", "flare"] and _solar_audio.stream != null:
-			_solar_audio.play()
-		elif _alert_audio.stream != null:
-			_alert_audio.play()
+	if kind != _alert_kind and kind in ["power", "radio"] and _alert_audio.stream != null:
+		_alert_audio.play()
 	_alert_kind = kind
+
+
+## Destello y sonido del Sol cuando aparece una llamarada, pitidos en los últimos 5 s del aviso, una
+## sacudida corta cuando llegan las partículas y bordes rojos mientras duran.
+func _storm_effects(delta: float) -> void:
+	var key := sim.solar_key()
+	if key != _solar_key and not key.is_empty():
+		ui.flash()
+		if key.begins_with("sep@") and _solar_audio.stream != null:
+			_solar_audio.play()
+		elif key.begins_with("flare@") and _flare_audio.stream != null:
+			_flare_audio.play()
+	_solar_key = key
+	var left := sim.storm_warning()
+	var second := ceili(left) if left > 0.0 and left <= STORM_BEEPS else 0
+	if second != _beep_second and second > 0 and _beep_audio.stream != null:
+		_beep_audio.play()
+	_beep_second = second
+	var active := sim.storm_active()
+	if active and not _storm_was_active:
+		_shake = SHAKE_SECONDS
+	_storm_was_active = active
+	_storm_glow = move_toward(_storm_glow, float(active), delta * 1.5)
+	ui.storm_edges(_storm_glow * (0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.004)))
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - delta)
+		camera.h_offset = randf_range(-1.0, 1.0) * SHAKE_SIZE * _shake / SHAKE_SECONDS
 
 
 func _build_alert_audio() -> void:
 	add_child(_alert_audio)
 	add_child(_solar_audio)
 	add_child(_reward_audio)
+	add_child(_beep_audio)
+	add_child(_flare_audio)
 	if DisplayServer.get_name() == "headless":
 		return
 	_solar_audio.stream = SOLAR_SOUND
+	# Sonificación real del Sol con datos de SOHO; créditos en assets/props_luna/nasa/procedencia.md.
+	_flare_audio.stream = load(FLARE_SOUND)
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)
@@ -1134,6 +1178,8 @@ func _build_alert_audio() -> void:
 	_alert_audio.stream = stream
 	_reward_audio.stream = stream
 	_reward_audio.pitch_scale = 1.5
+	_beep_audio.stream = stream
+	_beep_audio.pitch_scale = 2.0
 
 
 func _apply_sfx_volume(value: float) -> void:
@@ -1142,6 +1188,8 @@ func _apply_sfx_volume(value: float) -> void:
 	_alert_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
 	_solar_audio.volume_db = _audio.BOOST_DB - 5.0 + linear_to_db(level)
 	_reward_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_beep_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_flare_audio.volume_db = _audio.BOOST_DB - 5.0 + linear_to_db(level)
 
 
 func _change_sfx_volume(value: float) -> void:

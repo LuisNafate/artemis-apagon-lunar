@@ -9,6 +9,7 @@ var _cases := 0
 
 func _ready() -> void:
 	_catalog()
+	_cards()
 	print("DONKI SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -40,7 +41,6 @@ func _catalog() -> void:
 		if mission.flare_lead(record).is_empty():
 			quiet_ids.append(id)
 	_check(not quiet_ids.is_empty(), "catalog has a flare without particles")
-	var spec := {"easy": 30.0, "medium": 20.0, "hard": 20.0}
 	for id in ["mons_mouton_plateau", "mons_mouton", "haworth"]:
 		mission = _mission(id)
 		var pool: Dictionary = rules.pools[String(mission.base.difficulty)]
@@ -78,9 +78,12 @@ func _catalog() -> void:
 				storms += 1
 			_check(starts == plain.events, "DONKI keeps the EVT-4c calendar")
 		_check(notices == 40, "one false alarm per cycle")
+		var expected := 0.0
+		for lead: String in pool.leads:
+			expected += float(rules.warning_seconds[lead]) / pool.leads.size()
 		_check(
-			absf(total / maxf(1.0, storms) - float(spec[String(mission.base.difficulty)])) <= 4.0,
-			"average warning near the rulebook (%.1f s)" % (total / maxf(1.0, storms))
+			absf(total / maxf(1.0, storms) - expected) <= 2.0,
+			"average warning balances short and long leads (%.1f s)" % (total / maxf(1.0, storms))
 		)
 	mission = _mission()
 	var storm_id := ""
@@ -95,9 +98,10 @@ func _catalog() -> void:
 	)
 	mission.events = [["sep", mission.elapsed + 18.0, 45, 15, storm_id]]
 	_check(mission.storm_warning() < 0.0, "short real lead gives a short warning")
-	mission.events = [["sep", mission.elapsed + 18.0, 45]]
+	var fallback := float(mission.difficulty.warning) - 2.0
+	mission.events = [["sep", mission.elapsed + fallback, 25]]
 	_check(
-		is_equal_approx(mission.storm_warning(), 18.0) and mission.storm_flare().is_empty(),
+		is_equal_approx(mission.storm_warning(), fallback) and mission.storm_flare().is_empty(),
 		"old saved schedule keeps the rulebook warning"
 	)
 	mission.events = [["flare", mission.elapsed, 8, 0, quiet_ids[0]]]
@@ -109,12 +113,51 @@ func _catalog() -> void:
 	_check(
 		(
 			LunarInterface.flare_label(mission.flares["2017-09-10T15:35:00-FLR-001"])
-			== "Llamarada X8.2 · 10 sep 2017"
+			== "Llamarada real del 10 sep 2017 · muy fuerte (X8.2)"
 		),
 		"alert names the real flare"
 	)
-	var record := {"id": "donki_sep_20240510", "observation": {"messageIssueTime": ""}}
+	mission.events = [["sep", mission.elapsed + 5.0, 25, 10, storm_id]]
+	var key := mission.solar_key()
+	_check(key.begins_with("sep@"), "a new flare gets a flash key")
+	mission.elapsed += 5.5
+	_check(mission.solar_key() == key, "the same flare does not flash twice")
+	mission.events = [["flare", mission.elapsed, 8, 0, quiet_ids[0]]]
+	_check(mission.solar_key().begins_with("flare@"), "a false alarm also flashes")
+	mission.events.clear()
+	_check(mission.solar_key().is_empty(), "quiet sky has no flash key")
+	var record := _record(mission, "donki_sep_20240510")
 	_check("DONKI" in mission.science_text(record), "archive explains the DONKI storms")
+
+
+func _cards() -> void:
+	_cases += 1
+	var mission := _mission()
+	var terms := {
+		"donki_sep_20240510": "SEP",
+		"radlab_artemis_i_hera": "HERA",
+		"neows_2016_ft14": "NeoWs",
+		"tle_iss_25544": "TLE",
+		"ntrs_life_support_mass": "ECLSS",
+		"ntrs_lunar_radio": "Latencia",
+		"nasa_lro_3d": "LOLA"
+	}
+	_check(mission.records.size() == terms.size(), "seven archive cards")
+	for record: Dictionary in mission.records:
+		var text := mission.science_text(record)
+		_check(text.contains("Palabras de científico:"), "card explains its terms")
+		_check(text.contains("En el juego:"), "card separates the game from the data")
+		_check(text.contains(terms[record.id]), "card keeps its term %s" % terms[record.id])
+		_check(not text.contains("%"), "card has no empty data slot")
+	var radio := _record(mission, "ntrs_lunar_radio")
+	_check(mission.science_text(radio).contains("384 000 km"), "big numbers are easy to read")
+
+
+func _record(mission: LunarMission, id: String) -> Dictionary:
+	for record: Dictionary in mission.records:
+		if record.id == id:
+			return record
+	return {}
 
 
 func _check(ok: bool, reason: String) -> void:

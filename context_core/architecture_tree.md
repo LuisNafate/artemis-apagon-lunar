@@ -191,7 +191,7 @@ CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por pi
 
 `LunarGame` instancia `lunar/lunar_audio.gd`, que sintetiza efectos breves para botones, proximidad y extracción, y alterna tres fragmentos de pasos facilitados por el usuario en `assets/sfx/pasos/`. La cadencia sigue el desplazamiento del piloto local, sin alterar la simulación ni transmitir eventos de audio. El control de SFX del menú inicial y de opciones ajusta también las alertas y recompensas y se guarda en `LunarProfile`. `lunar/lunar_music.gd` reproduce las tres pistas del usuario desde `assets/music/` según menú y ciclo de día/noche, con fundido cruzado y pausa de las pistas inactivas. En headless no se inicia la mezcla. Pendiente revisar la mezcla con altavoces y dispositivos móviles.
 
-La alerta de llamarada usa una adaptación sonora de datos magnéticos de Parker Solar Probe, acreditada en `assets/sfx/solar/procedencia.md`. Se reproduce una vez por aviso solar y responde al volumen SFX; las demás alertas conservan su tono.
+Cada evento solar se anuncia una vez: las tormentas de partículas usan la adaptación de datos de Parker Solar Probe acreditada en `assets/sfx/solar/procedencia.md`, y las llamaradas sin partículas usan la sonificación SOHO acreditada en `assets/props_luna/nasa/procedencia.md`. Destello, pitidos de cuenta regresiva, sacudida y bordes de tormenta acompañan los eventos; ambos sonidos y los pitidos responden al control SFX. Las demás alertas conservan su tono.
 
 ## Selector de bases de main
 

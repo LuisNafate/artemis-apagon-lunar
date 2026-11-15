@@ -1,5 +1,5 @@
 {
-  "revision": 25,
+  "revision": 26,
   "nodes": [
     {
       "id": "config",
@@ -988,6 +988,11 @@
       "path": "assets/sfx/pasos/"
     },
     {
+      "id": "solar_audio_soho",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/sol_sonificacion_soho.ogg"
+    },
+    {
       "id": "solar_audio_psp",
       "kind": "asset",
       "path": "assets/sfx/solar/tormenta_psp.wav",
@@ -1230,6 +1235,11 @@
       "lunar_game",
       "uses",
       "solar_audio_psp"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "solar_audio_soho"
     ],
     [
       "lunar_audio",
