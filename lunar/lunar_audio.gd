@@ -35,6 +35,8 @@ func set_volume(level: float) -> void:
 
 
 func play_effect(kind: StringName) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
 	if not streams.has(kind) or _voices.is_empty() or _volume <= 0.0:
 		return
 	var voice := _voices[_next_voice]

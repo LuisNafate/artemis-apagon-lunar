@@ -14,10 +14,6 @@ const WATER_MACHINE_FULL := preload(
 	"res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb"
 )
 const WATER_MACHINE_SCALE := 2.3
-const MOON_SURFACE := preload("res://assets/props_luna/superficie/superficie_lunar.glb")
-const SURFACE_SCALE := Vector3(110.0, 11.0, 110.0)
-const SURFACE_CENTER := Vector3(0.0, 0.0, 10.0)
-const SURFACE_GAIN := 5.3
 const MODEL_BATTERY := preload("res://assets/props_luna/estaciones/bateria.glb")
 const MODEL_DRILL := preload("res://assets/props_luna/estaciones/pico.glb")
 const MODEL_ICE_DEPOT := preload("res://assets/props_luna/estaciones/deposito_hielo.glb")
@@ -73,12 +69,22 @@ const NAMES := {
 	&"crop": "CULTIVOS",
 	&"fuel": "PROPELENTE",
 	&"radio": "RADIO",
-	&"pad": "COHETE"
+	&"pad": "COHETE",
+	&"solar": "REFUERZO SOLAR",
+	&"irrigation": "RIEGO"
 }
 
-static var campaign_stations := STATIONS.merged(WORKSHOP)
+## En la campaña el hielo y el mineral se extraen de los depósitos del mundo abierto.
+static var campaign_stations := _without_quarries(STATIONS.merged(WORKSHOP))
 
+## Ajustes del mundo abierto: si se dan, la base es la de la campana (con muro, puerta y flecha).
+var open_settings: Dictionary = {}:
+	set(value):
+		open_settings = value
+		campaign_layout = not value.is_empty()
 var campaign_layout := false
+var enclosure: BaseEnclosure
+var base_arrow: BaseArrow
 var deck_index := 0
 var descent_stage: Node3D
 var ascent_stage: Node3D
@@ -108,9 +114,17 @@ var _soil := SOIL
 var _mission_clock := 0.0
 
 
+static func _without_quarries(stations: Dictionary) -> Dictionary:
+	stations.erase(&"ice")
+	stations.erase(&"ore")
+	return stations
+
+
 func build() -> void:
 	_lighting()
 	_terrain()
+	if campaign_layout:
+		_build_enclosure()
 	nobile_relief = NOBILE_RELIEF.instantiate()
 	nobile_relief.position = (
 		Vector3(-10.0, 0.015, -14.6) if campaign_layout else Vector3(-6.0, 0.015, 8.77)
@@ -147,7 +161,6 @@ func build_lunar_workshop() -> void:
 	for station: StringName in [&"solar", &"irrigation"]:
 		var is_solar := station == &"solar"
 		var point: Vector3 = WORKSHOP[station]
-		var tint := AMBER if is_solar else LIME
 		if is_solar:
 			pass
 		else:
@@ -155,16 +168,6 @@ func build_lunar_workshop() -> void:
 				station_prop(self, MODEL_WATER_TANK, point + Vector3(0, 0.0, 1.8), 1.5, 0.5)
 			)
 			_solid(point + Vector3(0, 0.55, 1.8), Vector3(1.1, 1.1, 1.5))
-		var label := Label3D.new()
-		label.text = "REFUERZO SOLAR" if is_solar else "RIEGO"
-		label.position = point + Vector3.UP * 0.68
-		label.font = MONO
-		label.pixel_size = 0.016
-		label.outline_size = 10
-		label.modulate = tint
-		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		add_child(label)
-		markers[station] = label
 	var ring := TorusMesh.new()
 	ring.inner_radius = 1.61
 	ring.outer_radius = 1.72
@@ -212,8 +215,20 @@ func _model_label(caption: String, point: Vector3, color: Color) -> Label3D:
 func set_base(soil_color: String, base_id: StringName) -> void:
 	_soil = Color(soil_color).lerp(LAVENDER, 0.5)
 	_floor_color.albedo_color = _soil
+	if campaign_layout:
+		return
 	nobile_relief.visible = base_id in [&"nobile", &"nobile_rim_1", &"nobile_rim_2"]
 	_build_craters(base_id)
+
+
+## Color del suelo de la base actual, para teñir el terreno del mundo abierto.
+func soil_color() -> Color:
+	return _soil
+
+
+## Material del suelo que `reflect` tiñe (tormenta); la campaña lo comparte con los chunks.
+func ground_material() -> PaperMaterial:
+	return _floor_color
 
 
 func animate_intro(progress: float) -> void:
@@ -254,8 +269,15 @@ func nearest(point: Vector3, tutorial: bool, supply: bool = false) -> StringName
 	return result
 
 
-func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> void:
+func reflect(
+	sim: CrestSim,
+	active_spots: Array[StringName],
+	delta: float,
+	connected: Array[Vector3] = [],
+	own := Vector3.ZERO
+) -> void:
 	_mission_clock += delta
+	_update_base(connected, own)
 	var storm := sim.storm_active()
 	var power := 0.22 if sim.shadow_active() else 1.3
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
@@ -328,12 +350,13 @@ func _lighting() -> void:
 
 
 func _terrain() -> void:
-	if campaign_layout:
-		_build_moon_surface()
-	else:
-		var slab := FieldWorld.box(self, Vector3(0, -0.46, 0), Vector3(44, 0.9, 29), SOIL)
-		_floor_color = slab.material_override
 	_solid(Vector3(0, -0.55, 0), Vector3(HALF_X * 2.0 + 2.0, 1.1, HALF_Z * 2.0 + 2.0))
+	if campaign_layout:
+		# Los chunks del mundo abierto son el suelo y el exterior; la plataforma queda abierta.
+		_floor_color = PaperMaterial.new(SOIL)
+		return
+	var slab := FieldWorld.box(self, Vector3(0, -0.46, 0), Vector3(44, 0.9, 29), SOIL)
+	_floor_color = slab.material_override
 	for x in [-HALF_X - 0.2, HALF_X + 0.2]:
 		_border(Vector3(x, 0.13, 0), Vector3(0.3, 0.26, HALF_Z * 2.0 + 0.45))
 	for z in [-HALF_Z - 0.22, HALF_Z + 0.22]:
@@ -354,8 +377,6 @@ func _terrain() -> void:
 	batch.instance_count = 185
 	for index in range(batch.instance_count):
 		var pos := Vector3(rng.randf_range(-22, 22), -0.018, rng.randf_range(-14.4, 14.4))
-		if campaign_layout:
-			pos.z = maxf(pos.z, _ground_back_edge(pos.x) + 0.76)
 		var width := rng.randf_range(0.14, 1.08)
 		var basis := Basis.from_scale(Vector3(width, 0.035, width))
 		batch.set_instance_transform(index, Transform3D(basis, pos))
@@ -374,29 +395,6 @@ func _terrain() -> void:
 
 func _ground_back_edge(x: float) -> float:
 	return -16.1 - 0.23 * x + sin((x + 54.0) / 4.5 * 1.43) * 0.63
-
-
-func _build_moon_surface() -> void:
-	# Terreno lunar del equipo: relieve real aplanado bajo la base, teñido con la
-	# paleta del suelo y recortado en el borde trasero para dejar ver el cielo.
-	var surface: Node3D = MOON_SURFACE.instantiate()
-	surface.scale = SURFACE_SCALE
-	surface.position = SURFACE_CENTER
-	add_child(surface)
-	_floor_color = PaperMaterial.new(SOIL)
-	_floor_color.set_shader_parameter("albedo_gain", SURFACE_GAIN)
-	_floor_color.set_shader_parameter("relief_rect", Vector4(-HALF_X, -HALF_Z, HALF_X, HALF_Z))
-	_floor_color.set_shader_parameter("relief_flat", 6.0)
-	_floor_color.set_shader_parameter("relief_ramp", 7.0)
-	_floor_color.set_shader_parameter("back_edge_cut", true)
-	_floor_color.set_shader_parameter("facet_variation", 0.05)
-	for node in surface.find_children("*", "MeshInstance3D", true, false):
-		var item := node as MeshInstance3D
-		var original := item.get_active_material(0) as BaseMaterial3D
-		if original != null and original.albedo_texture != null:
-			_floor_color.set_shader_parameter("albedo_texture", original.albedo_texture)
-			_floor_color.set_shader_parameter("use_texture", true)
-		item.material_override = _floor_color
 
 
 func _build_ground_sheet() -> void:
@@ -571,6 +569,24 @@ func _water_machine(point: Vector3) -> Node3D:
 	return root
 
 
+## Puerta y flecha de regreso: se actualizan con los pilotos conectados y el piloto propio.
+func _update_base(connected: Array[Vector3], own: Vector3) -> void:
+	if enclosure == null:
+		return
+	enclosure.update_door(connected)
+	var platform := Rect2(-HALF_X, -HALF_Z, HALF_X * 2.0, HALF_Z * 2.0)
+	base_arrow.point_to(own, enclosure.door_point(), not platform.has_point(Vector2(own.x, own.z)))
+
+
+func _build_enclosure() -> void:
+	enclosure = BaseEnclosure.new(open_settings)
+	add_child(enclosure)
+	enclosure.build()
+	base_arrow = BaseArrow.new(open_settings)
+	add_child(base_arrow)
+	base_arrow.build()
+
+
 func _walkways() -> void:
 	for x in [-HALF_X + 0.8, HALF_X - 0.8]:
 		for z in [-HALF_Z + 0.8, HALF_Z - 0.8]:
@@ -582,8 +598,9 @@ func _stations() -> void:
 	_shelter()
 	_solar()
 	_greenhouse()
-	_quarry(&"ice", BLUE)
-	_quarry(&"ore", AMBER)
+	if not campaign_layout:
+		_quarry(&"ice", BLUE)
+		_quarry(&"ore", AMBER)
 	training_desk = _console(&"training", BLUE)
 	_equipment.append(_console(&"refinery", BLUE, false))
 	var drill_root := _console(&"drill", AMBER, false)
@@ -654,10 +671,10 @@ func _shelter() -> void:
 
 
 func _solar() -> void:
-	for offset in [-15.8, -14.1, -12.4, -10.7]:
-		var point := Vector3(offset, 0.0, -6.8)
-		_equipment.append(station_prop(self, MODEL_SOLAR, point, 2.5, 0.49))
-		_solid(point + Vector3.UP * 0.49, Vector3(1.3, 0.98, 1.05))
+	for offset in [-7.2, -4.6, -2.0, 0.6]:
+		var point := Vector3(offset, 0.0, -8.0)
+		_equipment.append(station_prop(self, MODEL_SOLAR, point, 3.5, 0.68))
+		_solid(point + Vector3.UP * 0.68, Vector3(1.8, 1.36, 1.45))
 
 
 func _greenhouse() -> void:
@@ -732,27 +749,11 @@ func _console(key: StringName, accent: Color, show_machine := true) -> Node3D:
 	return root
 
 
-func _marker(key: StringName, accent: Color) -> void:
+func _marker(key: StringName, _accent: Color) -> void:
 	var root := Node3D.new()
 	add_child(root)
 	root.position = STATIONS[key]
-	var mesh := TorusMesh.new()
-	mesh.inner_radius = 0.63
-	mesh.outer_radius = 0.685
-	mesh.rings = 10
-	mesh.ring_segments = 24
-	FieldWorld._mesh(root, Vector3(0, 0.08, 0), mesh, accent, true)
-	var label := Label3D.new()
-	label.text = "MÓDULO LUNAR" if campaign_layout and key == &"pad" else NAMES[key]
-	label.font = MONO
-	label.font_size = 30
-	label.pixel_size = 0.019
-	label.position = Vector3(0, 0.46, 0.9)
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.modulate = accent.lightened(0.38)
-	label.outline_size = 14
-	label.outline_modulate = Color("#1a2335")
-	root.add_child(label)
+	# Sin anillos ni letreros en el mapa: el nombre de la zona sale en el aviso lateral.
 	markers[key] = root
 
 

@@ -22,8 +22,10 @@ func _run() -> void:
 	_logistics()
 	_launch()
 	_profile()
+	_wallet_adversarial()
 	await _terrain()
 	await _solo()
+	await _recovery()
 	await _network()
 	print("LUNAR SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
@@ -193,6 +195,7 @@ func _launch() -> void:
 	mission.set_guest(true, Vector3.ZERO)
 	mission.use_station(1, &"pad")
 	mission.tick(0.01, SAFE, AWAY)
+	mission.store_checkpoint()
 	mission.tick(30.0, SAFE, AWAY)
 	_check(mission.flight_stage().x == 0 and not mission.returned, "ascent is not Earth arrival")
 	var elapsed := mission.elapsed
@@ -208,6 +211,21 @@ func _launch() -> void:
 		mission.returned and mission.phase == &"active" and mission.elapsed > elapsed,
 		"mission allows free play"
 	)
+	_check(
+		(
+			mission.checkpoint.returned
+			and mission.checkpoint.phase == &"active"
+			and mission.checkpoint.countdown == 0.0
+			and not mission.checkpoint.pilots[0].seated
+		),
+		"return clears countdown and seats from the dawn checkpoint"
+	)
+	var legacy := mission.checkpoint.duplicate(true)
+	legacy.phase = &"countdown"
+	legacy.countdown = 12.0
+	legacy.pilots[0].seated = true
+	mission.restore(legacy)
+	_check(mission.phase == &"active" and mission.crew_seated() == 0, "old return saves recover")
 
 
 func _profile() -> void:
@@ -232,6 +250,87 @@ func _profile() -> void:
 	DirAccess.remove_absolute(path)
 
 
+func _wallet_adversarial() -> void:
+	_cases += 1
+	var rules := _mission().rules
+	var path := _temp_profile("wallet-errors")
+	var profile := LunarProfile.new(rules, path)
+	var guest_id := "0123456789abcdef0123456789abcdef"
+	var base := "mons_mouton_plateau"
+	_check(not profile.credit("negative", -1), "negative reward rejected")
+	_check(not profile.credit("", 100), "empty receipt rejected")
+	_check(
+		not profile.credit("overflow", LunarProfile.MAX_BALANCE + 1), "oversized reward rejected"
+	)
+	profile.pay_day(base, 33, 1, NAN, {})
+	profile.pay_day(base, 33, 1, INF, {})
+	profile.pay_day("invalid", 33, 1, 25.0, {})
+	profile.pay_day(base, 33, 0, 25.0, {})
+	_check(profile.data.balance == 0, "invalid dawn input never credits")
+	profile.pay_day(base, 33, 1, 25.0, {guest_id: 12.5})
+	profile.pay_day(base, 33, 1, 25.0, {guest_id: 18.75})
+	var receipt := "%s/%s/33/1" % [profile.data.id, base]
+	_check(profile.data.balance == 250000, "same dawn credited exactly once")
+	_check(profile.data.guest_awards[guest_id][receipt] == 125000, "guest award stays immutable")
+	_check(profile.valid_guest_award(receipt, 125000), "valid guest award")
+	_check(not profile.valid_guest_award(receipt, 99900000), "guest award bound by base")
+	_check(not profile.valid_guest_award(receipt, 125000.0), "wire award must be integer")
+	_check(
+		not profile.valid_guest_award("%s/%s/33/01" % [profile.data.id, base], 100),
+		"alias rejected"
+	)
+	_check(
+		not profile.valid_guest_award("lunar/mission/invalid", 1500000), "unknown mission rejected"
+	)
+	profile.pay_day(base, 33, 2, 37.5, {guest_id: 37.5000000001})
+	var capped_share := "%s/%s/33/2" % [profile.data.id, base]
+	_check(
+		profile.data.guest_awards[guest_id][capped_share] == 375000, "round-off at guest cap paid"
+	)
+	_check(profile.credit("seed", 500 * LunarProfile.SCALE) and profile.save(), "wallet saved")
+	var stale := LunarProfile.new(rules, path)
+	var before := int(profile.data.balance)
+	profile.path = path + "/missing/profile"
+	_check(not profile.buy("slater_plain", false), "failed write rejects purchase")
+	_check(
+		not profile.open_base("slater_plain") and profile.data.balance == before, "buy rolled back"
+	)
+	profile.path = path
+	_check(profile.buy("slater_plain", false), "purchase retry succeeds")
+	_check(not profile.buy("slater_plain", false), "double purchase rejected")
+	_check(
+		not stale.buy("engineer", true) and stale.save_error == ERR_BUSY, "stale writer rejected"
+	)
+	var reloaded := LunarProfile.new(rules, path)
+	_check(
+		(
+			reloaded.data.balance == before - 100 * LunarProfile.SCALE
+			and reloaded.open_base("slater_plain")
+		),
+		"disk keeps exact debit and unlock"
+	)
+	var staged := FileAccess.open(path + ".interrupted.tmp", FileAccess.WRITE)
+	staged.store_var({"version": 1, "balance": -1}, false)
+	staged.close()
+	reloaded = LunarProfile.new(rules, path)
+	_check(reloaded.data.balance == profile.data.balance, "interrupted staging file ignored")
+	_check(reloaded.credit("cap", LunarProfile.MAX_BALANCE), "valid large award reaches the cap")
+	_check(reloaded.credit("at-cap", 1), "receipt consumed at capacity")
+	_check(reloaded.data.balance == LunarProfile.MAX_BALANCE, "never exceeds capacity")
+	_check(not reloaded.credit("at-cap", 1), "capped awards cannot be replayed")
+	_check(reloaded.save(), "cap survives persistence")
+	var corrupt_path := _temp_profile("corrupt-wallet")
+	var file := FileAccess.open(corrupt_path, FileAccess.WRITE)
+	file.store_var({"version": 1, "balance": -10}, false)
+	file.close()
+	var corrupt := LunarProfile.new(rules, corrupt_path)
+	_check(
+		corrupt.error == ERR_FILE_CORRUPT and not corrupt.save(), "corrupt wallet stays protected"
+	)
+	for temporary in [path, path + ".interrupted.tmp", corrupt_path]:
+		DirAccess.remove_absolute(temporary)
+
+
 func _terrain() -> void:
 	_cases += 1
 	var player := _endpoint("Alignment")
@@ -239,8 +338,9 @@ func _terrain() -> void:
 	await get_tree().physics_frame
 	player.net = &"lobby"
 	player._surface_camera()
-	var stations := CrestWorld.STATIONS.merged(CrestWorld.WORKSHOP)
+	var stations := CrestWorld.campaign_stations.duplicate()
 	stations.erase(&"supply")
+	_check(not stations.has(&"ice") and not stations.has(&"ore"), "ice and ore left the base")
 	var coordinates: Array[Vector3] = [CrestWorld.SPAWNS[0], CrestWorld.SPAWNS[1]]
 	for key: StringName in stations:
 		coordinates.append(stations[key])
@@ -285,14 +385,10 @@ func _terrain() -> void:
 		var profile: Dictionary = player.sim.rules.bases[base_id]
 		player.world.set_base(profile.soil, StringName(base_id))
 		player.sky.configure(base_id, profile.horizon)
-		var dimensions := Rect2(-20.0, -11.0, 40.0, 22.0)
-		for crater: MeshInstance3D in player.world.get_node("CrateresLaterales").get_children():
-			var box := crater.get_aabb()
-			var point := crater.position + box.position
-			_check(
-				not dimensions.intersects(Rect2(point.x, point.z, box.size.x, box.size.z)),
-				"%s crater clears the walkable area" % base_id
-			)
+		_check(
+			not player.world.has_node("CrateresLaterales"),
+			"%s leaves the craters to the open world" % base_id
+		)
 		player.sky.update_sky(2.0, true)
 		_check(
 			player.sky.earth_level == float(profile.horizon.earth == "visible"),
@@ -301,15 +397,22 @@ func _terrain() -> void:
 
 	player._start_solo("mons_mouton_plateau")
 	player.sim.finish_tutorial()
-	player._set_positions([CrestWorld.STATIONS[&"ice"], Vector3.ZERO])
+	var settings: Dictionary = player.sim.rules.open_world
+	var quarry: Vector3 = ChunkGenerator.starter_deposits(player.sim.world_seed, settings)[0].point
+	player._set_positions([quarry, Vector3.ZERO])
 	player._set_destination(0, CrestWorld.STATIONS[&"life"])
+	await _until(func() -> bool: return player.streamer.is_ready_at(quarry))
 	var frames := 0
-	while not player.world.sheltered(player.pilots[0].position) and frames < 420:
+	var longest_step := 0.0
+	while not player.world.sheltered(player.pilots[0].position) and frames < 1200:
 		frames += 1
+		var before: Vector3 = player.pilots[0].position
 		await get_tree().physics_frame
+		var step: Vector3 = (player.pilots[0].position - before) * Vector3(1, 0, 1)
+		longest_step = maxf(longest_step, step.length())
 	_check(
-		player.world.sheltered(player.pilots[0].position),
-		"pilot follows a real route from the quarry into cover"
+		player.world.sheltered(player.pilots[0].position) and longest_step < 0.5,
+		"pilot follows a real route from the starter ice deposit into cover"
 	)
 	print("TERRAIN: tested quarry-to-cover motion %.2f simulated seconds" % (frames / 60.0))
 	DirAccess.remove_absolute(player.profile_path)
@@ -326,7 +429,14 @@ func _solo() -> void:
 	var player := _endpoint("Solo")
 	var existing_peer: MultiplayerPeer = player.multiplayer.multiplayer_peer
 	var base_id := "mons_mouton_plateau"
-	player.profile.data.bases[base_id] = {"run": 12345}
+	var legacy_mission := _mission(base_id)
+	player.profile.data.bases[base_id] = {
+		"run": 12345,
+		"active": legacy_mission.state(),
+		"checkpoint": legacy_mission.checkpoint,
+		"positions": [Vector3.ZERO, Vector3.ZERO],
+		"checkpoint_positions": [Vector3.ZERO, Vector3.ZERO]
+	}
 	player.profile.data.erase("solo_bases")
 	player.profile.data.erase("recent_mode")
 	player.profile.save()
@@ -362,13 +472,16 @@ func _solo() -> void:
 		for frame in range(8):
 			await get_tree().process_frame
 		_capture_image(player, "artemis-carga.png")
-	for index in range(36):
-		await get_tree().process_frame
+	await _until(func() -> bool: return not player._loading)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(player.net == &"solo" and player.ui.play.visible, "main menu opens solo directly")
 	_check(player.multiplayer.multiplayer_peer == existing_peer, "no network peer opened")
 	_check(player.pilots[0].visible and not player.pilots[1].visible, "only one astronaut in solo")
+	# Los puntos de salida del plano 40x22 quedan a unos 3.9 m del puesto de práctica.
+	var desk: Vector3 = CrestWorld.STATIONS[&"training"]
+	player._set_positions([desk, Vector3.ZERO])
+	await get_tree().physics_frame
 	player.ui.action_button.pressed.emit()
 	_check(player.sim.cargo_kind(0) == &"sample", "solo tutorial picks up a sample")
 	player.ui.release_button.pressed.emit()
@@ -453,11 +566,8 @@ func _solo() -> void:
 	player.profile = LunarProfile.new(player.sim.rules, player.profile_path)
 	player.ui.lobby(player.profile, "")
 	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
-	_press_menu_button(player, "Continuar solo")
-	for index in range(36):
-		await get_tree().process_frame
-		if not player._loading:
-			break
+	_press_menu_button(player, "Continuar misión")
+	await _until(func() -> bool: return not player._loading)
 	_check(
 		player.sim.returned and absf(player.sim.elapsed - elapsed) < 0.04,
 		"continue restores exact solo state"
@@ -478,6 +588,36 @@ func _solo() -> void:
 	)
 	DirAccess.remove_absolute(player.profile_path)
 	player.get_parent().queue_free()
+
+
+func _recovery() -> void:
+	_cases += 1
+	var player := _endpoint("Recovery")
+	player._start_solo("mons_mouton_plateau")
+	player.sim.finish_tutorial()
+	player.sim.water = 0.0
+	player.sim.pilots[0].air = 0.001
+	player.sim.store_checkpoint()
+	var outside := CrestWorld.STATIONS[&"training"]
+	player.positions_at_dawn = [outside, Vector3.ZERO]
+	player._set_positions([outside, Vector3.ZERO])
+	for frame in range(4):
+		await get_tree().physics_frame
+	_check(player.world.sheltered(player.pilots[0].position), "dry checkpoint rescues to shelter")
+	_check(player.sim.pilots[0].air >= 30.0, "dry checkpoint leaves usable emergency air")
+	_check(player.sim.water == 0.0 and player.profile.data.balance == 0, "rescue preserves economy")
+	_check(player.sim.phase == &"active", "solo can continue after rescue")
+	player.sim.water = 0.000001
+	player.sim.pilots[0].air = 0.001
+	player.sim.store_checkpoint()
+	player.positions_at_dawn = [CrestWorld.STATIONS[&"life"], Vector3.ZERO]
+	player._set_positions([outside, Vector3.ZERO])
+	for frame in range(4):
+		await get_tree().physics_frame
+	_check(player.sim.pilots[0].air >= 30.0, "trace water does not suppress the emergency reserve")
+	DirAccess.remove_absolute(player.profile_path)
+	player.get_parent().queue_free()
+	await get_tree().process_frame
 
 
 func _press_menu_button(player: Node, caption: String) -> void:
@@ -507,13 +647,15 @@ func _network() -> void:
 		return
 	for index in range(15):
 		await get_tree().physics_frame
+	await _until(func() -> bool: return host.streamer.is_ready_at(host.pilots[0].position))
 	var frame_position: Vector3 = host.pilots[0].position
 	_touch_joystick(host)
 	for index in range(33):
 		await get_tree().physics_frame
 	host.ui.joystick.clear()
 	_check(frame_position.distance_to(host.pilots[0].position) > 0.9, "joystick drives host")
-	host._set_positions([Vector3(-0.68, 0.1, 5.85), Vector3(0.68, 0.1, 5.85)])
+	var desk: Vector3 = CrestWorld.STATIONS[&"training"]
+	host._set_positions([desk + Vector3(-0.68, 0.1, 0), desk + Vector3(0.68, 0.1, 0)])
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	host.ui.selected.emit("action", "")
@@ -537,17 +679,56 @@ func _network() -> void:
 	)
 	if _capture:
 		_capture_image(host)
+	var host_path: String = host.profile.path
+	var guest_path: String = guest.profile.path
+	host.profile.path = host_path + "/missing/profile"
+	guest.profile.path = guest_path + "/missing/profile"
 	host.sim.elapsed = 899.98
 	host._coins_by_guest[host.guest_id] = 18.75 * 899.98 / 900.0
 	for index in range(6):
 		await get_tree().physics_frame
+	_check(
+		host.profile.data.balance == 0 and not host._pending_reward.is_empty(),
+		"failed dawn leaves neither wallet nor checkpoint committed"
+	)
+	_check(host.profile.data.guest_awards.is_empty(), "failed dawn cannot release guest award")
+	_check(host.ui._wallet_balance.text == "0.00 monedas", "uncommitted reward is hidden from HUD")
+	host.profile.path = host_path
+	_check(host._commit_reward(), "dawn saved exactly once on retry")
+	_check(
+		host.ui._wallet_balance.text == host.profile.balance_text() + " monedas", "host HUD updated"
+	)
 	_check(host.profile.data.balance == 187500, "75 percent day reward for host")
+	for index in range(6):
+		OS.delay_msec(2)
+		await get_tree().physics_frame
+	_check(guest.profile.data.balance == 0, "failed guest write rolls back receipt and credit")
+	_check(host.profile.data.guest_awards.has(host.guest_id), "unconfirmed award kept by host")
+	guest.profile.path = guest_path
+	host._send_awards()
 	for index in range(40):
 		if guest.profile.data.balance == 187500:
 			break
 		OS.delay_msec(2)
 		await get_tree().physics_frame
 	_check(guest.profile.data.balance == 187500, "guest receives the same 75 percent at dawn")
+	_check(
+		guest.ui._wallet_balance.text == guest.profile.balance_text() + " monedas",
+		"guest HUD updated"
+	)
+	var reloaded := LunarProfile.new(guest.sim.rules, guest.profile_path)
+	_check(reloaded.data.balance == 187500, "guest persisted before acknowledgment")
+	for index in range(40):
+		if not host.profile.data.guest_awards.has(host.guest_id):
+			break
+		OS.delay_msec(2)
+		await get_tree().physics_frame
+	_check(not host.profile.data.guest_awards.has(host.guest_id), "confirmed award dequeued")
+	var duplicate: String = (
+		"%s/%s/%d/%d" % [host.profile.data.id, host.sim.base_id, host.saved_run, host.sim.days]
+	)
+	guest._award({duplicate: 187500, "lunar/mission/boo": 1, 42: 500})
+	_check(guest.profile.data.balance == 187500, "wire replay and malformed awards ignored")
 	guest._leave()
 	for index in range(100):
 		if host.guest_peer == 0:
@@ -565,6 +746,22 @@ func _network() -> void:
 	for index in range(12):
 		await get_tree().physics_frame
 	_check(guest.profile.data.balance == 187500, "receipt replay cannot duplicate guest coins")
+	var many := {}
+	var count := LunarProfile.AWARD_BATCH * 2 + 1
+	for day in range(1, count + 1):
+		var id := "%s/%s/99999/%d" % [host.profile.data.id, host.sim.base_id, day]
+		many[id] = 100
+	host.profile.data.guest_awards[host.guest_id] = many
+	_check(host.profile.save(), "backlog persisted")
+	host._send_awards()
+	for index in range(90):
+		if not host.profile.data.guest_awards.has(host.guest_id):
+			break
+		OS.delay_msec(2)
+		await get_tree().physics_frame
+	var final_balance := 187500 + count * 100
+	_check(guest.profile.data.balance == final_balance, "backlog paid in bounded batches")
+	_check(not host.profile.data.guest_awards.has(host.guest_id), "every batch acknowledged")
 	var when: float = host.sim.elapsed
 	host._leave()
 	var save: Dictionary = host.profile.data.bases.mons_mouton_plateau
@@ -576,11 +773,21 @@ func _network() -> void:
 		OS.delay_msec(2)
 		await get_tree().physics_frame
 	_check(
-		guest.net == &"lobby" and guest.profile.data.balance == 187500,
+		guest.net == &"lobby" and guest.profile.data.balance == final_balance,
 		"guest keeps confirmed coins after host exit"
 	)
 	DirAccess.remove_absolute(host.profile_path)
 	DirAccess.remove_absolute(guest.profile_path)
+	host.get_parent().queue_free()
+	guest.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## La carga del terreno es asíncrona: espera con reloj real (20 s como máximo).
+func _until(done: Callable) -> void:
+	var deadline := Time.get_ticks_msec() + 20000
+	while not done.call() and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
 
 
 func _endpoint(label: String) -> Node:

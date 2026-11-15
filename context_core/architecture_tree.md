@@ -189,8 +189,20 @@ LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al
 CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por piloto y poses por velocidad y carga. La cinemática suprime toda la geometría del astronauta durante el descenso y la revela al desembarcar en el fotograma 271.
 ## Efectos de la campaña
 
-`LunarGame` instancia `lunar/lunar_audio.gd`, que sintetiza efectos breves para botones, pasos, proximidad a estaciones y extracción. Se calculan para el piloto local en individual y cooperativo, sin alterar la simulación ni transmitir eventos de audio. El control de SFX del menú inicial y de opciones ajusta también la alerta existente y se guarda en `LunarProfile`. `lunar/lunar_music.gd` reproduce las tres pistas del usuario desde `assets/music/` según menú y ciclo de día/noche, con fundido cruzado y pausa de las pistas inactivas. Pendiente revisar la mezcla con altavoces y dispositivos móviles.
+`LunarGame` instancia `lunar/lunar_audio.gd`, que sintetiza efectos breves para botones, pasos, proximidad a estaciones y depósitos, y extracción. Se calculan para el piloto local en individual y cooperativo, sin alterar la simulación ni transmitir eventos de audio. El control de SFX del menú inicial y de opciones ajusta también las alertas y recompensas y se guarda en `LunarProfile`. `lunar/lunar_music.gd` reproduce las tres pistas del usuario desde `assets/music/` según menú y ciclo de día/noche, con fundido cruzado y pausa de las pistas inactivas. En headless no se inicia la mezcla. Pendiente revisar la mezcla con altavoces y dispositivos móviles.
 
 ## Selector de bases de main
 
 `LunarGlobe` muestra el selector 3D y envía las acciones a `LunarInterface`. El modelo original `assets/props_luna/luna_bases.glb` está incluido desde la integración posterior de main.
+
+## Paleta de AstroCat · revisión 21
+
+CrestPilot usa las texturas originales de AstroCat y aplica solo al traje el tinte suave por jugador. Convierte la misma marcha, reposo y carga a los ejes de reposo de los huesos importados.
+
+## Economía de campaña · revisión 22
+
+LunarMission calcula las recompensas existentes. LunarGame confirma conjuntamente el punto de control y los abonos en LunarProfile, y entrega los recibos cooperativos mediante ENet. LunarInterface muestra el saldo confirmado y el importe recién acreditado. Si el perfil no se puede escribir, el punto de control pendiente queda en espera de reintento y las compras fallidas se revierten.
+
+## MVP individual · revisión 23
+
+El menú público muestra la campaña sin conexión y Continuar misión. LunarInterface vincula el objetivo inmediato a la carga, el agua y la radio. LunarMission normaliza el punto de control al completar el regreso. LunarGame conserva la retirada al amanecer y habilita una reserva de emergencia para rescatar una partida individual sin agua y con poco aire. LunarProfile identifica el final de la campaña a partir de los regresos ya acreditados.

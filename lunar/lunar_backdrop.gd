@@ -9,6 +9,8 @@ var planet_scale := 1.0
 var earth_mode := "visible"
 var earth_level := 1.0
 var relief := 0.16
+## Desplazamiento lateral de la camara en anchos de pantalla: mueve las crestas del horizonte.
+var pan := 0.0
 var _seed := 37
 var _age := 0.0
 var _stars := PackedVector2Array()
@@ -83,11 +85,17 @@ func _draw() -> void:
 	for index in range(3):
 		var color: Color = [Color("#283043"), Color("#3b4155"), Color("#555367")][index]
 		var line := 0.178 + index * 0.047
+		var margins := PackedFloat32Array()
+		for step in range(18):
+			margins.append(rng.randf_range(-relief, relief) * (0.15 + index * 0.07))
+		# Las crestas se repiten cada pantalla; las mas cercanas se desplazan mas (paralaje).
+		var shift := fposmod(pan * (0.6 + index * 0.2), 1.0)
 		var points := PackedVector2Array()
-		for step in range(19):
-			var margin := rng.randf_range(-relief, relief) * (0.15 + index * 0.07)
-			points.append(Vector2(float(step) / 18.0 * size.x, (line + margin) * size.y))
-		points.append_array(PackedVector2Array([size, Vector2(0, size.y)]))
+		for step in range(37):
+			var x := (float(step) / 18.0 - shift) * size.x
+			points.append(Vector2(x, (line + margins[step % 18]) * size.y))
+		points.append(Vector2(points[-1].x, size.y))
+		points.append(Vector2(points[0].x, size.y))
 		draw_colored_polygon(points, color)
 
 

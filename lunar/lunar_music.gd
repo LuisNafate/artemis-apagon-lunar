@@ -35,6 +35,8 @@ func set_context(context: StringName) -> void:
 	if context == current:
 		return
 	current = context
+	if DisplayServer.get_name() == "headless":
+		return
 	if not players.has(context):
 		return
 	var player: AudioStreamPlayer = players[context]

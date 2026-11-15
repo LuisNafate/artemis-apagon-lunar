@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 23,
   "nodes": [
     {
       "id": "config",
@@ -1038,6 +1038,16 @@
     {
       "id": "lunar_unlocks",
       "kind": "system"
+    },
+    {
+      "id": "solo_mvp_walkthrough",
+      "kind": "test",
+      "path": "tests/mvp_suite.tscn"
+    },
+    {
+      "id": "lunar_wallet_receipts",
+      "kind": "protocol",
+      "description": "Recibos idempotentes, guardado del abono y confirmación de entrega ENet."
     },
     {
       "id": "lunar_crater",
@@ -2684,6 +2694,26 @@
       "lunar_unlocks"
     ],
     [
+      "lunar_profile",
+      "persists",
+      "lunar_wallet_receipts"
+    ],
+    [
+      "lunar_game",
+      "delivers",
+      "lunar_wallet_receipts"
+    ],
+    [
+      "lunar_interface",
+      "displays_balance_from",
+      "lunar_profile"
+    ],
+    [
+      "lunar_suite_script",
+      "probes",
+      "lunar_wallet_receipts"
+    ],
+    [
       "lunar_days",
       "funds",
       "lunar_unlocks"
@@ -2710,13 +2740,8 @@
     ],
     [
       "crest_pilot",
-      "rigs",
-      "cat_model"
-    ],
-    [
-      "crest_pilot",
-      "tints",
-      "cat_shader"
+      "poses",
+      "astrocat_mesh"
     ],
     [
       "crest_game",
@@ -2797,6 +2822,21 @@
       "lunar_suite_script",
       "tests",
       "lunar_solo"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "plays",
+      "lunar_scene"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "verifies",
+      "lunar_unlocks"
+    ],
+    [
+      "solo_mvp_walkthrough",
+      "verifies",
+      "lunar_return"
     ],
     [
       "live_campaign_design",
@@ -2932,6 +2972,11 @@
       "lunar_interface",
       "replays",
       "lunar_opening"
+    ],
+    [
+      "opening_blender",
+      "uses",
+      "cat_model"
     ],
     [
       "opening_encode",

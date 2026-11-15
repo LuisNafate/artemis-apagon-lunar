@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 23,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -778,6 +778,80 @@
         }
       }
     },
+    "open_world": {
+      "note": "Mundo abierto por chunks. Los valores de generacion y de jugador salen de aqui.",
+      "world_size": 1024,
+      "chunk_size": 16,
+      "height_step": 1.0,
+      "walk_cell": 0.5,
+      "load_radius": 3,
+      "unload_radius": 4,
+      "chunks_per_frame": 2,
+      "edge_band": 24,
+      "edge_ridge_height": 12,
+      "gravity": 3.2,
+      "jump_speed": 3.2,
+      "jump_with_box": 0.7,
+      "air_control": 4.0,
+      "tether_soft": 34,
+      "tether_max": 40,
+      "tap_route_radius": 20,
+      "deposit_refill_dawns": 2,
+      "deposit_near_radius": 60,
+      "deposit_near_factor": 2,
+      "starter_deposit_range": [25, 40],
+      "starter_deposit_ids": [90, 91],
+      "base_flat_rect": [-20, -11, 40, 22],
+      "base_flat_transition": 24,
+      "base_exclusion_rect": [-28, -19, 56, 38],
+      "base_wall": {
+        "note": "Muro de la plataforma (alrededor de base_flat_rect), puerta corredera en el muro este y flecha de regreso.",
+        "height": 2.4,
+        "south_height": 1.0,
+        "thickness": 0.4,
+        "door_width": 3.0,
+        "door_center": [20.2, 1.9],
+        "open_distance": 3.0,
+        "door_seconds": 0.5,
+        "gate_distance": 1.2,
+        "outside_distance": 2.0,
+        "arrow_distance": 1.8,
+        "arrow_height": 0.25
+      },
+      "max_walk_slope": 0.6,
+      "relief_amplitude": 8.0,
+      "noise_frequency": 0.012,
+      "noise_octaves": 4,
+      "crater_cell": 32,
+      "crater_radius": [3.0, 10.0],
+      "crater_depth_ratio": 0.18,
+      "crater_rim_ratio": 0.35,
+      "crater_deposit_bias": 0.5,
+      "rocks_per_chunk": [2, 7],
+      "rock_scale": [0.6, 1.6],
+      "rock_radius": 0.6,
+      "deposits_per_chunk_max": 2,
+      "deposit_id_base": 1000,
+      "ice_shadow_chance": 0.85,
+      "deposit_distance_curve": {
+        "note": "capacidad = min + floor((max - min) * clamp(distancia / full_distance, 0, 1) ^ exponent): 1 cerca de la base y max lejos.",
+        "min_capacity": 1,
+        "max_capacity": 4,
+        "full_distance": 400,
+        "exponent": 1.0
+      },
+      "regions": {
+        "mons_mouton_plateau": {"relief": 0.2, "crater_density": 0.15, "deposit_density": 0.25, "ice_ratio": 0.2},
+        "slater_plain": {"relief": 0.35, "crater_density": 0.2, "deposit_density": 0.25, "ice_ratio": 0.2},
+        "malapert_massif": {"relief": 0.4, "crater_density": 0.2, "deposit_density": 0.28, "ice_ratio": 0.25},
+        "mons_mouton": {"relief": 0.55, "crater_density": 0.3, "deposit_density": 0.3, "ice_ratio": 0.3},
+        "cabeus_b": {"relief": 0.6, "crater_density": 0.45, "deposit_density": 0.32, "ice_ratio": 0.5},
+        "nobile_rim_1": {"relief": 0.5, "crater_density": 0.35, "deposit_density": 0.32, "ice_ratio": 0.35},
+        "de_gerlache_rim_2": {"relief": 0.8, "crater_density": 0.35, "deposit_density": 0.35, "ice_ratio": 0.4},
+        "nobile_rim_2": {"relief": 0.75, "crater_density": 0.4, "deposit_density": 0.35, "ice_ratio": 0.4},
+        "haworth": {"relief": 0.9, "crater_density": 0.6, "deposit_density": 0.4, "ice_ratio": 0.75}
+      }
+    },
     "starting_base": "mons_mouton_plateau",
     "wallet": {
       "base": 25,
@@ -786,7 +860,10 @@
       "cap": 2,
       "share": 0.75,
       "mission_bonus": 150,
-      "role_price": 250
+      "role_price": 250,
+      "settlement": "Amanecer y primer regreso por base; el saldo visible solo incluye operaciones guardadas.",
+      "storage": "Perfil local v1, 10000 unidades por moneda y tope técnico de 1000000000 monedas.",
+      "coop_delivery": "Cola persistente de recibos, lotes de hasta 64 y acuse tras guardar en el invitado."
     },
     "roles": {
       "engineer": {
@@ -869,7 +946,7 @@
       "entry": "res://lunar/lunar.tscn",
       "network": "ENet anfitrión-invitado por dirección y UDP 44260; sin servicios externos",
       "save": "user://artemis_campaign_v1.dat · ranuras individuales y cooperativas por base; saldo y desbloqueos compartidos",
-      "input": "joystick táctil, tocar destino, acción y soltar/pasar",
+      "input": "joystick táctil, tocar destino, acción, soltar/entregar y salto",
       "world": "kit compartido de cinco zonas; suelo Y=0, seis cráteres fuera del área navegable, perfil de horizonte por región",
       "implemented_upgrades": [
         "drill",
@@ -884,7 +961,7 @@
         "open rules in design document"
       ],
       "visible_assets": [
-        "gato-modelo2",
+        "astrocat_guia",
         "lro_miniatura",
         "relieve_nobile_lola",
         "apollo_base_lunar",
@@ -916,7 +993,7 @@
     },
     "audio_effects": {
       "source": "efectos sintetizados originales, sin archivos externos",
-      "events": ["botón", "pasos", "proximidad", "extracción"],
+      "events": ["botón", "pasos", "proximidad a estaciones y depósitos", "extracción", "alerta", "recompensa"],
       "local_player_only": true,
       "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
       "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",
@@ -927,14 +1004,18 @@
       "players": 1,
       "seats": 1,
       "offline": true,
+      "show_online": false,
+      "emergency_air": 30.0,
+      "campaign_finish": "Regresar a Tierra desde las nueve bases. Después se puede explorar y repetir misiones.",
       "pause_in_menu": true,
       "day_reward_share": 1.0,
       "save_slot": "solo_bases"
     },
     "pilot_animation": {
-      "model": "res://assets/pilotos/gato-modelo2.glb",
+      "model": "res://assets/pilotos/astrocat_guia.glb",
       "poses": ["reposo", "marcha", "carga"],
-      "bones_per_pilot": 15
+      "bones_per_pilot": 20,
+      "suit_tint_strength": 0.32
     },
     "opening": {
       "frames": 480,

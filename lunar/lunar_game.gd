@@ -1,4 +1,5 @@
-# gdlint: disable=max-returns,max-public-methods
+# gdlint: disable=max-returns,max-public-methods,max-file-lines
+class_name LunarGame
 extends Node3D
 
 const PORT := 44260
@@ -6,6 +7,16 @@ const SAMPLE_RATE := 0.10
 const CAMERA_ELEVATION := 34.0
 const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
+const CAMERA_DISTANCE := 26.0
+const PLAY_V_OFFSET := 2.9
+const FOLLOW_FOV := 45.0
+const FOLLOW_HEIGHT := 0.8
+const BASE_HYSTERESIS := 1.0
+const HORIZON_SPAN := 400.0
+const DEPOSIT_REACH := 1.63
+const LOOKAHEAD_FRAMES := 4.0
+const SINK_TOLERANCE := 0.25
+const TERRAIN_WAIT_MSEC := 8000
 const CARGO_MODELS := {
 	&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62],
 	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
@@ -29,6 +40,7 @@ var camera := Camera3D.new()
 var ui := LunarInterface.new()
 var sky := LunarBackdrop.new()
 var flight := LunarFlightView.new()
+var streamer := ChunkStreamer.new()
 var pilots: Array[CrestPilot] = []
 var net := &"lobby"
 var guest_peer := 0
@@ -43,12 +55,19 @@ var _base_mode := "solo"
 var _loading := false
 var _address := ""
 var _vectors := [Vector2.ZERO, Vector2.ZERO]
+var _jump: Array[bool] = [false, false]
+var _chunk_ready: Array[bool] = [false, false]
 var _route: Array[PackedVector2Array] = [[], []]
 var _routes := ROUTES.new()
 var _routes_ready := false
+var _planner := RoutePlanner.new()
 var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
+var _cargo_templates: Dictionary = {}
 var _coins_by_guest: Dictionary = {}
+var _pending_reward: Dictionary = {}
+var _reward_retry := 0.0
+var _award_retry := 0.0
 var _science_index := 0
 var _science_from_session := false
 var _feedback := ""
@@ -62,6 +81,7 @@ var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
 var _audio := AUDIO.new()
 var _music := MUSIC.new()
+var _reward_audio := AudioStreamPlayer.new()
 
 
 func _ready() -> void:
@@ -78,7 +98,7 @@ func _ready() -> void:
 	backdrop_layer.layer = -1
 	add_child(backdrop_layer)
 	backdrop_layer.add_child(sky)
-	world.campaign_layout = true
+	world.open_settings = sim.rules.open_world
 	add_child(world)
 	world.build()
 	world.build_lunar_workshop()
@@ -88,6 +108,8 @@ func _ready() -> void:
 	world.show_field_models("")
 	for station: Node3D in world.markers.values():
 		station.hide()
+	add_child(streamer)
+	_configure_streamer(starting_id)
 	sky.configure(starting_id, initial.horizon)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	add_child(camera)
@@ -127,16 +149,28 @@ func _show_opening() -> void:
 	opening.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
+## La intro se cierra al entrar al menu o al abrir una base por cualquier camino: si
+## siguiera viva, al terminar devolveria la partida al lobby.
+func _close_opening() -> void:
+	if is_instance_valid(opening):
+		opening.get_parent().queue_free()
+		opening = null
+
+
 func _surface_camera() -> void:
 	var view := Vector2(0.228, 0.974).normalized()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.position = Vector3(
-		view.x * 26.0, 26.0 * tan(deg_to_rad(CAMERA_ELEVATION)), view.y * 26.0
+		view.x * CAMERA_DISTANCE,
+		CAMERA_DISTANCE * tan(deg_to_rad(CAMERA_ELEVATION)),
+		view.y * CAMERA_DISTANCE
 	)
 	camera.look_at(Vector3.ZERO)
 	_camera_home = camera.position
 	camera.size = SURFACE_SIZE
 	camera.h_offset = 0.0
-	camera.v_offset = 2.9
+	camera.v_offset = PLAY_V_OFFSET
+	sky.pan = 0.0
 
 
 func _process(delta: float) -> void:
@@ -145,6 +179,14 @@ func _process(delta: float) -> void:
 	if in_game:
 		music_context = &"night" if sim.shadow_active() else &"day"
 	_music.set_context(music_context)
+	if not _pending_reward.is_empty():
+		_reward_retry -= delta
+		if _reward_retry <= 0.0:
+			_commit_reward()
+	if net == &"host" and guest_peer != 0:
+		_award_retry -= delta
+		if _award_retry <= 0.0:
+			_send_awards()
 	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
 
 
@@ -159,6 +201,8 @@ func _physics_process(delta: float) -> void:
 	if not _routes_ready:
 		_routes.build(get_world_3d().direct_space_state)
 		_routes_ready = true
+	streamer.update(_focus_points())
+	_planner.update(streamer)
 	if net == &"host" and play_started:
 		_local_frame(delta)
 	elif net == &"solo" and ui.play.visible:
@@ -170,11 +214,63 @@ func _physics_process(delta: float) -> void:
 
 
 func _follow_camera(delta: float) -> void:
-	# Zoom de juego: camara cercana que sigue a los pilotos sin salir de la plataforma.
-	var focus := (pilots[0].position + pilots[1].position) * 0.5
-	var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -6.0, 6.0))
-	camera.position = camera.position.lerp(_camera_home + shift, minf(1.0, delta * 4.0))
-	camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
+	# Cada dispositivo sigue a su propio piloto; la orientacion nunca cambia.
+	var own := pilots[1 if net == &"guest" else 0].position
+	var outside := _camera_outside(own)
+	if outside != (camera.projection == Camera3D.PROJECTION_PERSPECTIVE):
+		_switch_projection(outside)
+	var blend := minf(1.0, delta * 4.0)
+	if outside:
+		var target := own + Vector3.UP * FOLLOW_HEIGHT + camera.basis.z * _follow_distance()
+		camera.position = camera.position.lerp(target, blend)
+		camera.v_offset = lerpf(camera.v_offset, 0.0, blend)
+	else:
+		# Zoom de juego: camara cercana que sigue a los pilotos conectados sin salir de la
+		# plataforma (en solo, el piloto ausente no cuenta).
+		var points := _focus_points()
+		var focus := Vector3.ZERO
+		for point in points:
+			focus += point
+		focus /= maxf(1.0, float(points.size()))
+		# En z llega hasta el borde de la plataforma: con el desplazamiento vertical de la
+		# vista, un tope menor dejaba al piloto bajo el borde inferior de la pantalla.
+		var reach_z := CrestWorld.HALF_Z
+		var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -reach_z, reach_z))
+		camera.position = camera.position.lerp(_camera_home + shift, blend)
+		camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
+		camera.v_offset = lerpf(camera.v_offset, PLAY_V_OFFSET, blend)
+	sky.pan = camera.position.dot(camera.basis.x) / HORIZON_SPAN
+
+
+## Fuera de la plataforma plana (con histeresis para no alternar en el borde).
+func _camera_outside(point: Vector3) -> bool:
+	var values: Array = sim.rules.open_world.base_flat_rect
+	var flat := Rect2(float(values[0]), float(values[1]), float(values[2]), float(values[3]))
+	var perspective := camera.projection == Camera3D.PROJECTION_PERSPECTIVE
+	var margin := -BASE_HYSTERESIS if perspective else BASE_HYSTERESIS
+	return not flat.grow(margin).has_point(Vector2(point.x, point.z))
+
+
+## Distancia en perspectiva que encuadra lo mismo que la ortografica de juego.
+func _follow_distance() -> float:
+	return PLAY_SIZE / (2.0 * tan(deg_to_rad(FOLLOW_FOV) * 0.5))
+
+
+## Cambia de proyeccion conservando el punto mirado y el encuadre, para que el paso
+## por el borde de la base sea una mezcla y no un salto.
+func _switch_projection(perspective: bool) -> void:
+	var back := camera.basis.z
+	if perspective:
+		var look := camera.position - back * CAMERA_DISTANCE
+		var zoom := camera.size / PLAY_SIZE
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = FOLLOW_FOV
+		camera.position = look + back * _follow_distance() * zoom
+	else:
+		var look := camera.position - back * _follow_distance()
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = PLAY_SIZE
+		camera.position = look + back * CAMERA_DISTANCE
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -189,6 +285,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var ray := camera.project_ray_normal(event.position)
 		var point: Variant = Plane(Vector3.UP, 0.0).intersects_ray(origin, ray)
 		if point is Vector3:
+			ui.show_zone(_zone_name_at(point))
 			if net in [&"host", &"solo"]:
 				_set_destination(0, point)
 			elif net == &"guest":
@@ -196,15 +293,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func _zone_name_at(point: Vector3) -> String:
+	var found := ""
+	var closest := 2.2
+	for key: StringName in CrestWorld.campaign_stations:
+		if key in [&"training", &"supply"] or not CrestWorld.NAMES.has(key):
+			continue
+		var location: Vector3 = CrestWorld.campaign_stations[key]
+		var distance := point.distance_to(location)
+		if distance < closest:
+			closest = distance
+			found = String(CrestWorld.NAMES[key])
+	return found
+
+
 func _choose(action: String, argument: String) -> void:
 	_audio.play_effect(&"button")
 	if profile.error != OK or _loading:
 		return
 	match action:
+		"jump":
+			_jump[0] = ui.play.visible  # el invitado lo envia con el siguiente eje
 		"title_enter":
-			if is_instance_valid(opening):
-				opening.get_parent().queue_free()
-				opening = null
+			_close_opening()
 			net = &"lobby"
 			_surface_camera()
 			ui.lobby(profile, "")
@@ -219,13 +330,16 @@ func _choose(action: String, argument: String) -> void:
 		"roles":
 			ui.roles(profile)
 		"buy_base":
-			if profile.buy(argument, false):
-				ui.bases(profile, _base_mode)
-			else:
-				ui.bases(profile, _base_mode, "No tienes suficientes monedas para abrir esa base.")
+			var bought := profile.buy(argument, false)
+			var message := "" if bought else "No puedes comprar esta base con tu saldo actual."
+			if profile.save_error != OK:
+				message = "No se pudo guardar la compra. Tu saldo sigue intacto."
+			ui.bases(profile, _base_mode, message)
 		"buy_role":
 			if profile.buy(argument, true):
 				ui.roles(profile)
+			elif profile.save_error != OK:
+				ui.lobby(profile, "No se pudo guardar la compra. Tu saldo sigue intacto.")
 			else:
 				ui.lobby(profile, "Reúne 250 monedas para desbloquear ese rol.")
 		"choose_role":
@@ -236,12 +350,13 @@ func _choose(action: String, argument: String) -> void:
 			ui.confirm_reset(sim.rules.bases[argument].name, argument)
 		"reset":
 			profile.saved_bases(_base_mode == "solo").erase(argument)
-			profile.save()
-			ui.bases(profile, _base_mode)
+			var saved := profile.save()
+			ui.bases(profile, _base_mode, "" if saved else "No se pudo guardar el reinicio.")
 		"solo", "host":
 			_load_base(argument, action == "solo")
 		"join":
-			join(ui.address.text.strip_edges())
+			if is_instance_valid(ui.address):
+				join(ui.address.text.strip_edges())
 		"leave":
 			_leave()
 		"menu":
@@ -284,7 +399,33 @@ func _load_base(id: String, single_player: bool) -> void:
 		_start_solo(id)
 	else:
 		host(id)
+	if net in [&"solo", &"host"]:
+		await _await_terrain(base_name)
 	_loading = false
+
+
+## Mantiene la pantalla de carga hasta que haya suelo bajo las posiciones restauradas.
+func _await_terrain(base_name: String) -> void:
+	if _terrain_ready():
+		return
+	ui.loading(base_name, "Generando el terreno", 0.86)
+	var deadline := Time.get_ticks_msec() + TERRAIN_WAIT_MSEC
+	while not _terrain_ready() and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	if net in [&"solo", &"host"]:
+		_show_session()
+
+
+func _terrain_ready() -> bool:
+	return _focus_points().all(streamer.is_ready_at)
+
+
+func _show_session() -> void:
+	ui.show_balance(profile.balance_text())
+	if net == &"host" and not play_started:
+		ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+	else:
+		ui.playing()
 
 
 func host(id: String, port: int = PORT) -> void:
@@ -299,7 +440,7 @@ func host(id: String, port: int = PORT) -> void:
 	play_started = false
 	_open_base(id)
 	_address = _lan_address(port)
-	ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+	_show_session()
 
 
 func _start_solo(id: String) -> void:
@@ -307,7 +448,7 @@ func _start_solo(id: String) -> void:
 		return
 	net = &"solo"
 	_open_base(id)
-	ui.playing()
+	_show_session()
 
 
 func _open_base(id: String) -> void:
@@ -344,12 +485,14 @@ func join(address: String, port: int = PORT) -> void:
 
 func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> void:
 	_audio.reset_tracking()
+	_close_opening()
 	sim = LunarMission.new()
 	sim.prepare(id, seed_value, single_player)
 	_feedback_time = 0.0
 	sim.roles[0] = String(profile.data.active_role)
 	world.set_base(sim.base.soil, StringName(id))
 	world.show_field_models("")
+	_configure_streamer(id)
 	sky.configure(id, sim.base.horizon)
 	_surface_camera()
 	_set_positions(CrestWorld.SPAWNS)
@@ -360,14 +503,43 @@ func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> 
 	_alert_kind = ""
 
 
+func _configure_streamer(id: String) -> void:
+	var settings: Dictionary = sim.rules.open_world
+	streamer.configure(sim, settings, settings.regions[id], world.soil_color())
+	streamer.ground_material = world.ground_material()
+
+
 func _positions() -> Array:
 	return [pilots[0].position, pilots[1].position]
+
+
+## Puntos alrededor de los que se carga el mundo: los pilotos conectados.
+func _focus_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for index in range(2):
+		if sim.connected[index]:
+			points.append(pilots[index].position)
+	return points
+
+
+## Estación de la base al alcance o, si no hay, el depósito del mundo más cercano.
+func _spot_at(point: Vector3) -> StringName:
+	var tutorial := sim.phase == &"tutorial"
+	var spot := world.nearest(point, tutorial)
+	if spot == &"" and not tutorial:
+		spot = streamer.nearest_deposit(point, DEPOSIT_REACH)
+	return spot
+
+
+func crate_visible(id: int) -> bool:
+	return _boxes.has(id) and (_boxes[id] as Node3D).visible
 
 
 func _set_positions(points: Array) -> void:
 	for index in range(2):
 		pilots[index].position = points[index]
 		pilots[index].velocity = Vector3.ZERO
+		_chunk_ready[index] = false
 
 
 func _save_base(exact: bool) -> bool:
@@ -386,7 +558,7 @@ func _save_base(exact: bool) -> bool:
 
 func _leave() -> void:
 	if net in [&"host", &"solo"]:
-		if not _save_base(true):
+		if not _commit_reward() or not _save_base(true):
 			if play_started or net == &"solo":
 				ui.session_menu(
 					net, "El guardado falló. Inténtalo de nuevo.", float(profile.data.sfx_volume)
@@ -403,6 +575,7 @@ func _leave() -> void:
 func _close_network() -> void:
 	_audio.reset_tracking()
 	net = &"lobby"
+	_surface_camera()
 	play_started = false
 	guest_peer = 0
 	guest_id = ""
@@ -462,6 +635,7 @@ func _accept_join(id: String, seed_value: int, active_roles: Array) -> void:
 	sim.roles = active_roles
 	sim.connected[1] = true
 	net = &"guest"
+	ui.show_balance(profile.balance_text())
 	ui.playing()
 
 
@@ -504,17 +678,20 @@ func _connection_failed() -> void:
 
 
 func _local_frame(delta: float) -> void:
+	if not _pending_reward.is_empty():
+		_render(delta, 0)
+		return
 	_vectors[0] = ui.joystick.axis if ui.play.visible else Vector2.ZERO
 	_inactivity += delta
 	if _inactivity > 0.45:
 		_vectors[1] = Vector2.ZERO
 	for index in range(2):
 		_move_pilot(index, delta)
-		_spots[index] = world.nearest(pilots[index].position, sim.phase == &"tutorial")
+		_spots[index] = _spot_at(pilots[index].position)
 
 	if guest_peer != 0 and sim.phase not in [&"tutorial", &"flight"]:
 		var period := float(sim.rules.cycle.period)
-		var time := minf(delta, period - sim.elapsed)
+		var time := clampf(period - sim.elapsed, 0.0, delta)
 		_coins_by_guest[guest_id] = (
 			float(_coins_by_guest.get(guest_id, 0.0)) + sim.wallet_rate(true) * time / period
 		)
@@ -522,28 +699,17 @@ func _local_frame(delta: float) -> void:
 	var had_returned := sim.returned
 	sim.tick(delta, _sheltered(), _spots)
 	if sim.withdrew:
-		_set_positions(positions_at_dawn)
-		_route[0].clear()
-		_route[1].clear()
-		_coins_by_guest.clear()
-		_notice("Sin aire. Regreso al último amanecer.")
+		_recover_crew()
+		if not sim.dawn:
+			_coins_by_guest.clear()
 	if sim.dawn:
 		positions_at_dawn = _positions()
-		profile.pay_day(sim.base_id, saved_run, sim.days, day_rate, _coins_by_guest)
-		_coins_by_guest.clear()
-		if _save_base(false):
-			_send_awards()
-			_notice("Amanecer. Progreso y monedas asegurados.")
-		else:
-			_notice("No se pudo guardar el amanecer.")
+		_pending_reward = {"day": sim.days, "amount": day_rate, "guests": _coins_by_guest}
+		_coins_by_guest = {}
+		_commit_reward()
 	if not had_returned and sim.returned:
-		profile.pay_mission(sim.base_id, int(sim.difficulty.coins), guest_id)
-		sim.checkpoint.returned = true
-		sim.checkpoint.earth_ok = false
-		sim.checkpoint.radio_left = 0.0
-		if _save_base(false):
-			_send_awards()
-		_notice("¡Misión de regreso a Tierra completada!")
+		_pending_reward = {"difficulty": int(sim.difficulty.coins), "guest": guest_id}
+		_commit_reward()
 	_render(delta, 0)
 	_sync_left -= delta
 	if _sync_left <= 0.0:
@@ -551,11 +717,65 @@ func _local_frame(delta: float) -> void:
 		_send_snapshot()
 
 
+func _recover_crew() -> void:
+	var points := positions_at_dawn.duplicate()
+	var message := "Sin aire. Regreso al último amanecer."
+	var reserve := float(sim.rules.solo_mode.get("emergency_air", 0.0))
+	if sim.solo and sim.pilots[0].air < reserve and _needs_emergency_air(points[0], reserve):
+		points[0] = CrestWorld.STATIONS[&"life"] + Vector3.UP * 0.1
+		sim.pilots[0].air = minf(reserve, float(sim.resources.air))
+		message = "Regresaste al refugio con aire de emergencia. Busca hielo para recuperar agua."
+	_set_positions(points)
+	_route[0].clear()
+	_route[1].clear()
+	_notice(message)
+
+
+func _needs_emergency_air(point: Vector3, reserve: float) -> bool:
+	if not world.sheltered(point):
+		return true
+	var deficit := reserve - float(sim.pilots[0].air)
+	var seconds := deficit / float(sim.resources.air_recovery)
+	return (
+		sim.water
+		<= seconds * float(sim.difficulty.consumption) / float(sim.resources.life_water_seconds)
+	)
+
+
+func _commit_reward() -> bool:
+	if _pending_reward.is_empty():
+		return true
+	var before := int(profile.data.balance)
+	var daily := _pending_reward.has("day")
+	if daily:
+		profile.pay_day(
+			sim.base_id,
+			saved_run,
+			_pending_reward.day,
+			_pending_reward.amount,
+			_pending_reward.guests
+		)
+	else:
+		profile.pay_mission(sim.base_id, _pending_reward.difficulty, _pending_reward.guest)
+	if not _save_base(false):
+		_reward_retry = 1.0
+		_notice("No se guardaron las monedas. Se está reintentando…", false)
+		return false
+	_pending_reward.clear()
+	_send_awards()
+	var message := "Amanecer. Progreso asegurado." if daily else "¡Misión de regreso completada!"
+	if not daily and sim.solo and profile.campaign_finished():
+		message = "¡Campaña completada! Regresaste desde las nueve bases."
+	_show_reward(int(profile.data.balance) - before, message)
+	return true
+
+
 func _guest_frame(delta: float) -> void:
 	_send_left -= delta
 	if _send_left <= 0.0:
 		_send_left = 0.06
-		_guest_move.rpc_id(1, ui.joystick.axis)
+		_guest_move.rpc_id(1, ui.joystick.axis, _jump[0])
+		_jump[0] = false
 	if _replica_positions.is_empty():
 		return
 	for index in range(2):
@@ -572,11 +792,13 @@ func _guest_frame(delta: float) -> void:
 			sim.pilots[index].cargo != 0,
 			sim.pilots[index].seated
 		)
-		_spots[index] = world.nearest(pilot.position, sim.phase == &"tutorial")
+		_spots[index] = _spot_at(pilot.position)
 	_render(delta, 1)
 
 
 func _interact(player: int, release: bool) -> void:
+	if not _pending_reward.is_empty():
+		return
 	if sim.phase == &"flight":
 		return
 	var pilot := pilots[player]
@@ -630,14 +852,30 @@ func _closest_box(point: Vector3) -> int:
 
 func _set_destination(player: int, point: Vector3) -> void:
 	if point.is_finite():
-		_route[player] = _routes.path(pilots[player].position, point)
+		_route[player] = _planner.plan(
+			_routes, pilots[player].position, point, sim.rules.open_world
+		)
 
 
 func _move_pilot(index: int, delta: float) -> void:
 	var pilot := pilots[index]
+	var jump := _jump[index]
+	_jump[index] = false
 	if sim.phase == &"flight" or not sim.connected[index] or sim.pilots[index].seated:
 		pilot.velocity = Vector3.ZERO
 		return
+	# Sin colision bajo los pies el piloto espera quieto a que llegue su chunk.
+	if not streamer.is_ready_at(pilot.position):
+		pilot.velocity = Vector3.ZERO
+		_chunk_ready[index] = false
+		return
+	# Solo al llegar el chunk: height_at es bilineal y la malla triangulada.
+	if not _chunk_ready[index]:
+		_chunk_ready[index] = true
+		var ground := streamer.height_at(pilot.position)
+		if pilot.position.y < ground - SINK_TOLERANCE:
+			pilot.position.y = ground + 0.1
+			pilot.velocity.y = 0.0
 	var input: Vector2 = _vectors[index]
 	var direction := Vector2.ZERO
 	if input.length_squared() > 0.012:
@@ -647,8 +885,17 @@ func _move_pilot(index: int, delta: float) -> void:
 		direction = (right * input.x + back * input.y).limit_length(input.length())
 	else:
 		direction = _follow_path(index, pilot.position)
-	pilot.drive(delta, direction * sim.speed_factor(index), false, false)
-	pilot.animate_gait(delta, sim.pilots[index].cargo != 0, false)
+	var heading := Vector3(direction.x, 0.0, direction.y) * FieldPilot.WALK_SPEED
+	for motion: Vector3 in [pilot.velocity, heading]:
+		if not streamer.is_ready_at(pilot.position + motion * delta * LOOKAHEAD_FRAMES):
+			direction = Vector2.ZERO
+			pilot.velocity.x = 0.0
+			pilot.velocity.z = 0.0
+	var carrying: bool = sim.pilots[index].cargo != 0
+	pilot.jump_scale = float(sim.rules.open_world.jump_with_box) if carrying else 1.0
+	pilot.lunar_gait = _camera_outside(pilot.position)
+	pilot.drive(delta, direction * sim.speed_factor(index), jump, false)
+	pilot.animate_gait(delta, carrying, false)
 
 
 func _follow_path(index: int, point: Vector3) -> Vector2:
@@ -690,11 +937,7 @@ func _render(delta: float, player: int) -> void:
 		if not _boxes.has(id):
 			var box := Node3D.new()
 			if CARGO_MODELS.has(crate.kind):
-				var info: Array = CARGO_MODELS[crate.kind]
-				var model: Node3D = (info[0] as PackedScene).instantiate()
-				PaperMaterial.restyle(model, false)
-				model.scale = Vector3.ONE * float(info[1])
-				box.add_child(model)
+				box.add_child(_cargo_model(crate.kind))
 			else:
 				FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
 				FieldWorld.box(
@@ -708,7 +951,9 @@ func _render(delta: float, player: int) -> void:
 			if crate.owner == -1
 			else pilots[crate.owner].carrying.global_position
 		)
-	world.reflect(sim, _spots, delta)
+		# Las cajas sueltas siguen en `sim.crates`; solo se ocultan si su chunk no esta cargado.
+		mesh.visible = crate.owner != -1 or streamer.is_ready_at(crate.point)
+	world.reflect(sim, _spots, delta, _focus_points(), pilots[player].position)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
 	var view := sim.flight_stage()
 	var flight_phase := int(view.x)
@@ -720,6 +965,22 @@ func _render(delta: float, player: int) -> void:
 	_alert_if_changed()
 
 
+## Copia del modelo de carga. Las copias comparten los materiales de una plantilla oculta:
+## liberar una caja con materiales propios deja errores del servidor de render (headless).
+func _cargo_model(kind: StringName) -> Node3D:
+	if not _cargo_templates.has(kind):
+		var info: Array = CARGO_MODELS[kind]
+		var template: Node3D = (info[0] as PackedScene).instantiate()
+		PaperMaterial.restyle(template, false)
+		template.scale = Vector3.ONE * float(info[1])
+		template.hide()
+		add_child(template)
+		_cargo_templates[kind] = template
+	var model: Node3D = (_cargo_templates[kind] as Node3D).duplicate()
+	model.show()
+	return model
+
+
 func _alert_if_changed() -> void:
 	var kind := ""
 	if sim.storm_warning() > 0.0 or sim.storm_active():
@@ -728,12 +989,16 @@ func _alert_if_changed() -> void:
 		kind = "power"
 	elif sim.radio_warning() or sim.radio_cut():
 		kind = "radio"
-	if kind != _alert_kind and not kind.is_empty():
+	if kind != _alert_kind and not kind.is_empty() and _alert_audio.stream != null:
 		_alert_audio.play()
 	_alert_kind = kind
 
 
 func _build_alert_audio() -> void:
+	add_child(_alert_audio)
+	add_child(_reward_audio)
+	if DisplayServer.get_name() == "headless":
+		return
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)
@@ -744,13 +1009,15 @@ func _build_alert_audio() -> void:
 	stream.mix_rate = 22050
 	stream.data = buffer
 	_alert_audio.stream = stream
-	add_child(_alert_audio)
+	_reward_audio.stream = stream
+	_reward_audio.pitch_scale = 1.5
 
 
 func _apply_sfx_volume(value: float) -> void:
 	var level := clampf(value, 0.0, 1.0)
 	_audio.set_volume(level)
 	_alert_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_reward_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
 
 
 func _change_sfx_volume(value: float) -> void:
@@ -784,9 +1051,10 @@ func _snapshot(packet: PackedByteArray) -> void:
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _guest_move(axis: Vector2) -> void:
+func _guest_move(axis: Vector2, jump: bool) -> void:
 	if net == &"host" and multiplayer.get_remote_sender_id() == guest_peer and axis.is_finite():
 		_vectors[1] = axis.limit_length()
+		_jump[1] = _jump[1] or jump
 		_inactivity = 0.0
 
 
@@ -802,10 +1070,10 @@ func _guest_action(release: bool) -> void:
 		_interact(1, release)
 
 
-func _notice(message: String) -> void:
+func _notice(message: String, share: bool = true) -> void:
 	_feedback = message
 	_feedback_time = 3.1
-	if net == &"host" and guest_peer != 0:
+	if share and net == &"host" and guest_peer != 0:
 		_remote_notice.rpc_id(guest_peer, message)
 
 
@@ -815,19 +1083,67 @@ func _remote_notice(message: String) -> void:
 		_notice(message)
 
 
+func _show_reward(amount: int, message: String) -> void:
+	if amount > 0:
+		if _reward_audio.stream != null:
+			_reward_audio.play()
+		message += " +%.2f monedas" % (float(amount) / LunarProfile.SCALE)
+	ui.show_balance(profile.balance_text())
+	_notice(message, false)
+
+
 func _send_awards() -> void:
-	var awards: Dictionary = profile.data.guest_awards.get(guest_id, {})
-	if guest_peer != 0 and not awards.is_empty():
-		_award.rpc_id(guest_peer, awards)
+	_award_retry = 2.0
+	if guest_peer == 0:
+		return
+	var pending: Dictionary = profile.data.guest_awards.get(guest_id, {})
+	var batch := {}
+	for id: Variant in pending:
+		if profile.valid_guest_award(id, pending[id]):
+			batch[id] = pending[id]
+			if batch.size() == LunarProfile.AWARD_BATCH:
+				break
+	if not batch.is_empty():
+		_award.rpc_id(guest_peer, batch)
 
 
 @rpc("authority", "call_remote", "reliable")
 func _award(receipts: Dictionary) -> void:
-	if net != &"guest":
+	if net != &"guest" or receipts.size() > LunarProfile.AWARD_BATCH:
 		return
-	for id: String in receipts:
-		profile.credit(id, receipts[id])
-	profile.save()
+	var before := int(profile.data.balance)
+	var accepted := PackedStringArray()
+	var changed := false
+	for id: Variant in receipts:
+		var amount: Variant = receipts[id]
+		if profile.valid_guest_award(id, amount):
+			changed = profile.credit(id, amount) or changed
+			accepted.append(id)
+	if changed and not profile.save():
+		_notice("Tus monedas están pendientes de guardar. Se reintentará.", false)
+		return
+	if not accepted.is_empty():
+		_confirm_awards.rpc_id(1, accepted)
+	if changed:
+		_show_reward(int(profile.data.balance) - before, "Recompensa asegurada.")
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _confirm_awards(receipts: PackedStringArray) -> void:
+	if net != &"host" or guest_peer == 0 or multiplayer.get_remote_sender_id() != guest_peer:
+		return
+	if receipts.size() > LunarProfile.AWARD_BATCH:
+		return
+	var pending: Dictionary = profile.data.guest_awards.get(guest_id, {})
+	var changed := false
+	for id in receipts:
+		changed = pending.erase(id) or changed
+	if not changed:
+		return
+	if pending.is_empty():
+		profile.data.guest_awards.erase(guest_id)
+	if profile.save():
+		_send_awards()
 
 
 func _show_science(step: int) -> void:
@@ -838,21 +1154,4 @@ func _show_science(step: int) -> void:
 
 
 func _add_pilot(index: int) -> void:
-	var pilot := CrestPilot.new()
-	pilot.tint = CrestWorld.BLUE if index == 0 else CrestWorld.AMBER
-	pilot.collision_layer = 2
-	pilot.collision_mask = 1
-	pilot.position = CrestWorld.SPAWNS[index]
-	add_child(pilot)
-	pilot.build()
-	var marker := Label3D.new()
-	marker.text = "● J1" if index == 0 else "◆ J2"
-	marker.font = CrestWorld.MONO
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	marker.modulate = pilot.tint
-	marker.position = Vector3.UP * 1.92
-	marker.no_depth_test = true
-	marker.pixel_size = 0.019
-	marker.outline_size = 12
-	pilot.add_child(marker)
-	pilots.append(pilot)
+	pilots.append(LunarPilotFactory.spawn(self, index, sim.rules.open_world))

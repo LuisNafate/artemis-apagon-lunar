@@ -4,6 +4,8 @@ const GAME := preload("res://crest/crest.tscn")
 const NO_SPOTS: Array[StringName] = [&"", &""]
 const INDOORS: Array[bool] = [true, true]
 const OUTSIDE: Array[bool] = [false, false]
+# La cantera de hielo queda en el borde norte del refugio: se extrae desde dentro.
+const ICE_BAY := Vector3(14.9, 0.0, -2.2)
 
 var cases := 0
 var checks := 0
@@ -268,37 +270,42 @@ func _input_and_world() -> void:
 	)
 	_check(game.world.field_models.visible, "las maquetas están visibles en el mapa")
 	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
-	for part in ["satelliteDish_detailed", "machine_wirelessCable"]:
-		var model := game.world.find_child(part, true, false) as MeshInstance3D
-		_check(
-			model != null and radio.distance_to(model.global_position) < 1.6,
-			"modelo junto a la radio"
-		)
+	var antenna: Node3D = null
+	for node in game.world.find_children("*", "Node3D", true, false):
+		if node.scene_file_path.ends_with("antena_rover.glb"):
+			antenna = node
+	_check(
+		antenna != null and radio.distance_to(antenna.global_position) < 2.6,
+		"la antena del rover está junto a la radio"
+	)
 	_check(game.sim.phase == &"tutorial" and not game.sim.solo, "selector cooperativo por teclado")
 	var blue: CrestPilot = game.pilots[0]
 	var orange: CrestPilot = game.pilots[1]
 	_check(
-		blue.skeleton != orange.skeleton and blue.skeleton.get_bone_count() == 15,
+		blue.skeleton != orange.skeleton and blue.skeleton.get_bone_count() == 20,
 		"cada gato tiene un esqueleto articulado independiente"
 	)
-	var right_shoulder := orange.skeleton.find_bone("ShoulderR")
-	var right_hip := blue.skeleton.find_bone("HipR")
-	var left_hip := blue.skeleton.find_bone("HipL")
+	var right_shoulder := orange.skeleton.find_bone("upper_arm.R")
+	var right_hip := blue.skeleton.find_bone("thigh.R")
+	var left_hip := blue.skeleton.find_bone("thigh.L")
 	_check(
 		(
 			blue.suit != orange.suit
-			and blue.suit.get_shader_parameter("player_tint") == CrestWorld.BLUE
-			and orange.suit.get_shader_parameter("player_tint") == CrestWorld.AMBER
+			and (
+				blue.suit.albedo_color
+				== Color.WHITE.lerp(CrestWorld.BLUE, CrestPilot.TINT_STRENGTH)
+			)
+			and (
+				orange.suit.albedo_color
+				== Color.WHITE.lerp(CrestWorld.AMBER, CrestPilot.TINT_STRENGTH)
+			)
 		),
 		"cada gato conserva su material y su color"
 	)
 	_check(
 		(
-			blue.suit.get_shader_parameter("base_texture") != null
-			and (
-				blue.suit.get_shader_parameter("base_texture")
-				== orange.suit.get_shader_parameter("base_texture")
-			)
+			blue.suit.albedo_texture != null
+			and (blue.suit.albedo_texture == orange.suit.albedo_texture)
 		),
 		"los dos gatos comparten la textura importada"
 	)
@@ -335,8 +342,8 @@ func _input_and_world() -> void:
 		await get_tree().physics_frame
 	_check(
 		(
-			orange.skeleton.get_bone_pose_rotation(right_shoulder).get_euler().x > 0.3
-			and not blue.skeleton.get_bone_pose_rotation(right_shoulder).get_euler().x > 0.01
+			_pose_distance(orange.skeleton, right_shoulder) > 0.3
+			and _pose_distance(blue.skeleton, right_shoulder) < 0.01
 		),
 		"solo el gato que lleva la caja levanta el brazo"
 	)
@@ -361,8 +368,9 @@ func _input_and_world() -> void:
 		"bancos simultáneos"
 	)
 	_check(
-		not blue.skeleton.get_bone_pose_rotation(left_hip).is_equal_approx(
-			blue.skeleton.get_bone_pose_rotation(right_hip)
+		(
+			absf(_pose_distance(blue.skeleton, left_hip) - _pose_distance(blue.skeleton, right_hip))
+			> 0.01
 		),
 		"los pasos articulan las caderas por separado"
 	)
@@ -372,7 +380,7 @@ func _input_and_world() -> void:
 	for frame in range(26):
 		await get_tree().physics_frame
 	_check(
-		blue.skeleton.get_bone_pose_rotation(left_hip).is_equal_approx(Quaternion.IDENTITY),
+		_pose_distance(blue.skeleton, left_hip) < 0.01,
 		"las caderas recuperan el reposo al detenerse"
 	)
 	_tap(KEY_ESCAPE)
@@ -408,6 +416,11 @@ func _input_and_world() -> void:
 		"en individual se pasa y entrega alternando"
 	)
 	solo.queue_free()
+
+
+func _pose_distance(skeleton: Skeleton3D, bone: int) -> float:
+	var rest := skeleton.get_bone_rest(bone).basis.get_rotation_quaternion()
+	return rest.angle_to(skeleton.get_bone_pose_rotation(bone))
 
 
 func _place_at_training(pilots: Array[CrestPilot]) -> void:
@@ -471,21 +484,26 @@ func _map_route(solo: bool) -> void:
 	_tap(KEY_1 if solo else KEY_2)
 	_tap(KEY_1)
 	_tap(KEY_3)
-	await _walk(game, 0, Vector3(-10.9, 0.0, 5.0))
-	await _walk(game, 0, CrestWorld.STATIONS[&"ice"])
+	await _walk(game, 0, Vector3(12.0, 0, -0.9))
+	await _walk(game, 0, Vector3(14.9, 0, 0.2))
+	await _walk(game, 0, ICE_BAY)
 	_act(game, 0)
 	for frame in range(370):
 		await get_tree().physics_frame
 	_check(game.sim.cargo_kind(0) == &"ice", "extraer hielo con movimiento y E")
+	await _walk(game, 0, Vector3(14.9, 0, 0.2))
+	await _walk(game, 0, Vector3(12.0, 0, -0.9))
 	await _walk(game, 0, CrestWorld.STATIONS[&"refinery"])
 	_act(game, 0)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(game.sim.water == 3 and game.sim.cargo_kind(0) == &"", "trayecto de cantera a refinado")
 	await _walk(game, 0, Vector3(-0.7, 0, 0.35))
-	await _walk(game, 0, Vector3(0.05, 0, 2.5))
-	await _walk(game, 0, Vector3(0.05, 0, 4.85))
+	await _walk(game, 0, Vector3(12.0, 0, -0.9))
+	await _walk(game, 0, Vector3(15.0, 0, 1.5))
 	_check(game.world.sheltered(game.pilots[0].position), "vuelta desde cantera por refugio")
+	await _walk(game, 1, Vector3(12.0, 0, -0.9))
+	await _walk(game, 1, Vector3(9.0, 0, -0.9))
 	await _walk(game, 1, CrestWorld.STATIONS[&"radio"])
 	_act(game, 1)
 	for frame in range(165):
@@ -501,10 +519,14 @@ func _map_route(solo: bool) -> void:
 	for batch in range(3):
 		while game.sim.water < 3:
 			await _walk(game, 0, Vector3(-2.0, 0, 0.1))
-			await _walk(game, 0, CrestWorld.STATIONS[&"ice"])
+			await _walk(game, 0, Vector3(12.0, 0, -0.9))
+			await _walk(game, 0, Vector3(14.9, 0, 0.2))
+			await _walk(game, 0, ICE_BAY)
 			_act(game, 0)
 			for frame in range(370):
 				await get_tree().physics_frame
+			await _walk(game, 0, Vector3(14.9, 0, 0.2))
+			await _walk(game, 0, Vector3(12.0, 0, -0.9))
 			await _walk(game, 0, CrestWorld.STATIONS[&"refinery"])
 			_act(game, 0)
 			await get_tree().physics_frame
@@ -515,13 +537,16 @@ func _map_route(solo: bool) -> void:
 				return
 		await _walk(game, 0, Vector3(-0.7, 0, 0.5))
 		await _walk(game, 0, Vector3(0.05, 0, 2.5))
+		if game.world.sheltered(game.pilots[1].position):
+			await _walk(game, 1, Vector3(14.5, 0, 1.5))
+			await _walk(game, 1, Vector3(12.0, 0, 1.0))
 		await _walk(game, 1, CrestWorld.STATIONS[&"fuel"])
 		_act(game, 1)
 		await get_tree().physics_frame
 		await get_tree().physics_frame
 		_check(game.sim.jobs[&"fuel"] > 0.0, "receta iniciada con agua")
-		await _walk(game, 1, Vector3(6.8, 0, 0.85))
-		await _walk(game, 1, Vector3(0.15, 0, 2.4))
+		await _walk(game, 1, Vector3(12.0, 0, -0.9))
+		await _walk(game, 1, Vector3(15.0, 0, 1.5))
 		for frame in range(3400):
 			if game.sim.fuel_ready > 0 or game.sim.terminal():
 				break
@@ -562,7 +587,6 @@ func _take_to_pad(game, player: int, station: StringName) -> void:
 	await get_tree().physics_frame
 	if station == &"fuel":
 		await _walk(game, player, Vector3(6.8, 0, 0.5))
-		await _walk(game, player, Vector3(9.4, 0, 0.7))
 	await _walk(game, player, CrestWorld.STATIONS[&"pad"])
 	_act(game, player)
 	await get_tree().physics_frame

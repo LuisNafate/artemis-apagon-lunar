@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 23,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -319,7 +319,7 @@
           "MEJ-3"
         ],
         "cause": "Un astronauta conectado agota el aire",
-        "effect": "Restaurar estado y posiciones del amanecer, cancelar confirmación y descartar progreso sin asegurar."
+        "effect": "Restaurar el amanecer y descartar progreso sin asegurar. Si el modo individual restaura poco aire y el piloto queda fuera del refugio o no tiene agua suficiente para recuperarlo, reubicarlo en el refugio con la reserva de emergencia."
       },
       {
         "id": "LUN-03",
@@ -440,7 +440,7 @@
           "NASA NTRS 20070030988"
         ],
         "cause": "La cuenta regresiva llega a cero",
-        "effect": "La etapa superior del módulo lunar sale, el descenso queda en el suelo y se muestra el acoplamiento, viaje y entrada. El turno de superficie se detiene y el bono se acredita tras la secuencia."
+        "effect": "La etapa superior del módulo lunar sale, el descenso queda en el suelo y se muestra el acoplamiento, viaje y entrada. El turno de superficie se detiene y el bono se acredita tras la secuencia. La victoria descarta los asientos y la cuenta regresiva del punto de control."
       }
     ],
     "open": [
@@ -452,6 +452,17 @@
       "VAC-17",
       "VAC-18"
     ],
+    "mvp_individual": {
+      "scope": "Nueve bases; entrada individual y desbloqueo por monedas ganadas.",
+      "completion": "El perfil anuncia el final cuando confirma un regreso a Tierra por cada base."
+    },
+    "wallet": {
+      "duplicate": "El mismo recibo acredita una vez, incluso tras reconexión o al alcanzar el tope.",
+      "write_failure": "La compra revierte saldo y propiedad. El punto de control y el abono se guardan juntos; si fallan se reintenta antes de avanzar.",
+      "guest_delivery": "El anfitrión conserva el recibo hasta el acuse del invitado. El invitado solo confirma tras guardar.",
+      "corrupt_profile": "El perfil inválido se protege frente a escritura. Los perfiles v1 válidos conservan ranuras y recibos."
+    },
+    "pilot_pose": "La marcha y la carga modifican los huesos de cada piloto. Solo se tiñe el material del traje.",
     "opening": {
       "rule": "Saltar o completar ambos clips abre el menú de modos. Repetir intro vuelve a mostrar el viaje sin avanzar la misión.",
       "fallback": "Si falta un clip se omite. El menú de modos usa el póster lunar.",
@@ -460,9 +471,9 @@
   },
   "audio_feedback": {
     "scope": "piloto local de la campaña; no modifica ni transmite el estado de simulación",
-    "volume": "control local persistente, silencio al 0 %, efectos y alertas ajustados juntos",
+    "volume": "control local persistente, silencio al 0 %, efectos, alertas y recompensas ajustados juntos",
     "steps": "según distancia recorrida; se excluyen saltos de posición de un metro o más",
-    "proximity": "al cambiar a una estación cercana, con espera de 1,2 segundos",
+    "proximity": "al cambiar a una estación o depósito cercano, con espera de 1,2 segundos",
     "mining": "golpes cada 0,42 segundos mientras la extracción permanece activa",
     "music": "menú fuera de partida; día o noche según shadow_active; fundido cruzado de 2 segundos y pausa de la pista saliente para reanudarla"
   },

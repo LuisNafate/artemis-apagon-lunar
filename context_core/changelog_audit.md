@@ -155,6 +155,42 @@
 - AstroCat guia eliminado del mapa; su diseno (astrocat_guia.glb, animaciones Idle/Walk) se aplica a los pilotos en crest_pilot.gd.
 - Camara de juego PLAY_SIZE 9.8 con seguimiento (lunar_game.gd). Godot 4.7.2 Forward+: verificado a ojo en laptop; tests crest_suite/lunar_suite pendientes de actualizar (guide_animator, huesos del gato anterior).
 
+## Mundo abierto: generador de chunks
+
+- Godot 4.7.2. Se añadieron `lunar/open_world/chunk_data.gd` y `chunk_generator.gd` (generador determinista, sin escena) y `campaign_2026.open_world` en `state_registry.json` con las nueve regiones, `max_walk_slope` y `deposit_distance_curve`. Suite nueva `tests/open_world_suite.tscn` y paso `Regresión mundo abierto` en `verify.ps1`.
+- Comprobado: `tests/verify.ps1` pasó formato y lint, importación, arranque y seis suites. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 1 caso y 49 comprobaciones, 0 fallos.
+
+## Mundo abierto: estado de depósitos
+
+- Godot 4.7.2. `LunarMission` guarda `world_deltas` (clave `"cx:cz:id"` → `left`, `emptied_day`), fija `world_seed` en `prepare()` y ofrece `deposit_key`, `register_deposit`, `deposit_left` y la señal `deposit_changed`. `use_station` con clave `dep:` mina el depósito; se rellena tras `deposit_refill_dawns` amaneceres (por `deposit_near_factor` cerca de la base). El bono del geólogo no resta del depósito. Los puestos fijos `ice`/`ore` siguen intactos.
+- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 5 casos y 699 comprobaciones, 0 fallos.
+
+## Reparar suites tras el plano 40x22 y adaptar el generador
+
+- Godot 4.7.2. Causa de los 17 fallos de `lunar_suite`: la prueba daba por hecho que el astronauta sale junto al puesto de práctica; con el plano nuevo `SPAWNS` queda a 3,9 m de `STATIONS.training` y el alcance del tutorial es 2,1 m (`CrestWorld.nearest`). Es una suposición vieja de la prueba, no un fallo del juego (el jugador camina hasta el puesto): ahora la prueba coloca a los pilotos en el puesto leyendo `STATIONS`. Los fallos posteriores eran en cascada.
+- `crest_suite`: caso de pilotos reescrito para `AnimationPlayer` (modelo y reproductor propios, clips `Idle`/`Walk`/`Run` en bucle, tinte `BLUE`/`AMBER` con `TINT_STRENGTH`, `Walk` al caminar e `Idle` en reposo). Se quitaron las comprobaciones de `guide_animator` y de los modelos Kenney de la radio (ahora antena del rover), los pilotos del tutorial se colocan en el puesto de práctica y las rutas dan rodeos por el nuevo refugio, los bancos y el cohete. El hielo se extrae desde el borde del refugio (`ICE_BAY`) porque fuera de él la exposición de tormenta mata en unos 30 s. La suite necesita más fotogramas (el recorrido hielo-refinado ahora mide más de 20 m): `verify.ps1` usa `--quit-after 60000`.
+- Registro `campaign_2026.open_world`: `base_flat_rect` [-20, -11, 40, 22] y `base_exclusion_rect` [-28, -19, 56, 38]. `open_world_suite` lee la exclusión del registro.
+- Comprobado: `tests/verify.ps1` (resultados en el informe de la tarea).
+
+## Mundo abierto: ChunkStreamer y ChunkView
+
+- Godot 4.7.2. `ChunkStreamer` genera `ChunkData` y la malla en `WorkerThreadPool` y solo toca el árbol en `update()` (máximo `chunks_per_frame` por llamada; histéresis `load_radius`/`unload_radius`; `clear()` y `_exit_tree` esperan las tareas en vuelo). `data_at` responde con cualquier chunk cargado y, para los recién descargados, con una caché LRU de 32. `ChunkView` crea malla facetada, `StaticBody3D` en capa 1 con `HeightMapShape3D`, rocas en `MultiMesh` y marcadores de depósito (`set_deposit` llena/vacío). Pared invisible a 1 m del borde. Aún no está conectado a la escena (Tarea 4).
+- La suite espera la carga con tiempo de reloj (`_pump`, 20 s) porque la generación es asíncrona y los fotogramas headless son muy rápidos.
+- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 419, Mundo abierto 7 casos y 691 comprobaciones, 0 fallos.
+
+## Mundo abierto: integración en la campaña
+
+- Godot 4.7.2. `LunarGame` crea `streamer: ChunkStreamer` y lo configura con la región de cada base (también en la portada, para que la base no flote). `streamer.update` corre una vez por fotograma de física con los pilotos conectados como focos. `_load_base` mantiene la pantalla de carga ("Generando el terreno") hasta que hay suelo bajo las posiciones restauradas. `_move_pilot` deja quieto al piloto si su chunk no tiene colisión, lo sube a la superficie si quedó por debajo del relieve y frena el avance si el punto a 4 fotogramas no está listo. `_spots` usa el depósito más cercano (alcance 1,63 m) cuando no hay estación. Las cajas sueltas se ocultan si su chunk no está cargado, sin salir de `sim.crates`.
+- `CrestWorld` en modo campaña: `campaign_stations` sin `ice` ni `ore`, sin los dos `deposito_hielo` ni las canteras de la base, sin `superficie_lunar.glb` (se quitó `_build_moon_surface`), sin `CrateresLaterales`, motas, montículos ni relieve de Nobile, y sin las barandillas del borde: la plataforma queda abierta al mundo. El material del suelo se comparte con los chunks para conservar el tinte de tormenta. La escena histórica de Cresta no cambia.
+- `ChunkStreamer` monta primero los chunks terminados más cercanos a los focos y ofrece `height_at` y `ground_material`. `ChunkView.set_deposit` tiñe los materiales propios del marcador en vez de cambiarlos, y las cajas de carga comparten materiales con una plantilla oculta: cambiar o liberar materiales propios de modelos importados dejaba `Parameter "material" is null` del servidor de render en headless.
+- Interfaz: "Extraer hielo" / "Extraer mineral" o "Depósito vacío" sobre un depósito. `lunar_suite` ya no exige `ice`/`ore` como anclas, el recorrido sale del depósito de arranque de hielo y las esperas de carga usan reloj real.
+- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 363, Mundo abierto 8 casos y 705 comprobaciones, 0 fallos. Captura con render en Windows (Forward+, Vulkan): sin costuras visibles entre chunks; falta la prueba a mano de cruzar chunks caminando.
+
+## Mundo abierto: cámara que sigue al piloto
+
+- Godot 4.7.2. `LunarGame` (ahora `class_name LunarGame`) amplía `_follow_camera`. Dentro de la plataforma plana (`base_flat_rect`, con 1 m de histéresis) se mantiene la cámara ortográfica de equipo (`PLAY_SIZE` 9,8, desplazamiento limitado), que ahora promedia solo a los pilotos conectados: en solo el piloto ausente ya no descentra la vista. Fuera, cámara en perspectiva con FOV 45 y la misma orientación (34°, sin girar nunca), que sigue con suavizado al piloto propio de cada dispositivo (el invitado sigue al 2). Al cruzar el borde, el cambio de proyección conserva el punto mirado y el encuadre, y después la posición se mezcla. Al volver al lobby se restaura la vista ortográfica. El cambio se hace en el borde de la plataforma y no en el de la exclusión porque con la cámara limitada el piloto salía de pantalla entre x = 20,7 y 28.
+- `LunarBackdrop.pan`: las crestas del horizonte se repiten cada pantalla y se desplazan con la cámara (paralaje, 400 m por ancho de pantalla); estrellas y Tierra quedan fijas.
+- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 363, Mundo abierto 9 casos y 715 comprobaciones, 0 fallos. Captura con render en Windows (Forward+, Vulkan) saliendo de la base con el joystick y volviendo; falta probar a mano el salto (Tarea 5, aún sin hacer).
 ## 2026-11-15 - Cinemática Última ventana (revisión 18)
 
 - Se integró la apertura en la portada de la campaña. El viaje dura 16 s y el alunizaje se repite cada 4 s. Hay subtítulos en español, entrada directa al menú con Intro, salto con Esc y repetición con H. Los dos OGV Theora de 1280 × 720 incluyen los 480 fotogramas a 24 fps del montaje original.
@@ -207,3 +243,47 @@
 
 - `origin/main` fue reescrito y avanzó a `dbab1b6`; se integró mediante el merge `fd75ad2`. Se conservaron la cinemática, el menú nuevo, el gato articulado y los cambios de sonido locales. El modelo original `luna_bases.glb` ya está incluido y se retiró la esfera provisional. El enlace Sonido se adaptó al menú de modos.
 - Godot 4.7.2 en Linux. `tests/verify.ps1` aprobó formato, lint, importación, Academia (16/3926), Puesto (7/75) y 3D (3/35), y se detuvo en Cresta (10/162, 25 fallos), ya documentados en main. Campaña se ejecutó por separado: 8/424, 17 fallos previamente documentados. La prueba de integración comprobó cinemática, Luna original, nueve bases, deslizador SFX y música nocturna. Godot notificó instancias sin liberar al cerrar las pruebas; falta revisión visual y escucha.
+
+## 2026-11-15 - Colores originales, poses articuladas (revisión 21)
+
+- AstroCat recupera las texturas previas, con el tinte original de 32 % aplicado al traje. La marcha, el reposo y la carga se aplican al esqueleto de 20 huesos mediante sus bases de reposo.
+- Godot 4.7.2. Captura de ambos pilotos en Forward+. Pasaron los controles del color, marcha, carga, entrega y retorno a reposo de la suite Cresta. Formato, lint, importación, arranque y suites Academia, Puesto y 3D correctos. Cresta conserva sus 25 fallos de rutas y objetos del mapa.
+
+## 2026-11-15 - Salto con gravedad lunar (mundo abierto, tarea 5)
+
+- Godot 4.7.2 (Windows, headless). `FieldPilot` gana `gravity`, `jump_speed`, `air_acceleration` y `jump_scale` (por defecto 16, 6,4 y 13). La campaña los fija desde `open_world` (3,2, 3,2 y 4,0) y con caja salta al 0,7. Botón "Saltar" y tecla Espacio; el invitado envía el salto con el eje. El ajuste al relieve ocurre solo cuando el chunk del piloto pasa a estar listo. Marcha lunar, pose en el aire, sombra y polvo en `CrestPilot`.
+- `tests/verify.ps1`: formato, lint, importación, arranque y suites en verde. Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 10 / 729, 0 fallos. Captura renderizada del salto pendiente: se prueba a mano.
+
+## 2026-11-15 - Tocar para caminar fuera de la base (mundo abierto, tarea 7)
+
+- Godot 4.7.2 (Windows, headless). `OpenRoutes` (AStarGrid2D de celdas de 0,5 m con offset de media celda sobre los chunks cargados; lo no cargado es sólido) y `RoutePlanner`, que decide la ruta al tocar: dentro del rectángulo plano de la base, `LunarRoutes`; fuera y a ≤ `tap_route_radius`, `OpenRoutes`; base↔exterior, `LunarRoutes` hasta el borde plano y `OpenRoutes` desde él; más lejos, recta de un punto (destino en la base sin ventana cargada conserva `LunarRoutes`). La rejilla solo cubre los chunks a ≤ `tap_route_radius` + 2 m del origen y se reconstruye perezosamente al tocar (si cambió `loaded_coords` o la ventana); caminar no reconstruye (~7 ms por toque en escritorio). `tests/verify.ps1`: `--quit-after` de la suite abierta sube a 12000.
+- `tests/verify.ps1` en verde: Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 11 / 783, 0 fallos.
+
+## 2026-11-15 - Muro, puerta y flecha a la base (mundo abierto, tarea 4b)
+
+- Godot 4.7.2 (Windows, headless; capturas renderizadas en Forward+). `BaseEnclosure` (muro de 2,4 m con colision alrededor de `base_flat_rect`, murete sur de 1 m con cristal translucido, puerta corredera de 3 m en el muro este en (20,2; 1,9) que se abre a menos de 3 m de un piloto conectado) y `BaseArrow` (flecha plana junto al piloto propio hacia la puerta, con los metros; solo fuera de la base). Ajustes en `open_world.base_wall`. `RoutePlanner` cruza siempre por la puerta. `CrestWorld.open_settings` activa la campana; Cresta historica sin cambios. `lunar_game.gd` sigue en 1000 lineas.
+- `tests/verify.ps1` en verde: Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 12 / 873, 0 fallos.
+
+## Economía de campaña · revisión 22
+
+- Diagnóstico. Los abonos se aplicaban en memoria antes de guardar y la cola cooperativa reenviaba todos los recibos sin confirmación. El diseño vigente otorga monedas al amanecer y por el primer regreso a Tierra de cada base. Los consumos son desbloqueos de bases y roles.
+- El perfil v1 valida tipos y montos, protege los archivos inválidos, escribe mediante reemplazo y revierte las transacciones fallidas. Un perfil desactualizado detecta cambios en el archivo antes de reemplazarlo. El anfitrión guarda punto de control y recompensa juntos. El invitado confirma únicamente después de guardar, con lotes de 64 y reintento.
+- Godot 4.7.2 (Windows). Ejecutado `tests/verify.ps1`. Formato, lint, importación y arranque correctos. Academia 16/3916, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 9/409 y mundo abierto 12/874, todos con cero fallos. Se recuperó de Git la prueba del muro porque la rama llamaba una clase de prueba ausente.
+- Campaña: compras repetidas y sin saldo, escritura fallida en ambos pares, reenvío, reconexión, 129 recibos en lotes, tope y redondeo, datos inválidos, borrado de una ranura y carga v1. Se simuló una escritura interrumpida mediante un temporal abandonado. HUD comprobado en Forward+ a 1280 × 720 con 25.00 monedas tras el amanecer.
+- Alcance de verificación. Prueba ENet en la misma máquina. Pendientes dispositivos físicos y terminación durante la escritura. El modelo cooperativo sigue confiando en el anfitrión y la comprobación de archivo desactualizado no sustituye un bloqueo entre procesos independientes.
+
+## Auditoría del MVP individual · revisión 23
+
+- Alcance: campaña pública sin conexión, desde la portada hasta los nueve regresos a Tierra. El globo permite elegir el orden de compra. Se mantuvieron los costes, las dificultades y la exploración libre. Se añadió Continuar misión, instrucciones según la carga y el agua, e indicación de campaña completada.
+- P1 · El punto de control podía guardar la cuenta atrás y los astronautas sentados cuando el lanzamiento cruzaba el amanecer. Al acreditar el regreso se limpian esas marcas, y la carga normaliza también los guardados anteriores.
+- P1 · Una retirada con un punto guardado sin agua suficiente y casi sin aire podía repetirse cada vez que el piloto salía a buscar hielo. Si el punto guardado está fuera del refugio o carece de agua suficiente para recuperar la reserva, el modo individual usa el refugio y 30 unidades de aire de emergencia. El agua, las monedas y el avance guardado conservan su estado.
+- P2 · Se acompaña el objetivo de carga con un paso accionable. Tras el regreso, el botón de abordaje indica misión completada. Se evita la mezcla de audio en headless para que las pruebas aceleradas cierren sin referencias pendientes.
+- Verificación en Godot 4.7.2 (Windows). `tests/verify.ps1` pasó formato, lint, importación, arranque y regresiones. Academia 16/3921, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 10/415, mundo abierto 12/876 y MVP individual 9/526, todos con cero fallos. Una partida automatizada adicional en Forward+ a 1152 × 648 llegó desde la portada hasta el regreso de Mons Mouton Plateau y comprobó su saldo y final.
+- La suite del MVP abre un perfil nuevo, navega con el controlador real, usa botones de acción para extraer y refinar hielo, prepara y entrega cargas, confirma por radio, espera tormentas cuando toca, despega, acredita y guarda cada victoria. Compró los ocho desbloqueos con los abonos reales. La ruta recorrió 40 amaneceres de financiación, con la espera en el refugio acelerada a pasos de 4 segundos. Navegación, producción y vuelo usaron la simulación normal de 60 Hz.
+- Ruta comprobada: Mons Mouton Plateau → Slater Plain → Malapert Massif → Mons Mouton → Peak near Cabeus B → Nobile Rim 1 → de Gerlache Rim 2 → Nobile Rim 2 → Haworth → anuncio de campaña completada. Los nueve regresos ocurrieron durante el primer día de su base. Las fases de vuelo, alerta, corte de radio, salto, paso por la puerta, continuación y reinicio tienen, además, pruebas de regresión independientes. Se verificó la visibilidad de las nueve fichas del globo y se repitió la primera misión con 30 y 120 FPS simulados. Se estabilizó la prueba de movimiento sin colisión, comprobando el estado antes de que el trabajador asíncrono instale el terreno.
+- Límites: recorrido automatizado con una serie semilla y una estrategia de compra. Quedan por medir la experiencia con jugadores, el tiempo percibido de progresión, dispositivos físicos y la completabilidad para otras semillas.
+
+## 2026-11-15 · Integración de mundo abierto en soundFx
+
+- Integrado `origin/main` hasta `2418b9c` conservando música, efectos y control de volumen, junto con mundo abierto, salto, economía transaccional y MVP individual. El sonido de recompensa también responde al control de SFX. La proximidad y la extracción usan las mismas referencias de estaciones y depósitos de la simulación. En headless no se inicia la mezcla de efectos ni música.
+- Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y todas las suites: Academia 16/3936, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 10/415, mundo abierto 12/876 y MVP individual 9/526, con cero fallos. Comprobación adicional de intro, selector, control SFX, persistencia del perfil, volumen de recompensa y selección musical nocturna. Pendiente escuchar y revisar la mezcla en dispositivos.
