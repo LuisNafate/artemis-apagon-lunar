@@ -21,9 +21,7 @@ const MODEL_GREENHOUSE := preload("res://assets/props_luna/estaciones/invernader
 const MODEL_SOLAR := preload("res://assets/props_luna/estaciones/paneles.glb")
 const MODEL_ROVER_ANTENNA := preload("res://assets/props_luna/estaciones/antena_rover.glb")
 const MODEL_WATER_TANK := preload("res://assets/props_luna/estaciones/tanque_agua.glb")
-const MODEL_WATER_TANK_EMPTY := preload(
-	"res://assets/props_luna/estaciones/tanque_agua_vacio.glb"
-)
+const MODEL_WATER_TANK_EMPTY := preload("res://assets/props_luna/estaciones/tanque_agua_vacio.glb")
 const WATER_TANK_SCALE := 2.4
 const MODEL_TRAINING_TABLE := preload("res://assets/props_luna/estaciones/mesa_azul.glb")
 const MODEL_WOOD_TABLE := preload("res://assets/props_luna/estaciones/mesa_madera.glb")
@@ -287,6 +285,8 @@ func reflect(
 	var power := 0.22 if sim.shadow_active() else 1.3
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
 	var light_color := Color("#93b9f5") if sim.shadow_active() else Color("#fff4dc")
+	if storm:
+		light_color = light_color.lerp(Color("#ff6f5c"), 0.6)
 	sun.light_color = sun.light_color.lerp(light_color, minf(1.0, delta * 2.0))
 	var refining: Variant = sim.get("refining")
 	# Ambos tanques empiezan vacios; se llenan al terminar de rellenar y se vacian al
@@ -686,7 +686,8 @@ func _stations() -> void:
 
 
 func _build_fuel_cabinet(root: Node3D) -> void:
-	# El deposito de propelente es un modelo propio (tumbado a lo largo) y sustituye al armario de cubos.
+	# El deposito de propelente es un modelo propio (tumbado a lo largo)
+	# y sustituye al armario de cubos.
 	var point := Vector3(0, 0.0, -1.42)
 	station_prop(root, MODEL_FUEL_TANK, point, 2.4, 0.364, -90.0)
 	_solid(root.position + point + Vector3(0, 0.875, 0), Vector3(2.4, 1.75, 1.8))

@@ -9,6 +9,9 @@ const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
 const CAMERA_DISTANCE := 26.0
 const PLAY_V_OFFSET := 2.9
+const STORM_BEEPS := 5.0
+const SHAKE_SECONDS := 0.6
+const SHAKE_SIZE := 0.22
 const FOLLOW_FOV := 45.0
 const FOLLOW_HEIGHT := 0.8
 const BASE_HYSTERESIS := 1.0
@@ -75,6 +78,12 @@ var _replica_positions: Array = []
 var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
+var _beep_audio := AudioStreamPlayer.new()
+var _solar_key := ""
+var _beep_second := 0
+var _storm_was_active := false
+var _storm_glow := 0.0
+var _shake := 0.0
 var _reward_audio := AudioStreamPlayer.new()
 
 
@@ -1034,6 +1043,7 @@ func _render(delta: float, player: int) -> void:
 		ui.show_objective("")
 		_objective_destination = Vector3.INF
 	_alert_if_changed()
+	_storm_effects(delta)
 
 
 func _build_cargo_visual(box: Node3D, kind: StringName) -> void:
@@ -1086,9 +1096,33 @@ func _alert_if_changed() -> void:
 	_alert_kind = kind
 
 
+## Destello cuando aparece una llamarada, pitidos en los últimos 5 s del aviso, una
+## sacudida corta cuando llegan las partículas y bordes rojos mientras duran.
+func _storm_effects(delta: float) -> void:
+	var key := sim.solar_key()
+	if key != _solar_key and not key.is_empty():
+		ui.flash()
+	_solar_key = key
+	var left := sim.storm_warning()
+	var second := ceili(left) if left > 0.0 and left <= STORM_BEEPS else 0
+	if second != _beep_second and second > 0 and _beep_audio.stream != null:
+		_beep_audio.play()
+	_beep_second = second
+	var active := sim.storm_active()
+	if active and not _storm_was_active:
+		_shake = SHAKE_SECONDS
+	_storm_was_active = active
+	_storm_glow = move_toward(_storm_glow, float(active), delta * 1.5)
+	ui.storm_edges(_storm_glow * (0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.004)))
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - delta)
+		camera.h_offset = randf_range(-1.0, 1.0) * SHAKE_SIZE * _shake / SHAKE_SECONDS
+
+
 func _build_alert_audio() -> void:
 	add_child(_alert_audio)
 	add_child(_reward_audio)
+	add_child(_beep_audio)
 	if DisplayServer.get_name() == "headless":
 		return
 	var stream := AudioStreamWAV.new()
@@ -1103,6 +1137,8 @@ func _build_alert_audio() -> void:
 	_alert_audio.stream = stream
 	_reward_audio.stream = stream
 	_reward_audio.pitch_scale = 1.5
+	_beep_audio.stream = stream
+	_beep_audio.pitch_scale = 2.0
 
 
 func _send_snapshot() -> void:

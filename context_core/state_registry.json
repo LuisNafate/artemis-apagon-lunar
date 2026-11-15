@@ -655,7 +655,7 @@
         "consumption": 0.75,
         "alerts": 1,
         "alert_every": 2,
-        "warning": 30,
+        "warning": 18,
         "outage_every": 3
       },
       "medium": {
@@ -664,7 +664,7 @@
         "consumption": 1,
         "alerts": 1,
         "alert_every": 1,
-        "warning": 20,
+        "warning": 13,
         "outage_every": 2
       },
       "hard": {
@@ -673,7 +673,7 @@
         "consumption": 1.25,
         "alerts": 2,
         "alert_every": 1,
-        "warning": 20,
+        "warning": 13,
         "outage_every": 1
       }
     },
@@ -912,7 +912,7 @@
       "irrigation": 3
     },
     "events": {
-      "alert_seconds": 45,
+      "alert_seconds": 25,
       "outage_seconds": 60,
       "outage_warning": 30,
       "dawn_margin": 60,
@@ -928,9 +928,9 @@
         "long": 1440
       },
       "warning_seconds": {
-        "short": 15,
-        "medium": 25,
-        "long": 35
+        "short": 10,
+        "medium": 15,
+        "long": 20
       },
       "pools": {
         "easy": {
