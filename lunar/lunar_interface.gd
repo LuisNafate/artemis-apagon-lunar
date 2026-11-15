@@ -581,8 +581,9 @@ func session_menu(mode: StringName, status: String = "") -> void:
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
 	_prepare_menu("ARCHIVO CIENTÍFICO", "%02d/%02d · %s" % [index + 1, count, record_title])
 	_button(_list, "Volver", "close_science")
-	var card := _label(_list, description, 22)
+	var card := _label(_list, "", 22)
 	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.text = description
 	_button(_list, "Ficha anterior", "previous_science")
 	_button(_list, "Ficha siguiente", "next_science")
 

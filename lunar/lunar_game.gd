@@ -1224,7 +1224,7 @@ func _confirm_awards(receipts: PackedStringArray) -> void:
 func _show_science(step: int) -> void:
 	_science_index = posmod(_science_index + step, sim.records.size())
 	var record := sim.records[_science_index]
-	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.instrument)
+	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.id)
 	ui.show_science(title, sim.science_text(record), _science_index, sim.records.size())
 
 
