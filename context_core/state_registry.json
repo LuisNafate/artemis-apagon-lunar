@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 21,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -884,7 +884,7 @@
         "open rules in design document"
       ],
       "visible_assets": [
-        "gato-modelo2",
+        "astrocat_guia",
         "lro_miniatura",
         "relieve_nobile_lola",
         "apollo_base_lunar",
@@ -924,9 +924,10 @@
       "save_slot": "solo_bases"
     },
     "pilot_animation": {
-      "model": "res://assets/pilotos/gato-modelo2.glb",
+      "model": "res://assets/pilotos/astrocat_guia.glb",
       "poses": ["reposo", "marcha", "carga"],
-      "bones_per_pilot": 15
+      "bones_per_pilot": 20,
+      "suit_tint_strength": 0.32
     },
     "opening": {
       "frames": 480,

@@ -278,27 +278,30 @@ func _input_and_world() -> void:
 	var blue: CrestPilot = game.pilots[0]
 	var orange: CrestPilot = game.pilots[1]
 	_check(
-		blue.skeleton != orange.skeleton and blue.skeleton.get_bone_count() == 15,
+		blue.skeleton != orange.skeleton and blue.skeleton.get_bone_count() == 20,
 		"cada gato tiene un esqueleto articulado independiente"
 	)
-	var right_shoulder := orange.skeleton.find_bone("ShoulderR")
-	var right_hip := blue.skeleton.find_bone("HipR")
-	var left_hip := blue.skeleton.find_bone("HipL")
+	var right_shoulder := orange.skeleton.find_bone("upper_arm.R")
+	var right_hip := blue.skeleton.find_bone("thigh.R")
+	var left_hip := blue.skeleton.find_bone("thigh.L")
 	_check(
 		(
 			blue.suit != orange.suit
-			and blue.suit.get_shader_parameter("player_tint") == CrestWorld.BLUE
-			and orange.suit.get_shader_parameter("player_tint") == CrestWorld.AMBER
+			and (
+				blue.suit.albedo_color
+				== Color.WHITE.lerp(CrestWorld.BLUE, CrestPilot.TINT_STRENGTH)
+			)
+			and (
+				orange.suit.albedo_color
+				== Color.WHITE.lerp(CrestWorld.AMBER, CrestPilot.TINT_STRENGTH)
+			)
 		),
 		"cada gato conserva su material y su color"
 	)
 	_check(
 		(
-			blue.suit.get_shader_parameter("base_texture") != null
-			and (
-				blue.suit.get_shader_parameter("base_texture")
-				== orange.suit.get_shader_parameter("base_texture")
-			)
+			blue.suit.albedo_texture != null
+			and (blue.suit.albedo_texture == orange.suit.albedo_texture)
 		),
 		"los dos gatos comparten la textura importada"
 	)
@@ -335,8 +338,8 @@ func _input_and_world() -> void:
 		await get_tree().physics_frame
 	_check(
 		(
-			orange.skeleton.get_bone_pose_rotation(right_shoulder).get_euler().x > 0.3
-			and not blue.skeleton.get_bone_pose_rotation(right_shoulder).get_euler().x > 0.01
+			_pose_distance(orange.skeleton, right_shoulder) > 0.3
+			and _pose_distance(blue.skeleton, right_shoulder) < 0.01
 		),
 		"solo el gato que lleva la caja levanta el brazo"
 	)
@@ -361,8 +364,9 @@ func _input_and_world() -> void:
 		"bancos simultáneos"
 	)
 	_check(
-		not blue.skeleton.get_bone_pose_rotation(left_hip).is_equal_approx(
-			blue.skeleton.get_bone_pose_rotation(right_hip)
+		(
+			absf(_pose_distance(blue.skeleton, left_hip) - _pose_distance(blue.skeleton, right_hip))
+			> 0.01
 		),
 		"los pasos articulan las caderas por separado"
 	)
@@ -372,7 +376,7 @@ func _input_and_world() -> void:
 	for frame in range(26):
 		await get_tree().physics_frame
 	_check(
-		blue.skeleton.get_bone_pose_rotation(left_hip).is_equal_approx(Quaternion.IDENTITY),
+		_pose_distance(blue.skeleton, left_hip) < 0.01,
 		"las caderas recuperan el reposo al detenerse"
 	)
 	_tap(KEY_ESCAPE)
@@ -408,6 +412,11 @@ func _input_and_world() -> void:
 		"en individual se pasa y entrega alternando"
 	)
 	solo.queue_free()
+
+
+func _pose_distance(skeleton: Skeleton3D, bone: int) -> float:
+	var rest := skeleton.get_bone_rest(bone).basis.get_rotation_quaternion()
+	return rest.angle_to(skeleton.get_bone_pose_rotation(bone))
 
 
 func _place_at_training(pilots: Array[CrestPilot]) -> void:

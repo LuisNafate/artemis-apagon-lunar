@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 21,
   "nodes": [
     {
       "id": "config",
@@ -2655,13 +2655,8 @@
     ],
     [
       "crest_pilot",
-      "rigs",
-      "cat_model"
-    ],
-    [
-      "crest_pilot",
-      "tints",
-      "cat_shader"
+      "poses",
+      "astrocat_mesh"
     ],
     [
       "crest_game",
@@ -2877,6 +2872,11 @@
       "lunar_interface",
       "replays",
       "lunar_opening"
+    ],
+    [
+      "opening_blender",
+      "uses",
+      "cat_model"
     ],
     [
       "opening_encode",

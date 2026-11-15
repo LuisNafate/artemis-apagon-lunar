@@ -172,3 +172,8 @@
 - Blender 5.2.2. El gato queda oculto y a escala cero hasta el fotograma 270 inclusive. Se regeneró el tramo 185–270 y se verificó el descenso antes y después. El archivo Theora conserva sus 384 fotogramas a 24 fps y 1280 × 720.
 - Cresta y campaña vuelven al gato optimizado con 15 huesos, tinte por jugador, marcha articulada, reposo al parar y pose de carga. Se actualizó la prueba de Cresta para usar la posición actual de la mesa de práctica.
 - Godot 4.7.2. Verificadas las poses de ambos gatos y el traspaso en Cresta, con captura en Forward+. Cresta ejecuta 10 casos y mantiene 25 fallos de rutas y objetos del mapa. La campaña sigue reportando 17 fallos de tutorial, lanzamiento y recompensas.
+
+## 2026-11-15 - Colores originales, poses articuladas (revisión 21)
+
+- AstroCat recupera las texturas previas, con el tinte original de 32 % aplicado al traje. La marcha, el reposo y la carga se aplican al esqueleto de 20 huesos mediante sus bases de reposo.
+- Godot 4.7.2. Captura de ambos pilotos en Forward+. Pasaron los controles del color, marcha, carga, entrega y retorno a reposo de la suite Cresta. Formato, lint, importación, arranque y suites Academia, Puesto y 3D correctos. Cresta conserva sus 25 fallos de rutas y objetos del mapa.
