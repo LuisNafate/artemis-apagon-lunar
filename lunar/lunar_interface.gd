@@ -63,6 +63,7 @@ var _objective_hint: Label
 var _drop_body: VBoxContainer
 var _close_button: Button
 var _close_in_menu := false
+var _scroll: ScrollContainer
 var _close_action := ""
 var _close_argument := ""
 var _loading_last := 0.0
@@ -397,7 +398,8 @@ func _build_menu(root: Control) -> void:
 	_logo.hide()
 	_message = _label(content, "", 22)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var scroll := ScrollContainer.new()
+	_scroll = ScrollContainer.new()
+	var scroll := _scroll
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(scroll)
@@ -1000,6 +1002,7 @@ func _compact_menu(width: float = 520.0) -> void:
 	menu.offset_top = 0.0
 	menu.offset_bottom = 0.0
 	menu.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_scroll.custom_minimum_size.y = _list.get_combined_minimum_size().y
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_close_in_menu = true
@@ -1298,6 +1301,7 @@ func _prepare_menu(title: String, status: String) -> void:
 	_message.add_theme_font_size_override("font_size", 22)
 	_heading.modulate = BRICK
 	_close_in_menu = false
+	_scroll.custom_minimum_size.y = 0.0
 	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_heading.text = title
