@@ -18,6 +18,7 @@ const PALETTE := {
 	&"construir": [Color("#4e9a37"), Color("#1f4a17"), Color("#86cf63")],
 	&"mejorar": [Color("#dc7d19"), Color("#6f3607"), Color("#ffb347")],
 	&"cancelar": [Color("#b6414a"), Color("#541820"), Color("#e2737a")],
+	&"seguimiento": [Color("#265a6b"), Color("#0f2a34"), Color("#5fb0c4")],
 	&"bloqueado": [Color("#6c6381"), Color("#383246"), Color("#8d84a3")]
 }
 

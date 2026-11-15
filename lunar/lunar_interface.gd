@@ -120,13 +120,7 @@ func _build_play(root: Control) -> void:
 	_objective_marker.focus_mode = Control.FOCUS_NONE
 	_objective_marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_objective_marker.custom_minimum_size = Vector2(196, 46)
-	_objective_marker.add_theme_font_size_override("font_size", 18)
-	_objective_marker.add_theme_stylebox_override(
-		"normal", _style(Color("#124741"), Color("#ffe3a0"))
-	)
-	_objective_marker.add_theme_stylebox_override(
-		"hover", _style(Color("#25665f"), Color("#ffe3a0"))
-	)
+	LunarButtonKit.apply(_objective_marker, &"seguimiento", 18)
 	_objective_marker.tooltip_text = "Toca para caminar hasta el objetivo."
 	_objective_marker.hide()
 	var header := PanelContainer.new()
@@ -196,13 +190,16 @@ func _build_play(root: Control) -> void:
 	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(_objective_hint)
+	_objective_hint.add_theme_constant_override("outline_size", 2)
+	_objective_hint.add_theme_stylebox_override("normal", _tag_style(Color("#e8821c")))
 	_objective_hint.hide()
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
 	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	next_step.custom_minimum_size.x = 580
-	next_step.add_theme_constant_override("outline_size", 6)
+	next_step.add_theme_constant_override("outline_size", 2)
+	next_step.add_theme_stylebox_override("normal", _tag_style(Color("#47c9c4")))
 	alert = _label(content, "", 19, TITLE)
 	_float_text(alert)
 	alert.add_theme_color_override("font_color", Color("#ff9a72"))
@@ -1137,6 +1134,30 @@ func _input(event: InputEvent) -> void:
 			height = touch.position.y
 	if height < 80.0:
 		show_title()
+
+
+func _process(_delta: float) -> void:
+	# La etiqueta de seguimiento solo se dibuja cuando tiene texto.
+	if next_step != null:
+		next_step.visible = not next_step.text.is_empty()
+
+
+func _tag_style(accent: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#14262cdd")
+	style.border_color = accent
+	style.set_border_width_all(2)
+	style.border_width_left = 7
+	style.set_corner_radius_all(9)
+	style.corner_detail = 1
+	style.shadow_color = Color("#00000077")
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0.0, 3.0)
+	style.content_margin_left = 20.0
+	style.content_margin_right = 16.0
+	style.content_margin_top = 6.0
+	style.content_margin_bottom = 7.0
+	return style
 
 
 func _float_text(label: Label) -> void:
