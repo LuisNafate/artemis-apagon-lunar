@@ -196,24 +196,24 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	# Objetivo y siguiente paso viven en un desplegable arriba, para no
+	# Objetivo y siguiente paso viven en un desplegable arriba a la izquierda, bajo los recursos, para no
 	# taparse con el panel de la zona ni con los botones de abajo.
 	var drop := VBoxContainer.new()
 	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	drop.add_theme_constant_override("separation", 6)
 	play.add_child(drop)
-	drop.anchor_left = 0.5
-	drop.anchor_right = 0.5
-	drop.offset_left = -300
-	drop.offset_right = 300
-	drop.offset_top = 80
-	drop.offset_bottom = 80
+	drop.anchor_left = 0.0
+	drop.anchor_right = 0.0
+	drop.offset_left = 18
+	drop.offset_right = 428
+	drop.offset_top = 74
+	drop.offset_bottom = 74
 	drop.grow_vertical = Control.GROW_DIRECTION_END
 	var drop_toggle := Button.new()
 	drop_toggle.text = "Objetivo  -"
 	drop_toggle.focus_mode = Control.FOCUS_NONE
 	drop_toggle.custom_minimum_size = Vector2(190, 42)
-	drop_toggle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	drop_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	LunarButtonKit.apply(drop_toggle, &"seguimiento", 16)
 	drop.add_child(drop_toggle)
 	_drop_body = VBoxContainer.new()
@@ -235,7 +235,7 @@ func _build_play(root: Control) -> void:
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
 	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	next_step.custom_minimum_size.x = 580
+	next_step.custom_minimum_size.x = 410
 	next_step.add_theme_constant_override("outline_size", 2)
 	next_step.add_theme_stylebox_override("normal", _tag_style(Color("#47c9c4")))
 	alert = _label(content, "", 19, TITLE)
