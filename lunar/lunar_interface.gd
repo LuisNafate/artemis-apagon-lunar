@@ -1,3 +1,4 @@
+# gdlint: disable=max-file-lines
 class_name LunarInterface
 extends CanvasLayer
 
@@ -26,6 +27,7 @@ const ROLE_PERKS := {
 	"geologist": "Una caja extra cada 10 extracciones"
 }
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
+const STRENGTH := {"X": "muy fuerte", "M": "fuerte", "C": "mediana"}
 const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const CHIP_ICONS := [
 	AIR_ICON,
@@ -78,6 +80,9 @@ var _poster: TextureRect
 var _sparks: CPUParticles2D
 var _lobby_tweens: Array[Tween] = []
 var _paper: Control
+var _storm_edges: TextureRect
+var _flash: ColorRect
+var _flash_tween: Tween
 
 
 func build() -> void:
@@ -118,6 +123,7 @@ func _build_play(root: Control) -> void:
 	root.add_child(play)
 	play.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_build_storm_layers()
 	_objective_marker = _button(play, "", "objective_route")
 	_objective_marker.focus_mode = Control.FOCUS_NONE
 	_objective_marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -571,9 +577,13 @@ func _animate_button(button: Button, index: int, primary: bool) -> void:
 	button.modulate.a = 0.0
 	var wait := 0.55 + index * 0.11
 	var intro := button.create_tween().set_parallel(true)
-	intro.tween_property(button, "scale", Vector2.ONE, 0.55).set_delay(wait).set_trans(
-		Tween.TRANS_BACK
-	).set_ease(Tween.EASE_OUT)
+	(
+		intro
+		. tween_property(button, "scale", Vector2.ONE, 0.55)
+		. set_delay(wait)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
 	intro.tween_property(button, "modulate:a", 1.0, 0.3).set_delay(wait)
 	_pop_on_hover(button)
 	if primary:
@@ -734,7 +744,9 @@ func roles(profile: LunarProfile) -> void:
 	footer.add_theme_constant_override("separation", 18)
 	_list.add_child(footer)
 	var none_picked: bool = String(profile.data.active_role).is_empty()
-	var none := _button(footer, "Sin rol · elegido" if none_picked else "Sin rol", "choose_role", "")
+	var none := _button(
+		footer, "Sin rol · elegido" if none_picked else "Sin rol", "choose_role", ""
+	)
 	none.custom_minimum_size = Vector2(200, 50)
 	var back := _button(footer, "Volver", "lobby")
 	back.custom_minimum_size = Vector2(200, 50)
@@ -821,9 +833,13 @@ func _role_card(
 	card.modulate.a = 0.0
 	var wait := 0.08 + index * 0.12
 	var intro := card.create_tween().set_parallel(true)
-	intro.tween_property(card, "scale", Vector2.ONE, 0.5).set_delay(wait).set_trans(
-		Tween.TRANS_BACK
-	).set_ease(Tween.EASE_OUT)
+	(
+		intro
+		. tween_property(card, "scale", Vector2.ONE, 0.5)
+		. set_delay(wait)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
 	intro.tween_property(card, "modulate:a", 1.0, 0.3).set_delay(wait)
 	if picked:
 		var glow := art.create_tween().set_loops()
@@ -998,31 +1014,79 @@ func show_objective(instruction: String, title: String = "", projected := Vector
 	_objective_marker.size = marker_size
 
 
-## "Llamarada X8.2 · 10 sep 2017" a partir de un registro del catálogo DONKI.
+## "Llamarada real del 10 sep 2017 · muy fuerte (X8.2)" a partir del catálogo DONKI.
 static func flare_label(record: Dictionary) -> String:
 	var date := String(record.begin)
 	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
+	var kind := String(record.class_type)
 	return (
-		"Llamarada %s · %d %s %s" % [record.class_type, int(date.substr(8, 2)), month, date.left(4)]
+		"Llamarada real del %d %s %s · %s (%s)"
+		% [int(date.substr(8, 2)), month, date.left(4), STRENGTH.get(kind.left(1), "pequeña"), kind]
 	)
+
+
+## Capas de la tormenta: bordes rojos mientras caen las partículas y un destello corto
+## cuando el Sol lanza una llamarada. Quedan debajo del HUD y no reciben toques.
+func _build_storm_layers() -> void:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.86, 0.13, 0.10, 0.0))
+	gradient.set_color(1, Color(0.86, 0.13, 0.10, 0.62))
+	gradient.add_point(0.6, Color(0.86, 0.13, 0.10, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(0.5, 0.0)
+	_storm_edges = TextureRect.new()
+	_storm_edges.texture = texture
+	_storm_edges.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_storm_edges.stretch_mode = TextureRect.STRETCH_SCALE
+	_storm_edges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_storm_edges.modulate.a = 0.0
+	play.add_child(_storm_edges)
+	_storm_edges.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_flash = ColorRect.new()
+	_flash.color = Color(1.0, 0.95, 0.82)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.modulate.a = 0.0
+	play.add_child(_flash)
+	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## Un solo destello suave, sin parpadeos, cuando aparece una llamarada nueva.
+func flash() -> void:
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_flash.modulate.a = 0.45
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash, "modulate:a", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
+
+
+## Intensidad de los bordes rojos: 0 sin tormenta, 1 con partículas cayendo.
+func storm_edges(level: float) -> void:
+	_storm_edges.modulate.a = clampf(level, 0.0, 1.0)
 
 
 func _show_alert(mission: LunarMission, safe: bool) -> void:
 	alert.show()
+	alert.add_theme_color_override("font_color", Color("#ff9a72"))
 	var flare := mission.storm_flare()
 	var quiet := mission.flare_notice()
+	var real := "" if flare.is_empty() else "\n" + flare_label(flare)
 	if mission.storm_active():
-		var source := "llamarada %s" % flare.class_type if not flare.is_empty() else "solares"
-		alert.text = "⚠ Partículas %s · %s" % [source, "A cubierto" if safe else "Ve al refugio"]
+		alert.text = (
+			"⚠ Lluvia de partículas del Sol · "
+			+ ("Estás a salvo aquí" if safe else "¡Entra al refugio!")
+			+ real
+		)
 	elif mission.storm_warning() > 0:
 		var seconds := ceili(mission.storm_warning())
-		alert.text = (
-			"⚠ %s · Al refugio en %d s" % [flare_label(flare), seconds]
-			if not flare.is_empty()
-			else "⚠ Al refugio en %d s" % seconds
-		)
+		alert.text = "☀ ¡Explosión en el Sol! Corre al refugio: %d s%s" % [seconds, real]
 	elif not quiet.is_empty():
-		alert.text = "☀ %s · Sin partículas, sigue trabajando" % flare_label(quiet)
+		alert.add_theme_color_override("font_color", Color("#ffd36b"))
+		alert.text = (
+			"☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n" + flare_label(quiet)
+		)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
 	elif mission.outage_warning() > 0:

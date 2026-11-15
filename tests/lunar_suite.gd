@@ -77,7 +77,9 @@ func _cycle() -> void:
 				elif event[0] == "flare":
 					_check(event[2] == 8, "false alarm notice length")
 				else:
-					_check(event[2] == 45, "solar alert duration")
+					_check(
+						event[2] == int(mission.rules.events.alert_seconds), "solar alert duration"
+					)
 					alerts += 1
 				for other: Array in mission.events:
 					if event != other:
@@ -819,12 +821,10 @@ func _network() -> void:
 		"failed dawn leaves neither wallet nor checkpoint committed"
 	)
 	_check(host.profile.data.guest_awards.is_empty(), "failed dawn cannot release guest award")
-	_check(host.ui._wallet_balance.text == "0.00 monedas", "uncommitted reward is hidden from HUD")
+	_check(host.ui._wallet_balance.text == "0.00", "uncommitted reward is hidden from HUD")
 	host.profile.path = host_path
 	_check(host._commit_reward(), "dawn saved exactly once on retry")
-	_check(
-		host.ui._wallet_balance.text == host.profile.balance_text() + " monedas", "host HUD updated"
-	)
+	_check(host.ui._wallet_balance.text == host.profile.balance_text(), "host HUD updated")
 	_check(host.profile.data.balance == 187500, "75 percent day reward for host")
 	for index in range(6):
 		OS.delay_msec(2)
@@ -839,10 +839,7 @@ func _network() -> void:
 		OS.delay_msec(2)
 		await get_tree().physics_frame
 	_check(guest.profile.data.balance == 187500, "guest receives the same 75 percent at dawn")
-	_check(
-		guest.ui._wallet_balance.text == guest.profile.balance_text() + " monedas",
-		"guest HUD updated"
-	)
+	_check(guest.ui._wallet_balance.text == guest.profile.balance_text(), "guest HUD updated")
 	var reloaded := LunarProfile.new(guest.sim.rules, guest.profile_path)
 	_check(reloaded.data.balance == 187500, "guest persisted before acknowledgment")
 	for index in range(40):

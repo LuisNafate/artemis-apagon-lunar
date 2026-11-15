@@ -269,12 +269,25 @@ func science_text(record: Dictionary) -> String:
 	if String(record.id) != "donki_sep_20240510" or flares.is_empty():
 		return super(record)
 	return (
-		"NASA CCMC registró un aviso de partículas el 10 de mayo de 2024. Cada alerta de esta "
-		+ "campaña repite una llamarada real de DONKI: su clase y si soltó partículas son reales, "
-		+ "y el aviso es corto, medio o largo según cuánto tardaron en llegar. "
-		+ "No toda llamarada es peligrosa: de 243 llamaradas entre mayo y junio de 2024, "
-		+ "solo 16 soltaron partículas. Los 45 s de la alerta son del juego."
+		"La NASA anota las explosiones del Sol, llamadas llamaradas, en una lista que se llama "
+		+ "DONKI. Cada tormenta de este juego usa una llamarada real de esa lista, con su fecha. "
+		+ "Algunas lanzan partículas peligrosas y otras no: entre mayo y junio de 2024 hubo 243 "
+		+ "llamaradas y solo 16 lanzaron partículas. Si en la vida real las partículas llegaron "
+		+ "rápido, en el juego tienes poco tiempo para correr al refugio. En el juego todo pasa "
+		+ "más rápido que en la realidad."
 	)
+
+
+## Clave del aviso solar que se está mostrando: cambia cuando empieza una llamarada nueva.
+func solar_key() -> String:
+	for event: Array in events:
+		var left := float(event[1]) - elapsed
+		var span := float(event[3]) if event.size() > 3 else float(difficulty.warning)
+		var warned: bool = event[0] == "sep" and left > 0.0 and left <= span
+		var shown: bool = event[0] in ["sep", "flare"] and _in_range(event[1], event[2])
+		if warned or shown:
+			return "%s@%s" % [event[0], event[1]]
+	return ""
 
 
 func outage_warning() -> float:
