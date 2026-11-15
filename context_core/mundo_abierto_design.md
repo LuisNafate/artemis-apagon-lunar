@@ -190,3 +190,13 @@ Las suites existentes deben seguir pasando. En `lunar_suite` habrá que actualiz
 - Estructura de clases interna de `ChunkStreamer` y `ChunkGenerator`, y cómo se reparte la reconstrucción de rutas.
 - Ajuste fino de la cámara (distancia, FOV, suavizado) dentro de lo descrito.
 - Orden de los cortes de implementación, siempre que cada uno deje `verify.ps1` en verde.
+
+## Muro, puerta y flecha a la base · aprobado por el usuario el 2026-11-15
+
+Para que la base sea un lugar donde estar, la plataforma tiene muro y una puerta, y fuera de ella una flecha indica siempre el camino de vuelta.
+
+- **Muro:** rodea toda la plataforma de 40 × 22 m, con 2,4 m de alto de colisión, para que no se pueda saltar (el salto llega a 1,6 m). Los lados norte, este y oeste se ven completos. El lado sur, que da a la cámara, se ve como un murete de 1 m con cristal translúcido hasta 2,4 m, para no tapar la base en la vista de ¾. Usa `PaperMaterial`.
+- **Puerta:** está en el muro este, cerca del refugio, y mide 3 m de ancho. Es una puerta corredera que se abre sola cuando un piloto conectado está a menos de 3 m y se cierra al alejarse. Solo el marco tiene colisión, así que el hueco siempre se puede cruzar. La ubicación exacta es un tramo libre del muro este por el que se llega desde los `SPAWNS` sin chocar con el refugio ni las estaciones.
+- **Rutas:** al tocar el suelo, una ruta que entra o sale de la base pasa por la puerta, no por el borde más cercano.
+- **Flecha:** es una flecha plana en el suelo alrededor del piloto, con una etiqueta de distancia en metros (por ejemplo, "➤ 120 m"). Apunta siempre a la puerta, solo se ve fuera de la base, y cada dispositivo muestra la de su propio piloto.
+- **Escena histórica:** Cresta no cambia; solo la campaña tiene muro y puerta.
