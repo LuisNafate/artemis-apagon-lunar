@@ -425,6 +425,10 @@ func _choose(action: String, argument: String) -> void:
 		"science":
 			_science_from_session = net in [&"host", &"guest", &"solo"]
 			_show_science(0)
+		"dossier":
+			ui.dossier(profile)
+		"close_dossier":
+			_show_science(0)
 		"previous_science":
 			_show_science(-1)
 		"next_science":

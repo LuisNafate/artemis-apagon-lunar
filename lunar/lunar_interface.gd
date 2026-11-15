@@ -75,6 +75,7 @@ var _logo: RichTextLabel
 var _poster: TextureRect
 var _sparks: CPUParticles2D
 var _lobby_tweens: Array[Tween] = []
+var _dossier: LunarDossier
 
 
 func build() -> void:
@@ -416,8 +417,24 @@ func _build_lobby_backdrop(root: Control) -> void:
 
 
 func hide_lobby() -> void:
+	_close_dossier()
 	_lobby_backdrop.hide()
 	menu.hide()
+
+
+func dossier(profile: LunarProfile) -> void:
+	_prepare_menu("", "")
+	menu.hide()
+	_dossier = LunarDossier.new()
+	menu.get_parent().add_child(_dossier)
+	_dossier.build(profile)
+	_dossier.closed.connect(func() -> void: selected.emit("close_dossier", ""))
+
+
+func _close_dossier() -> void:
+	if _dossier != null:
+		_dossier.queue_free()
+		_dossier = null
 
 
 func loading(base_name: String, status: String, progress: float) -> void:
@@ -852,6 +869,7 @@ func session_menu(mode: StringName, status: String = "") -> void:
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
 	_prepare_menu("ARCHIVO CIENTÍFICO", "%02d/%02d · %s" % [index + 1, count, record_title])
 	_button(_list, "Volver", "close_science")
+	_button(_list, "Mi expediente", "dossier")
 	var card := _label(_list, "", 22)
 	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.text = description
@@ -1027,6 +1045,7 @@ func _show_alert(mission: LunarMission, safe: bool) -> void:
 
 
 func _prepare_menu(title: String, status: String) -> void:
+	_close_dossier()
 	for tween in _lobby_tweens:
 		tween.kill()
 	_lobby_tweens.clear()
