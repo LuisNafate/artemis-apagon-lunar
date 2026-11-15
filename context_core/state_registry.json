@@ -1,5 +1,5 @@
 {
-  "revision": 16,
+  "revision": 17,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -878,7 +878,7 @@
       ],
       "pending": [
         "private room relay or matchmaking",
-        "mobile ports and device tests",
+        "physical Android device tests",
         "nine bespoke terrain layouts",
         "defined solar panel bonus",
         "open rules in design document"
@@ -902,7 +902,18 @@
         "loading": "preparación de base y rutas",
         "horizon": "composición didáctica por base, sin cálculo celeste"
       },
-      "audit": "context_core/auditoria_terreno_campana.md"
+      "audit": "context_core/auditoria_terreno_campana.md",
+      "delivery": {
+        "android": {
+          "artifact": "dist/Artemis-Ultima-Ventana.apk",
+          "abi": "arm64-v8a",
+          "min_sdk": 24,
+          "target_sdk": 36,
+          "signature": "Godot debug certificate",
+          "physical_device_test": "pending"
+        },
+        "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
+      }
     },
     "solo_mode": {
       "source": "VAC-11 resuelto por el usuario",

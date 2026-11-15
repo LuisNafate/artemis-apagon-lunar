@@ -1,5 +1,5 @@
 {
-  "revision": 16,
+  "revision": 17,
   "nodes": [
     {
       "id": "config",
@@ -1108,6 +1108,18 @@
     {
       "id": "lunar_title_loading",
       "kind": "system"
+    },
+    {
+      "id": "artemis_icon",
+      "kind": "asset",
+      "path": "assets/ui/artemis_icon.svg"
+    },
+    {
+      "id": "android_test_apk",
+      "kind": "artifact",
+      "output": "dist/Artemis-Ultima-Ventana.apk",
+      "platform": "Android",
+      "abi": "arm64-v8a"
     }
   ],
   "edges": [
@@ -2790,6 +2802,21 @@
       "lunar_suite_script",
       "verifies",
       "lunar_title_loading"
+    ],
+    [
+      "lunar_export",
+      "packages",
+      "android_test_apk"
+    ],
+    [
+      "android_test_apk",
+      "packages",
+      "lunar_scene"
+    ],
+    [
+      "android_test_apk",
+      "displays",
+      "artemis_icon"
     ]
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "revision": 16,
+  "revision": 17,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -452,5 +452,11 @@
       "VAC-17",
       "VAC-18"
     ]
+  },
+  "distribution_checks": {
+    "android": {
+      "outcome": "APK validado por firma, alineación y manifiesto",
+      "device_test": "pending"
+    }
   }
 }

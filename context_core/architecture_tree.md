@@ -171,3 +171,7 @@ La escena principal es `lunar/lunar.tscn`. La escena de Cresta permanece disponi
 La [auditoría de terreno](auditoria_terreno_campana.md) registra medidas, interferencias y las comprobaciones de navegación y proyección. `CrestWorld` ensambla la plataforma y las dos etapas Apolo. `LunarRoutes` sondea un volumen de cápsula compatible con el avatar. La escena de Cresta conserva sus recursos históricos.
 
 `LunarBackdrop` pinta el cielo y el relieve detrás del suelo 3D según el perfil de cada base. `LunarGame` inicia con una portada animada sobre Mons Mouton Plateau, muestra la carga al abrir un guardado y ajusta la cámara a 34° para jugar. `LunarFlightView` muestra las etapas orbitales en un SubViewport; `LunarMission` gobierna el tiempo de las fases y el resultado.
+
+## Entrega Android · revisión 17
+
+El preset Android usa ETC2/ASTC, ARM64 y orientación horizontal. El icono compartido vive en `assets/ui/artemis_icon.svg`. Godot exporta una compilación de prueba firmada por el certificado de desarrollo a `dist/Artemis-Ultima-Ventana.apk`. Las compilaciones de la versión en curso quedan en `dist/` y la edición anterior en `dist/Anterior/`. Los binarios de `dist/` se excluyen de Git.

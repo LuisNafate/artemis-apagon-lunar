@@ -19,7 +19,11 @@ Para jugar en línea necesitas una dirección alcanzable. Las fichas científica
 
 [Auditoría de terreno y cámara](context_core/auditoria_terreno_campana.md) · [Estado de las reglas y parámetros provisionales](context_core/campana_lunar_vigente.md) · [Catálogo para modelado](context_core/catalogo_produccion_artemis.md) · [Catálogo científico](context_core/science_catalog.md) · [Registro de modelos](assets/props_luna/asset-register.md)
 
-El preset **Android** está configurado para ARM64 y la conexión en línea. La exportación APK necesita el SDK y las plantillas Android de Godot, y aún requiere una prueba en un teléfono. [Exportar a Android](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html)
+## Android
+
+Descarga `Artemis-Ultima-Ventana.apk` de la [demo Android en GitHub](https://github.com/LuisNafate/artemis-apagon-lunar/releases/tag/v1.0.0-android.1) y ábrelo en un teléfono Android 7.0 o posterior con ARM64. Es una compilación de prueba para instalación directa. Puedes elegir partida individual sin conexión o cooperativo por dirección IP. La firma y el manifiesto se verificaron con Android SDK Build-Tools. Está pendiente la prueba en un teléfono.
+
+Para exportar desde Godot 4.7.2, instala las plantillas de esa versión, configura Java y el SDK y ejecuta `godot --headless --path . --export-debug Android dist/Artemis-Ultima-Ventana.apk`. [Guía de exportación de Godot](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html)
 
 ## Escenas históricas
 
