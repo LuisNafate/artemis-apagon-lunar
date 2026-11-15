@@ -118,12 +118,12 @@ func _build_play(root: Control) -> void:
 		chip.add_child(row)
 		var icon := TextureRect.new()
 		icon.texture = CHIP_ICONS[index]
-		icon.custom_minimum_size = Vector2(46, 46)
+		icon.custom_minimum_size = Vector2(56, 56)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
-		var reading := _label(row, "", 21, TITLE)
+		var reading := _label(row, "", 24, TITLE)
 		reading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_float_text(reading)
 		_readouts.append(reading)
@@ -153,12 +153,26 @@ func _build_play(root: Control) -> void:
 		if play.visible:
 			show_title()
 	)
-	_pause = _button(play, "Menú", "menu")
+	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_pause.offset_left = -137
-	_pause.offset_top = 15
-	_pause.offset_right = -19
-	_pause.offset_bottom = 67
+	_pause.offset_left = -76
+	_pause.offset_top = 14
+	_pause.offset_right = -18
+	_pause.offset_bottom = 66
+	var middle := CenterContainer.new()
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause.add_child(middle)
+	middle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bars := VBoxContainer.new()
+	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bars.add_theme_constant_override("separation", 5)
+	middle.add_child(bars)
+	for bar_index in range(3):
+		var bar := ColorRect.new()
+		bar.color = Color("#fff2d6")
+		bar.custom_minimum_size = Vector2(26, 4)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bars.add_child(bar)
 	var bottom := HBoxContainer.new()
 	_controls = bottom
 	play.add_child(bottom)
