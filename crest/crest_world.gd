@@ -21,6 +21,7 @@ const MODEL_GREENHOUSE := preload("res://assets/props_luna/estaciones/invernader
 const MODEL_SOLAR := preload("res://assets/props_luna/estaciones/paneles.glb")
 const MODEL_ROVER_ANTENNA := preload("res://assets/props_luna/estaciones/antena_rover.glb")
 const MODEL_WATER_TANK := preload("res://assets/props_luna/estaciones/tanque_agua.glb")
+const MODEL_TRAINING_TABLE := preload("res://assets/props_luna/estaciones/mesa_azul.glb")
 const TRANSPORT_PARK := Vector3(-11.9, 0.04, 7.45)
 const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
 const RECEIVER := preload("res://assets/props_luna/kenney/consola.glb")
@@ -745,6 +746,10 @@ func _console(key: StringName, accent: Color, show_machine := true) -> Node3D:
 	root.position = point
 	_deck(point, Vector3(2.05, 0.06, 1.77), accent)
 	var machine := Vector3(0, 0.39, -0.55)
+	if key == &"training" and campaign_layout:
+		# La mesa azul del tutorial es un modelo propio: sustituye al escritorio de cubos.
+		station_prop(root, MODEL_TRAINING_TABLE, Vector3.ZERO, 1.7, 0.3)
+		show_machine = false
 	if show_machine:
 		FieldWorld.box(root, machine, Vector3(0.84, 0.78, 0.45), FRAME)
 		FieldWorld.box(root, machine + Vector3(0, 0.3, 0.12), Vector3(0.91, 0.25, 0.47), WHITE)
