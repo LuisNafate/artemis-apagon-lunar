@@ -1,0 +1,689 @@
+# gdlint: disable=max-returns,max-public-methods
+extends Node3D
+
+const PORT := 44260
+const SAMPLE_RATE := 0.10
+const ROUTES := preload("res://lunar/lunar_routes.gd")
+const MATCOLORS := {
+	&"sample": CrestWorld.BLUE,
+	&"ice": CrestWorld.BLUE,
+	&"ore": CrestWorld.PURPLE,
+	&"fuel": CrestWorld.AMBER,
+	&"food": CrestWorld.LIME
+}
+
+var sim := LunarMission.new()
+var profile: LunarProfile
+var profile_path := LunarProfile.SAVE_PATH
+var world := CrestWorld.new()
+var camera := Camera3D.new()
+var ui := LunarInterface.new()
+var pilots: Array[CrestPilot] = []
+var net := &"lobby"
+var guest_peer := 0
+var guest_id := ""
+var positions_at_dawn: Array = []
+var saved_run := 0
+var play_started := false
+
+var _address := ""
+var _vectors := [Vector2.ZERO, Vector2.ZERO]
+var _route: Array[PackedVector2Array] = [[], []]
+var _routes := ROUTES.new()
+var _routes_ready := false
+var _spots: Array[StringName] = [&"", &""]
+var _boxes: Dictionary = {}
+var _coins_by_guest: Dictionary = {}
+var _science_index := 0
+var _science_from_session := false
+var _feedback := ""
+var _feedback_time := 0.0
+var _sync_left := 0.0
+var _send_left := 0.0
+var _inactivity := 0.0
+var _replica_positions: Array = []
+var _replica_headings: Array = []
+var _alert_kind := ""
+var _alert_audio := AudioStreamPlayer.new()
+
+
+func _ready() -> void:
+	if profile_path == LunarProfile.SAVE_PATH:
+		for argument: String in OS.get_cmdline_user_args():
+			if argument.begins_with("--perfil="):
+				var label := argument.trim_prefix("--perfil=")
+				if label.is_valid_ascii_identifier() and label.length() <= 30:
+					profile_path = "user://artemis_campaign_%s.dat" % label
+	profile = LunarProfile.new(sim.rules, profile_path)
+	add_child(world)
+	world.build()
+	world.build_lunar_workshop()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 23.1
+	camera.position = Vector3(7.8, 24.5, 22.8)
+	add_child(camera)
+	camera.look_at(Vector3(0.1, 0, 0.55))
+	camera.make_current()
+	for player in range(2):
+		_add_pilot(player)
+	add_child(ui)
+	ui.build()
+	ui.selected.connect(_choose)
+	multiplayer.peer_disconnected.connect(_peer_left)
+	multiplayer.connected_to_server.connect(_request_join)
+	multiplayer.connection_failed.connect(_connection_failed)
+	multiplayer.server_disconnected.connect(_host_left)
+	_build_alert_audio()
+	if profile.error != OK:
+		ui.wait_for_guest("PERFIL LOCAL", "", "No se pudo leer el progreso guardado.")
+	else:
+		ui.lobby(profile, "")
+
+
+func _notification(what: int) -> void:
+	if is_node_ready() and what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		ui.joystick.clear()
+		_vectors[0] = Vector2.ZERO
+		_route[0].clear()
+
+
+func _physics_process(delta: float) -> void:
+	if not _routes_ready:
+		_routes.build(get_world_3d().direct_space_state)
+		_routes_ready = true
+	if net == &"host" and play_started:
+		_host_frame(delta)
+	elif net == &"guest":
+		_guest_frame(delta)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not ui.play.visible:
+		return
+	var tap: bool = event is InputEventScreenTouch and event.pressed
+	if event is InputEventMouseButton:
+		tap = event.button_index == MOUSE_BUTTON_LEFT and event.pressed
+		tap = tap and event.device != InputEvent.DEVICE_ID_EMULATION
+	if tap:
+		var origin := camera.project_ray_origin(event.position)
+		var ray := camera.project_ray_normal(event.position)
+		var point: Variant = Plane(Vector3.UP, 0.0).intersects_ray(origin, ray)
+		if point is Vector3:
+			if net == &"host":
+				_set_destination(0, point)
+			elif net == &"guest":
+				_guest_destination.rpc_id(1, point)
+		get_viewport().set_input_as_handled()
+
+
+func _choose(action: String, argument: String) -> void:
+	if profile.error != OK:
+		return
+	match action:
+		"lobby":
+			ui.lobby(profile, "")
+		"bases":
+			ui.bases(profile)
+		"roles":
+			ui.roles(profile)
+		"buy_base":
+			if profile.buy(argument, false):
+				ui.bases(profile)
+			else:
+				ui.lobby(profile, "Reúne más monedas para abrir esa base.")
+		"buy_role":
+			if profile.buy(argument, true):
+				ui.roles(profile)
+			else:
+				ui.lobby(profile, "Reúne 250 monedas para desbloquear ese rol.")
+		"choose_role":
+			profile.data.active_role = argument
+			profile.save()
+			ui.roles(profile)
+		"reset_confirm":
+			ui.confirm_reset(sim.rules.bases[argument].name, argument)
+		"reset":
+			profile.data.bases.erase(argument)
+			profile.save()
+			ui.bases(profile)
+		"host":
+			host(argument)
+		"join":
+			join(ui.address.text.strip_edges())
+		"leave":
+			_leave()
+		"menu":
+			ui.session_menu(net == &"host")
+		"back_to_play":
+			ui.playing()
+		"action", "release":
+			if net == &"host":
+				_interact(0, action == "release")
+			elif net == &"guest":
+				_guest_action.rpc_id(1, action == "release")
+		"science":
+			_science_from_session = net in [&"host", &"guest"]
+			_show_science(0)
+		"previous_science":
+			_show_science(-1)
+		"next_science":
+			_show_science(1)
+		"close_science":
+			if _science_from_session:
+				ui.session_menu(net == &"host")
+			else:
+				ui.lobby(profile, "")
+
+
+func host(id: String, port: int = PORT) -> void:
+	if not profile.open_base(id):
+		return
+	var peer := ENetMultiplayerPeer.new()
+	if peer.create_server(port, 1) != OK:
+		ui.lobby(profile, "No se pudo abrir la partida. Comprueba el puerto UDP %d." % port)
+		return
+	multiplayer.multiplayer_peer = peer
+	net = &"host"
+	play_started = false
+	var slot: Dictionary = profile.data.bases.get(id, {})
+	saved_run = int(slot.get("run", randi()))
+	_coins_by_guest = slot.get("guest_pending", {}).duplicate()
+	_prepare_base(id, saved_run)
+	if not slot.is_empty():
+		sim.restore(slot.active.duplicate(true))
+		sim.checkpoint = slot.checkpoint.duplicate(true)
+		_set_positions(slot.positions)
+		positions_at_dawn = slot.checkpoint_positions.duplicate()
+	profile.data.recent = id
+	if slot.is_empty():
+		_save_host(false)
+	else:
+		profile.save()
+	_address = _lan_address(port)
+	ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+
+
+func join(address: String, port: int = PORT) -> void:
+	if address.is_empty():
+		ui.lobby(profile, "Escribe la dirección que aparece en el dispositivo del anfitrión.")
+		return
+	var peer := ENetMultiplayerPeer.new()
+	if peer.create_client(address, port) != OK:
+		ui.lobby(profile, "No se pudo abrir la conexión.")
+		return
+	net = &"joining"
+	multiplayer.multiplayer_peer = peer
+	ui.wait_for_guest("UNIÉNDOTE A LA BASE", address, "Conectando…")
+
+
+func _prepare_base(id: String, seed_value: int) -> void:
+	sim = LunarMission.new()
+	sim.prepare(id, seed_value)
+	sim.roles[0] = String(profile.data.active_role)
+	world.set_base(sim.base.soil, StringName(id))
+	world.show_field_models("")
+	_set_positions(CrestWorld.SPAWNS)
+	positions_at_dawn = _positions()
+	_route[0].clear()
+	_route[1].clear()
+	_vectors.fill(Vector2.ZERO)
+	_alert_kind = ""
+
+
+func _positions() -> Array:
+	return [pilots[0].position, pilots[1].position]
+
+
+func _set_positions(points: Array) -> void:
+	for index in range(2):
+		pilots[index].position = points[index]
+		pilots[index].velocity = Vector3.ZERO
+
+
+func _save_host(exact: bool) -> bool:
+	var current := sim.state() if exact else sim.checkpoint.duplicate(true)
+	var points := _positions() if exact else positions_at_dawn.duplicate()
+	profile.data.bases[sim.base_id] = {
+		"active": current,
+		"checkpoint": sim.checkpoint.duplicate(true),
+		"positions": points,
+		"checkpoint_positions": positions_at_dawn.duplicate(),
+		"guest_pending": _coins_by_guest.duplicate() if exact else {},
+		"run": saved_run
+	}
+	return profile.save()
+
+
+func _leave() -> void:
+	if net == &"host":
+		if not _save_host(true):
+			ui.wait_for_guest(sim.base.name, _address, "El guardado falló. Inténtalo de nuevo.")
+			return
+		if guest_peer != 0:
+			_end_session.rpc_id(guest_peer)
+	_close_network()
+	ui.lobby(profile, "")
+
+
+func _close_network() -> void:
+	net = &"lobby"
+	play_started = false
+	guest_peer = 0
+	guest_id = ""
+	_replica_positions.clear()
+	_replica_headings.clear()
+	multiplayer.multiplayer_peer = null
+	for pilot in pilots:
+		pilot.show()
+
+
+func _lan_address(port: int) -> String:
+	for address in IP.get_local_addresses():
+		if (
+			address.begins_with("192.168.")
+			or address.begins_with("10.")
+			or address.begins_with("172.")
+		):
+			return "%s   ·   UDP %d" % [address, port]
+	return "Dirección local   ·   UDP %d" % port
+
+
+func _request_join() -> void:
+	_join_request.rpc_id(
+		1, profile.data.id, PackedStringArray(profile.data.opened), profile.data.active_role
+	)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _join_request(id: String, unlocked: PackedStringArray, role: String) -> void:
+	var sender := multiplayer.get_remote_sender_id()
+	if net != &"host" or guest_peer != 0 or sender <= 1:
+		return
+	if id.length() != 32 or not id.is_valid_hex_number() or sim.base_id not in unlocked:
+		_join_rejected.rpc_id(sender, "Debes tener esta base desbloqueada.")
+		return
+	guest_peer = sender
+	guest_id = id
+	sim.roles[1] = role if sim.rules.roles.has(role) else ""
+	sim.set_guest(true, pilots[1].position)
+	_inactivity = 0.0
+	_accept_join.rpc_id(sender, sim.base_id, saved_run, sim.roles)
+	_send_awards()
+	if not play_started:
+		play_started = true
+		ui.playing()
+	_send_snapshot()
+	_notice("Los dos astronautas están conectados.")
+
+
+@rpc("authority", "call_remote", "reliable")
+func _accept_join(id: String, seed_value: int, active_roles: Array) -> void:
+	if net != &"joining":
+		return
+	_prepare_base(id, seed_value)
+	sim.roles = active_roles
+	sim.connected[1] = true
+	net = &"guest"
+	ui.playing()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _join_rejected(reason: String) -> void:
+	_close_network()
+	ui.lobby(profile, reason)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _end_session() -> void:
+	_host_left()
+
+
+func _peer_left(peer: int) -> void:
+	if net != &"host" or peer != guest_peer:
+		return
+	var tutorial := sim.phase == &"tutorial"
+	sim.set_guest(false, pilots[1].position)
+	if tutorial:
+		positions_at_dawn = _positions()
+		_save_host(false)
+	_route[1].clear()
+	_vectors[1] = Vector2.ZERO
+	guest_peer = 0
+	guest_id = ""
+	_notice("Tu compañero salió. La base sigue activa.")
+
+
+func _host_left() -> void:
+	if net in [&"guest", &"joining"]:
+		_close_network()
+		ui.lobby(profile, "El anfitrión salió. Se conservaron las monedas aseguradas.")
+
+
+func _connection_failed() -> void:
+	if net == &"joining":
+		_close_network()
+		ui.lobby(profile, "No se encontró la partida en esa dirección.")
+
+
+func _host_frame(delta: float) -> void:
+	_vectors[0] = ui.joystick.axis if ui.play.visible else Vector2.ZERO
+	_inactivity += delta
+	if _inactivity > 0.45:
+		_vectors[1] = Vector2.ZERO
+	for index in range(2):
+		_move_pilot(index, delta)
+		_spots[index] = world.nearest(pilots[index].position, sim.phase == &"tutorial")
+		var position := pilots[index].position
+		for station: StringName in [&"solar", &"irrigation"]:
+			var marker: Node3D = world.markers[station]
+			if _spots[index] == &"" and position.distance_to(marker.position) <= 1.55:
+				_spots[index] = station
+	if guest_peer != 0 and sim.phase != &"tutorial":
+		var period := float(sim.rules.cycle.period)
+		var time := minf(delta, period - sim.elapsed)
+		_coins_by_guest[guest_id] = (
+			float(_coins_by_guest.get(guest_id, 0.0)) + sim.wallet_rate(true) * time / period
+		)
+	var day_rate := sim.wallet_rate(true)
+	var had_returned := sim.returned
+	sim.tick(delta, _sheltered(), _spots)
+	if sim.withdrew:
+		_set_positions(positions_at_dawn)
+		_route[0].clear()
+		_route[1].clear()
+		_coins_by_guest.clear()
+		_notice("Sin aire. Volvieron al último amanecer.")
+	if sim.dawn:
+		positions_at_dawn = _positions()
+		profile.pay_day(sim.base_id, saved_run, sim.days, day_rate, _coins_by_guest)
+		_coins_by_guest.clear()
+		if _save_host(false):
+			_send_awards()
+			_notice("Amanecer. Progreso y monedas asegurados.")
+		else:
+			_notice("No se pudo guardar el amanecer.")
+	if not had_returned and sim.returned:
+		profile.pay_mission(sim.base_id, int(sim.difficulty.coins), guest_id)
+		sim.checkpoint.returned = true
+		sim.checkpoint.earth_ok = false
+		sim.checkpoint.radio_left = 0.0
+		if _save_host(false):
+			_send_awards()
+		_notice("¡Misión de regreso a Tierra completada!")
+	_render(delta, 0)
+	_sync_left -= delta
+	if _sync_left <= 0.0:
+		_sync_left = SAMPLE_RATE
+		_send_snapshot()
+
+
+func _guest_frame(delta: float) -> void:
+	_send_left -= delta
+	if _send_left <= 0.0:
+		_send_left = 0.06
+		_guest_move.rpc_id(1, ui.joystick.axis)
+	if _replica_positions.is_empty():
+		return
+	for index in range(2):
+		var pilot := pilots[index]
+		var target: Vector3 = _replica_positions[index]
+		var difference := pilot.position.distance_squared_to(target)
+		pilot.position = (
+			target if difference > 16.0 else pilot.position.lerp(target, minf(delta * 12.0, 1.0))
+		)
+		pilot.animate_replica(
+			delta,
+			_replica_headings[index],
+			difference > 0.012,
+			sim.pilots[index].cargo != 0,
+			sim.pilots[index].seated
+		)
+		_spots[index] = world.nearest(pilot.position, sim.phase == &"tutorial")
+	_render(delta, 1)
+
+
+func _interact(player: int, release: bool) -> void:
+	var pilot := pilots[player]
+	var spot := _spots[player]
+	var message := ""
+	if release:
+		var cargo := sim.cargo_kind(player)
+		var station_deposit := spot == &"training" and player == 1 and cargo == &"sample"
+		station_deposit = station_deposit or (spot == &"refinery" and cargo in [&"ice", &"ore"])
+		station_deposit = station_deposit or (spot == &"pad" and cargo in [&"fuel", &"food"])
+		if station_deposit:
+			message = sim.use_station(player, spot)
+		else:
+			var other := 1 - player
+			var near: bool = (
+				sim.connected[other] and pilot.position.distance_to(pilots[other].position) <= 2.35
+			)
+			message = sim.release(player, pilot.position, near)
+	else:
+		if sim.pilots[player].seated:
+			spot = &"pad"
+		var crate := _closest_box(pilot.position) if sim.cargo_kind(player) == &"" else 0
+		if crate != 0 and sim.pickup(player, crate):
+			_notice("Caja recogida")
+			return
+		var was_tutorial := sim.phase == &"tutorial"
+		message = sim.use_station(player, spot)
+		if sim.pilots[player].seated:
+			pilot.position = CrestWorld.BOARDING[player]
+		if was_tutorial and sim.phase == &"active":
+			positions_at_dawn = _positions()
+			_save_host(false)
+	if message.is_empty():
+		message = "Acércate a una estación o a una caja" if not release else "Toma una caja primero"
+	_notice(message)
+
+
+func _closest_box(point: Vector3) -> int:
+	var closest := 1.25
+	var result := 0
+	for id: int in sim.crates:
+		var crate: Dictionary = sim.crates[id]
+		var distance := point.distance_to(crate.point)
+		if crate.owner == -1 and distance < closest:
+			result = id
+			closest = distance
+	return result
+
+
+func _set_destination(player: int, point: Vector3) -> void:
+	if point.is_finite():
+		_route[player] = _routes.path(pilots[player].position, point)
+
+
+func _move_pilot(index: int, delta: float) -> void:
+	var pilot := pilots[index]
+	if not sim.connected[index] or sim.pilots[index].seated:
+		pilot.velocity = Vector3.ZERO
+		return
+	var input: Vector2 = _vectors[index]
+	var direction := Vector2.ZERO
+	if input.length_squared() > 0.012:
+		_route[index].clear()
+		var right := Vector2(camera.basis.x.x, camera.basis.x.z).normalized()
+		var back := Vector2(camera.basis.z.x, camera.basis.z.z).normalized()
+		direction = (right * input.x + back * input.y).limit_length(input.length())
+	else:
+		direction = _follow_path(index, pilot.position)
+	pilot.drive(delta, direction * sim.speed_factor(index), false, false)
+	pilot.animate_gait(delta, sim.pilots[index].cargo != 0, false)
+
+
+func _follow_path(index: int, point: Vector3) -> Vector2:
+	var route := _route[index]
+	while not route.is_empty():
+		var displacement := route[0] - Vector2(point.x, point.z)
+		if displacement.length_squared() > 0.072:
+			return (
+				displacement.limit_length(0.65).normalized()
+				* minf(1.0, displacement.length() * 1.9)
+			)
+		route.remove_at(0)
+	_route[index] = route
+	return Vector2.ZERO
+
+
+func _sheltered() -> Array[bool]:
+	return [
+		world.sheltered(pilots[0].position) or sim.pilots[0].seated,
+		world.sheltered(pilots[1].position) or sim.pilots[1].seated
+	]
+
+
+func _render(delta: float, player: int) -> void:
+	for index in range(2):
+		pilots[index].visible = sim.connected[index] and sim.launch_fx <= 0.0
+	for id: int in _boxes.keys():
+		if not sim.crates.has(id):
+			_boxes[id].queue_free()
+			_boxes.erase(id)
+	for id: int in sim.crates:
+		var crate: Dictionary = sim.crates[id]
+		if not _boxes.has(id):
+			var box := Node3D.new()
+			FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
+			FieldWorld.box(box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME)
+			add_child(box)
+			_boxes[id] = box
+		var mesh: Node3D = _boxes[id]
+		mesh.global_position = (
+			crate.point + Vector3.UP * 0.29
+			if crate.owner == -1
+			else pilots[crate.owner].carrying.global_position
+		)
+	world.reflect(sim, _spots, delta)
+	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
+	world.animate_free_play_launch(sim.launch_fx > 0.0, sim.returned, delta)
+	_feedback_time = maxf(0.0, _feedback_time - delta)
+	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
+	_alert_if_changed()
+
+
+func _alert_if_changed() -> void:
+	var kind := ""
+	if sim.storm_warning() > 0.0 or sim.storm_active():
+		kind = "solar"
+	elif sim.outage_warning() > 0.0 or sim.energy_cut():
+		kind = "power"
+	elif sim.radio_warning() or sim.radio_cut():
+		kind = "radio"
+	if kind != _alert_kind and not kind.is_empty():
+		_alert_audio.play()
+	_alert_kind = kind
+
+
+func _build_alert_audio() -> void:
+	var stream := AudioStreamWAV.new()
+	var buffer := PackedByteArray()
+	buffer.resize(4000)
+	for index in range(buffer.size()):
+		var fade := minf(1.0, index / 300.0) * (1.0 - float(index) / buffer.size())
+		buffer[index] = int(38.0 * sin(TAU * index * 660.0 / 22050.0) * fade) & 255
+	stream.format = AudioStreamWAV.FORMAT_8_BITS
+	stream.mix_rate = 22050
+	stream.data = buffer
+	_alert_audio.stream = stream
+	add_child(_alert_audio)
+
+
+func _send_snapshot() -> void:
+	if guest_peer != 0:
+		var snapshot := [
+			sim.state(), sim.connected, _positions(), [pilots[0].direction, pilots[1].direction]
+		]
+		_snapshot.rpc_id(
+			guest_peer, var_to_bytes(snapshot).compress(FileAccess.COMPRESSION_DEFLATE)
+		)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _snapshot(packet: PackedByteArray) -> void:
+	if net != &"guest":
+		return
+	var snapshot: Variant = bytes_to_var(
+		packet.decompress_dynamic(16384, FileAccess.COMPRESSION_DEFLATE)
+	)
+	if snapshot is Array and snapshot.size() == 4:
+		sim.restore(snapshot[0])
+		sim.connected = snapshot[1]
+		_replica_positions = snapshot[2]
+		_replica_headings = snapshot[3]
+
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func _guest_move(axis: Vector2) -> void:
+	if net == &"host" and multiplayer.get_remote_sender_id() == guest_peer and axis.is_finite():
+		_vectors[1] = axis.limit_length()
+		_inactivity = 0.0
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _guest_destination(point: Vector3) -> void:
+	if net == &"host" and multiplayer.get_remote_sender_id() == guest_peer and play_started:
+		_set_destination(1, point)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _guest_action(release: bool) -> void:
+	if net == &"host" and multiplayer.get_remote_sender_id() == guest_peer and play_started:
+		_interact(1, release)
+
+
+func _notice(message: String) -> void:
+	_feedback = message
+	_feedback_time = 3.1
+	if net == &"host" and guest_peer != 0:
+		_remote_notice.rpc_id(guest_peer, message)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _remote_notice(message: String) -> void:
+	if net == &"guest":
+		_notice(message)
+
+
+func _send_awards() -> void:
+	var awards: Dictionary = profile.data.guest_awards.get(guest_id, {})
+	if guest_peer != 0 and not awards.is_empty():
+		_award.rpc_id(guest_peer, awards)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _award(receipts: Dictionary) -> void:
+	if net != &"guest":
+		return
+	for id: String in receipts:
+		profile.credit(id, receipts[id])
+	profile.save()
+
+
+func _show_science(step: int) -> void:
+	_science_index = posmod(_science_index + step, sim.records.size())
+	var record := sim.records[_science_index]
+	var title: String = CrestSim.SCIENCE_TITLES.get(record.id, record.instrument)
+	ui.show_science(title, sim.science_text(record), _science_index, sim.records.size())
+
+
+func _add_pilot(index: int) -> void:
+	var pilot := CrestPilot.new()
+	pilot.tint = CrestWorld.BLUE if index == 0 else CrestWorld.AMBER
+	pilot.collision_layer = 2
+	pilot.collision_mask = 1
+	pilot.position = CrestWorld.SPAWNS[index]
+	add_child(pilot)
+	pilot.build()
+	var marker := Label3D.new()
+	marker.text = "● J1" if index == 0 else "◆ J2"
+	marker.font = CrestWorld.MONO
+	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	marker.modulate = pilot.tint
+	marker.position = Vector3.UP * 1.92
+	marker.no_depth_test = true
+	marker.pixel_size = 0.019
+	marker.outline_size = 12
+	pilot.add_child(marker)
+	pilots.append(pilot)

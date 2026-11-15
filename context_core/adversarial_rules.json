@@ -1,5 +1,5 @@
 {
-  "revision": 13,
+  "revision": 14,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -288,6 +288,130 @@
         "risk": "Se atribuyen a NASA alturas, ciclos, yacimientos o dificultades del juego.",
         "check": "Etiquetar documentación de fuente, recorte geográfico si existe y parámetros de juego por separado."
       }
+    ]
+  },
+  "historical_groups": [
+    "rules",
+    "limits",
+    "outpost_rules",
+    "field_rules",
+    "coop_tycoon_rules",
+    "map_redesign_checks"
+  ],
+  "campaign_2026": {
+    "source": "context_core/Artemis_Reglas_y_mecanicas.pdf",
+    "rules": [
+      {
+        "id": "LUN-01",
+        "source": [
+          "TIE-1",
+          "EST-6",
+          "MON-3"
+        ],
+        "cause": "Amanecer a los 900 s",
+        "effect": "Avanzar día, persistir estado y acreditar cada recibo una sola vez."
+      },
+      {
+        "id": "LUN-02",
+        "source": [
+          "RET-1",
+          "RET-2",
+          "MEJ-3"
+        ],
+        "cause": "Un astronauta conectado agota el aire",
+        "effect": "Restaurar estado y posiciones del amanecer, cancelar confirmación y descartar progreso sin asegurar."
+      },
+      {
+        "id": "LUN-03",
+        "source": [
+          "REC-A2",
+          "REC-A3",
+          "REC-E3",
+          "REC-H1"
+        ],
+        "cause": "Cae la noche",
+        "effect": "Detener generación solar y aumentar 50% el consumo de aire exterior. El hambre afecta solo la velocidad al llegar a cero."
+      },
+      {
+        "id": "LUN-04",
+        "source": [
+          "EVT-4b",
+          "EVT-4c",
+          "EVT-12c"
+        ],
+        "cause": "Se genera el calendario",
+        "effect": "Persistirlo; los apagones se limitan a la noche. Conservar margen de 60 s respecto al amanecer y evitar solapamientos."
+      },
+      {
+        "id": "LUN-05",
+        "source": [
+          "EVT-12",
+          "MEJ-7"
+        ],
+        "cause": "Apagón",
+        "effect": "Pausar cargas secundarias; el soporte repone a 1 aire/s o 2 con batería auxiliar mientras haya reservas."
+      },
+      {
+        "id": "LUN-06",
+        "source": [
+          "EVT-8",
+          "EVT-9",
+          "EVT-10",
+          "MIS-3d"
+        ],
+        "cause": "Corte de comunicación en Nobile Rim 2",
+        "effect": "Bloquear nuevos envíos de radio durante 300 s. La respuesta ya enviada y la cuenta de vuelo continúan."
+      },
+      {
+        "id": "LUN-07",
+        "source": [
+          "MIS-3b",
+          "MIS-4",
+          "MIS-6"
+        ],
+        "cause": "Se libera un asiento, se desconecta un tripulante o comienza alerta solar",
+        "effect": "Cancelar la cuenta y conservar la carga y la confirmación. Si el lanzamiento termina, acreditar bono único por perfil y base y continuar en modo libre."
+      },
+      {
+        "id": "LUN-08",
+        "source": [
+          "JUG-5",
+          "JUG-15"
+        ],
+        "cause": "Se reciben dos acciones sobre la misma caja o se solicita una zona cerrada",
+        "effect": "El host valida propiedad y distancia. El invitado debe declarar la región disponible en su perfil."
+      },
+      {
+        "id": "LUN-09",
+        "source": [
+          "JUG-10",
+          "JUG-11",
+          "JUG-12",
+          "EST-7b"
+        ],
+        "cause": "Se desconecta una parte",
+        "effect": "Solo el anfitrión sigue simulando. El invitado conserva recibos confirmados; el host reanuda desde la última escritura."
+      },
+      {
+        "id": "LUN-10",
+        "source": [
+          "EST-9",
+          "EST-12",
+          "MON-10"
+        ],
+        "cause": "Reinicio confirmado",
+        "effect": "Borrar ranura de esa base. Conservar saldo, compras y recibos de misión del perfil."
+      }
+    ],
+    "open": [
+      "REC-E7",
+      "VAC-3",
+      "VAC-8",
+      "VAC-10",
+      "VAC-11",
+      "VAC-16",
+      "VAC-17",
+      "VAC-18"
     ]
   }
 }

@@ -25,6 +25,14 @@ func build() -> void:
 	floor_snap_length = 0.18
 	rig = Node3D.new()
 	add_child(rig)
+	carrying = Node3D.new()
+	carrying.position = Vector3(0.43, 0.69, -0.36)
+	rig.add_child(carrying)
+	carrying.hide()
+	_build_visuals()
+
+
+func _build_visuals() -> void:
 	var shell := Color("#e5eaff")
 	var dark := Color("#232e4b")
 	var gold := Color("#ffaa56")
@@ -45,11 +53,7 @@ func build() -> void:
 		feet.append(leg)
 		FieldWorld.box(leg, Vector3(0, -0.16, 0), Vector3(0.23, 0.37, 0.24), shell)
 		FieldWorld.box(leg, Vector3(0, -0.36, -0.055), Vector3(0.24, 0.17, 0.35), dark)
-	carrying = Node3D.new()
-	carrying.position = Vector3(0.43, 0.69, -0.36)
-	rig.add_child(carrying)
 	FieldWorld.box(carrying, Vector3.ZERO, Vector3(0.44, 0.44, 0.44), gold, true)
-	carrying.hide()
 
 
 func drive(delta: float, axis: Vector2, jump: bool, dash: bool) -> void:

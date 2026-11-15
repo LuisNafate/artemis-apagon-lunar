@@ -17,7 +17,7 @@ var world := CrestWorld.new()
 var camera := Camera3D.new()
 var hud := CrestHUD.new()
 var intro := CrestIntro.new()
-var pilots: Array[FieldPilot] = []
+var pilots: Array[CrestPilot] = []
 var crate_meshes: Dictionary = {}
 var _spots: Array[StringName] = [&"", &""]
 var _queued: Array[Vector2i] = []
@@ -156,19 +156,15 @@ func _night_warning() -> bool:
 
 
 func _add_pilot(player: int) -> void:
-	var pilot := FieldPilot.new()
-	pilot.name = "Astronauta%d" % (player + 1)
+	var pilot := CrestPilot.new()
+	var tint := CrestWorld.BLUE if player == 0 else CrestWorld.AMBER
+	pilot.name = "Gato%d" % (player + 1)
+	pilot.tint = tint
 	pilot.collision_layer = 2
 	pilot.collision_mask = 1
 	pilot.position = CrestWorld.SPAWNS[player]
 	add_child(pilot)
 	pilot.build()
-	pilot.scale = Vector3.ONE
-	var tint := CrestWorld.BLUE if player == 0 else CrestWorld.AMBER
-	var crew_badge := FieldWorld.box(
-		pilot.rig, Vector3(0, 0.99, -0.223), Vector3(0.36, 0.12, 0.065), tint, true
-	)
-	crew_badge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var pointer := Label3D.new()
 	pointer.text = "● J1" if player == 0 else "◆ J2"
 	pointer.position = Vector3(0, 1.95, 0)
@@ -271,6 +267,8 @@ func _refresh(delta: float) -> void:
 			mesh.global_position = pilots[crate.owner].carrying.global_position
 	for player in range(2):
 		pilots[player].visible = sim.phase != &"success"
+		var status := sim.pilots[player]
+		pilots[player].animate_gait(delta, status.cargo != 0, status.seated)
 	world.reflect(sim, _spots, delta)
 	hud.update_status(sim, _spots, _feedback if _feedback_left > 0.0 else "", _active_pilot)
 
@@ -434,6 +432,7 @@ func _select_base(index: int) -> void:
 func _start(practice: bool, skip: bool) -> void:
 	if skip:
 		sim.begin(practice, true)
+		world.show_field_models()
 		_show(&"")
 		_refresh(0.0)
 		return
@@ -451,6 +450,7 @@ func _finish_intro() -> void:
 	camera.size = 19.9
 	hud.show()
 	sim.begin(_intro_practice)
+	world.show_field_models()
 	_show(&"")
 	_refresh(0.0)
 

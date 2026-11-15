@@ -4,6 +4,9 @@ extends Node3D
 const MONO := preload("res://assets/ui/fonts/IBMPlexMono-Medium.ttf")
 const TRANSPORT := preload("res://assets/props_luna/nasa/apollo_descenso.glb")
 const NOBILE_RELIEF := preload("res://assets/props_luna/nasa/relieve_nobile_lola.glb")
+const LRO_MODEL := preload("res://assets/props_luna/nasa/lro_miniatura.glb")
+const GUIDE_MODEL := preload("res://assets/pilotos/astrocat_guia.glb")
+const TRANSPORT_PARK := Vector3(-11.9, 0.04, 7.45)
 const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
 const RECEIVER := preload("res://assets/props_luna/kenney/consola.glb")
 const RADIO_PIVOT_CORRECTION := Vector3(2.0, 0.0, 1.5)
@@ -60,9 +63,16 @@ var drill_upgrade: Node3D
 var training_desk: Node3D
 var crops: Node3D
 var transport: Node3D
+var field_models: Node3D
+var guide_animator: AnimationPlayer
 var nobile_relief: Node3D
 var supply_pallet: Node3D
 var shelter_shell: Node3D
+var refuge_alert: MeshInstance3D
+var _lro_display: Node3D
+var _craters: Node3D
+var _last_launch := false
+var _rocket_home: Vector3
 var _floor_color: StandardMaterial3D
 var _equipment: Array[Node3D] = []
 var _soil := SOIL
@@ -81,11 +91,13 @@ func build() -> void:
 	_walkways()
 	_stations()
 	_build_rocket()
+	_rocket_home = rocket.position
 	transport = TRANSPORT.instantiate()
 	transport.position = Vector3(-4, 0.25, 6.1)
 	transport.rotation_degrees.y = 21
 	add_child(transport)
 	transport.hide()
+	_build_field_models()
 	supply_pallet = _console(&"supply", LIME)
 	for index in range(3):
 		var parcel := Vector3(-0.49 + 0.49 * index, 0.22, 0.08)
@@ -96,13 +108,96 @@ func build() -> void:
 	supply_pallet.hide()
 
 
+func build_lunar_workshop() -> void:
+	for station: StringName in [&"solar", &"irrigation"]:
+		var is_solar := station == &"solar"
+		var point := Vector3(4.88, 0, -5.95) if is_solar else Vector3(3.14, 0, 0.65)
+		var tint := AMBER if is_solar else LIME
+		FieldWorld.box(self, point + Vector3(0, 0.28, -0.56), Vector3(0.9, 0.56, 0.55), FRAME)
+		FieldWorld.box(self, point + Vector3(0, 0.59, -0.56), Vector3(0.76, 0.06, 0.49), tint, true)
+		var label := Label3D.new()
+		label.text = "REFUERZO SOLAR" if is_solar else "RIEGO"
+		label.position = point + Vector3.UP * 0.68
+		label.font = MONO
+		label.pixel_size = 0.016
+		label.outline_size = 10
+		label.modulate = tint
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		add_child(label)
+		markers[station] = label
+	var ring := TorusMesh.new()
+	ring.inner_radius = 1.61
+	ring.outer_radius = 1.72
+	ring.rings = 24
+	ring.ring_segments = 6
+	refuge_alert = FieldWorld._mesh(self, Vector3(0, 0.045, 3.88), ring, AMBER, true)
+	refuge_alert.scale.z = 1.29
+	refuge_alert.hide()
+
+
+func show_field_models(science_key: String = "F1") -> void:
+	var lro_label := field_models.get_node("LroLabel") as Label3D
+	lro_label.text = ("LRO · " + science_key) if not science_key.is_empty() else "LRO"
+	transport.position = TRANSPORT_PARK
+	transport.scale = Vector3.ONE * 0.72
+	transport.show()
+	field_models.show()
+	guide_animator.play(&"Wave")
+	guide_animator.queue(&"Idle")
+
+
+func _build_field_models() -> void:
+	field_models = Node3D.new()
+	field_models.name = "MissionModels"
+	add_child(field_models)
+	var guide: Node3D = GUIDE_MODEL.instantiate()
+	guide.name = "AstroCat"
+	guide.position = Vector3(-3.7, 0.08, 2.45)
+	guide.rotation.y = PI
+	guide.scale = Vector3.ONE * 0.51
+	field_models.add_child(guide)
+	guide_animator = guide.find_children("*", "AnimationPlayer", true, false)[0] as AnimationPlayer
+	guide_animator.get_animation(&"Idle").loop_mode = Animation.LOOP_LINEAR
+	_model_label("GUÍA", guide.position + Vector3(0, 1.95, 0.25), LIME)
+	var display_point := Vector3(-8.75, 0, -4.2)
+	FieldWorld.box(field_models, display_point + Vector3.UP * 0.18, Vector3(1.8, 0.36, 1.25), FRAME)
+	FieldWorld.box(
+		field_models, display_point + Vector3.UP * 0.38, Vector3(1.53, 0.06, 1.03), BLUE, true
+	)
+	_lro_display = LRO_MODEL.instantiate()
+	_lro_display.position = display_point + Vector3.UP * 1.19
+	_lro_display.rotation_degrees = Vector3(8, -25, 0)
+	_lro_display.scale = Vector3.ONE * 0.64
+	field_models.add_child(_lro_display)
+	_model_label("LRO · F1", display_point + Vector3(0, 0.35, 0.9), BLUE).name = "LroLabel"
+	_model_label("APOLO", TRANSPORT_PARK + Vector3(0, 0.35, 1.25), AMBER)
+	field_models.hide()
+
+
+func _model_label(caption: String, point: Vector3, color: Color) -> Label3D:
+	var label := Label3D.new()
+	label.text = caption
+	label.font = MONO
+	label.font_size = 27
+	label.pixel_size = 0.019
+	label.position = point
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.modulate = color.lightened(0.30)
+	label.outline_size = 11
+	label.outline_modulate = FRAME
+	field_models.add_child(label)
+	return label
+
+
 func set_base(soil_color: String, base_id: StringName) -> void:
 	_soil = Color(soil_color)
 	_floor_color.albedo_color = _soil
-	nobile_relief.visible = base_id == &"nobile"
+	nobile_relief.visible = base_id in [&"nobile", &"nobile_rim_1", &"nobile_rim_2"]
+	_build_craters(base_id)
 
 
 func animate_intro(progress: float) -> void:
+	transport.scale = Vector3.ONE
 	transport.visible = progress < 0.64
 	var arrival := smoothstep(0.0, 0.31, progress)
 	transport.position = Vector3(lerpf(-12.0, -3.5, arrival), lerpf(4.8, 0.04, arrival), 3.6)
@@ -138,6 +233,8 @@ func nearest(point: Vector3, tutorial: bool, supply: bool = false) -> StringName
 
 func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> void:
 	_mission_clock += delta
+	if field_models.visible:
+		_lro_display.rotate_y(delta * 0.55)
 	var storm := sim.storm_active()
 	var power := 0.22 if sim.shadow_active() else 1.03
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
@@ -200,29 +297,78 @@ func _terrain() -> void:
 		_border(Vector3(0, 0.13, z), Vector3(30.9, 0.26, 0.32))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 91258
-	for index in range(185):
-		var pos := Vector3(rng.randf_range(-30, 30), -0.018, rng.randf_range(-24, 22))
-		var size := rng.randf_range(0.07, 0.54)
-		var color := SOIL.lightened(rng.randf_range(0.09, 0.27))
-		_disc(self, pos, size, 0.035, color, 5)
-	for pos in [
-		Vector3(-14, 0, -5.3),
-		Vector3(-19, 0, 3),
-		Vector3(18, 0, 6),
-		Vector3(10, 0, -12),
-		Vector3(-7, 0, -12),
-		Vector3(-14, 0, 10),
-		Vector3(4, 0, 11)
-	]:
-		var width := rng.randf_range(1.35, 2.9)
-		_disc(self, pos, width, 0.045, SOIL.lightened(0.18), 15)
-		_disc(self, pos + Vector3(0, 0.025, 0.15), width * 0.86, 0.037, SOIL.darkened(0.19), 15)
-		_disc(self, pos + Vector3(-0.17, 0.05, 0.44), width * 0.62, 0.025, SOIL.darkened(0.28), 15)
+	var fleck_material := StandardMaterial3D.new()
+	fleck_material.vertex_color_use_as_albedo = true
+	fleck_material.roughness = 1.0
+	var fleck := CylinderMesh.new()
+	fleck.top_radius = 0.5
+	fleck.bottom_radius = 0.5
+	fleck.height = 1.0
+	fleck.radial_segments = 5
+	fleck.material = fleck_material
+	var batch := MultiMesh.new()
+	batch.transform_format = MultiMesh.TRANSFORM_3D
+	batch.use_colors = true
+	batch.mesh = fleck
+	batch.instance_count = 185
+	for index in range(batch.instance_count):
+		var pos := Vector3(rng.randf_range(-22, 22), -0.018, rng.randf_range(-14.4, 14.4))
+		var width := rng.randf_range(0.14, 1.08)
+		var basis := Basis.from_scale(Vector3(width, 0.035, width))
+		batch.set_instance_transform(index, Transform3D(basis, pos))
+		batch.set_instance_color(index, SOIL.lightened(rng.randf_range(0.09, 0.27)))
+	var speckles := MultiMeshInstance3D.new()
+	speckles.multimesh = batch
+	speckles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(speckles)
+	_build_craters(&"cresta")
 	for index in range(14):
-		var pos := Vector3(rng.randf_range(-28, 28), -0.15, rng.randf_range(10, 21))
+		var pos := Vector3(rng.randf_range(-28, 28), -0.15, rng.randf_range(13.8, 21))
 		FieldWorld.ball(
 			self, pos, Vector3(2.1, 1.3, 2.7) * rng.randf_range(0.6, 1.8), SOIL.darkened(0.16)
 		)
+
+
+func _build_craters(base_id: StringName) -> void:
+	if is_instance_valid(_craters):
+		remove_child(_craters)
+		_craters.queue_free()
+	_craters = Node3D.new()
+	_craters.name = "CrateresLaterales"
+	add_child(_craters)
+	var height_scale := 0.8 if base_id in [&"mons_mouton_plateau", &"slater_plain"] else 1.0
+	var placements := [
+		[Vector3(-15.95, 0.015, -4.6), 2.55, 0.76],
+		[Vector3(-11.8, 0.015, -10.65), 1.72, 0.49],
+		[Vector3(14.6, 0.015, -9.25), 2.42, 0.85],
+		[Vector3(17.1, 0.015, 1.15), 1.73, 0.63],
+		[Vector3(9.9, 0.015, 10.57), 2.37, 0.80],
+		[Vector3(-13.7, 0.015, 10.2), 1.61, 0.57]
+	]
+	for index in range(placements.size()):
+		var placement: Array = placements[index]
+		var crater := LunarCrater.new()
+		crater.position = placement[0]
+		crater.build(
+			placement[1], float(placement[2]) * height_scale, hash([base_id, index]), _soil
+		)
+		_craters.add_child(crater)
+
+
+func show_refuge_alert(show_alert: bool) -> void:
+	refuge_alert.visible = show_alert
+
+
+func animate_free_play_launch(active: bool, returned: bool, delta: float) -> void:
+	if not returned:
+		rocket.position = _rocket_home
+		rocket.show()
+	elif active:
+		plume.show()
+		rocket.position.y += delta * (3.5 + rocket.position.y * 0.8)
+	elif _last_launch or rocket.visible:
+		rocket.hide()
+	_last_launch = active
 
 
 func _walkways() -> void:

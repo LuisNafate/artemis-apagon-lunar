@@ -262,7 +262,18 @@ func _input_and_world() -> void:
 		get_viewport().get_texture().get_image().save_png("user://crest-story.png")
 	_tap(KEY_ESCAPE)
 	await get_tree().physics_frame
-	_check(not game.world.transport.visible, "la nave se retira al salir de la introducción")
+	_check(
+		game.world.transport.visible and game.world.transport.position == CrestWorld.TRANSPORT_PARK,
+		"la nave queda estacionada al salir de la introducción"
+	)
+	_check(
+		(
+			game.world.field_models.visible
+			and game.world.guide_animator.has_animation(&"Wave")
+			and game.world.guide_animator.has_animation(&"Idle")
+		),
+		"AstroCat y las maquetas están visibles en el mapa"
+	)
 	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
 	for part in ["satelliteDish_detailed", "machine_wirelessCable"]:
 		var model := game.world.find_child(part, true, false) as MeshInstance3D
@@ -271,6 +282,48 @@ func _input_and_world() -> void:
 			"modelo junto a la radio"
 		)
 	_check(game.sim.phase == &"tutorial" and not game.sim.solo, "selector cooperativo por teclado")
+	var blue: CrestPilot = game.pilots[0]
+	var orange: CrestPilot = game.pilots[1]
+	_check(
+		blue.skeleton != orange.skeleton and blue.skeleton.get_bone_count() == 15,
+		"cada gato tiene un esqueleto articulado independiente"
+	)
+	var right_shoulder := orange.skeleton.find_bone("ShoulderR")
+	var right_hip := blue.skeleton.find_bone("HipR")
+	var left_hip := blue.skeleton.find_bone("HipL")
+	_check(
+		(
+			blue.suit != orange.suit
+			and blue.suit.get_shader_parameter("player_tint") == CrestWorld.BLUE
+			and orange.suit.get_shader_parameter("player_tint") == CrestWorld.AMBER
+		),
+		"cada gato conserva su material y su color"
+	)
+	_check(
+		(
+			blue.suit.get_shader_parameter("base_texture") != null
+			and (
+				blue.suit.get_shader_parameter("base_texture")
+				== orange.suit.get_shader_parameter("base_texture")
+			)
+		),
+		"los dos gatos comparten la textura importada"
+	)
+	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
+		var original_transform: Transform3D = game.camera.transform
+		var original_size: float = game.camera.size
+		game.camera.position = Vector3(3.2, 4.65, 13.3)
+		game.camera.look_at(Vector3(0.0, 0.94, 6.4))
+		game.camera.size = 5.6
+		var practice_marker: Node3D = game.world.markers[&"training"]
+		game.set_physics_process(false)
+		practice_marker.hide()
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("user://crest-gatos.png")
+		practice_marker.show()
+		game.set_physics_process(true)
+		game.camera.transform = original_transform
+		game.camera.size = original_size
 	_tap(KEY_E)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -279,6 +332,20 @@ func _input_and_world() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(game.sim.tutorial_step == 2, "Q pasa a jugador dos en el mapa")
+	var transferred: Node3D = game.crate_meshes[game.sim.pilots[1].cargo]
+	_check(
+		transferred.global_position.is_equal_approx(orange.carrying.global_position),
+		"la caja acompaña al gato que la recibió"
+	)
+	for frame in range(10):
+		await get_tree().physics_frame
+	_check(
+		(
+			orange.skeleton.get_bone_pose_rotation(right_shoulder).get_euler().x > 0.3
+			and not blue.skeleton.get_bone_pose_rotation(right_shoulder).get_euler().x > 0.01
+		),
+		"solo el gato que lleva la caja levanta el brazo"
+	)
 	_tap(KEY_ENTER)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -299,9 +366,21 @@ func _input_and_world() -> void:
 		game.pilots[0].position.x < first.x - 1.0 and game.pilots[1].position.x > second.x + 1.0,
 		"bancos simultáneos"
 	)
+	_check(
+		not blue.skeleton.get_bone_pose_rotation(left_hip).is_equal_approx(
+			blue.skeleton.get_bone_pose_rotation(right_hip)
+		),
+		"los pasos articulan las caderas por separado"
+	)
 	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
-		get_viewport().get_texture().get_image().save_png("user://crest-play.png")
+		get_viewport().get_texture().get_image().save_png("user://crest-unificado.png")
+	for frame in range(26):
+		await get_tree().physics_frame
+	_check(
+		blue.skeleton.get_bone_pose_rotation(left_hip).is_equal_approx(Quaternion.IDENTITY),
+		"las caderas recuperan el reposo al detenerse"
+	)
 	_tap(KEY_ESCAPE)
 	await get_tree().physics_frame
 	var before: float = game.sim.elapsed

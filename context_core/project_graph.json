@@ -1,5 +1,5 @@
 {
-  "revision": 13,
+  "revision": 14,
   "nodes": [
     {
       "id": "config",
@@ -509,7 +509,7 @@
       "id": "coop_local",
       "kind": "mechanic",
       "title": "Dos controles y ciclo local compartido",
-      "status": "implemented"
+      "status": "historical_prototype"
     },
     {
       "id": "coop_science",
@@ -684,12 +684,14 @@
     {
       "id": "crest_scene",
       "kind": "scene",
-      "path": "crest/crest.tscn"
+      "path": "crest/crest.tscn",
+      "status": "historical_prototype"
     },
     {
       "id": "crest_game",
       "kind": "script",
-      "path": "crest/crest_game.gd"
+      "path": "crest/crest_game.gd",
+      "status": "historical_prototype"
     },
     {
       "id": "crest_sim",
@@ -719,13 +721,14 @@
     {
       "id": "crest_export",
       "kind": "tool",
-      "path": "export_presets.cfg"
+      "path": "export_presets.cfg",
+      "status": "historical_prototype"
     },
     {
       "id": "crest_solo",
       "kind": "mechanic",
       "title": "Modo individual con cambio de astronauta",
-      "status": "implemented"
+      "status": "historical_prototype"
     },
     {
       "id": "crest_menu_choice",
@@ -943,6 +946,117 @@
       "id": "lola_terrain_tool",
       "kind": "script",
       "path": "tools/generar_relieve_nobile.py"
+    },
+    {
+      "id": "rules_2026",
+      "kind": "spec",
+      "path": "context_core/Artemis_Reglas_y_mecanicas.pdf"
+    },
+    {
+      "id": "live_campaign_design",
+      "kind": "document",
+      "path": "context_core/campana_lunar_vigente.md"
+    },
+    {
+      "id": "art_production",
+      "kind": "document",
+      "path": "context_core/catalogo_produccion_artemis.md"
+    },
+    {
+      "id": "lunar_scene",
+      "kind": "scene",
+      "path": "lunar/lunar.tscn"
+    },
+    {
+      "id": "lunar_game",
+      "kind": "script",
+      "path": "lunar/lunar_game.gd"
+    },
+    {
+      "id": "lunar_mission",
+      "kind": "script",
+      "path": "lunar/lunar_mission.gd"
+    },
+    {
+      "id": "lunar_profile",
+      "kind": "script",
+      "path": "lunar/lunar_profile.gd"
+    },
+    {
+      "id": "lunar_interface",
+      "kind": "script",
+      "path": "lunar/lunar_interface.gd"
+    },
+    {
+      "id": "lunar_touch",
+      "kind": "script",
+      "path": "lunar/lunar_touch.gd"
+    },
+    {
+      "id": "lunar_routes",
+      "kind": "script",
+      "path": "lunar/lunar_routes.gd"
+    },
+    {
+      "id": "touch_two_clients",
+      "kind": "system"
+    },
+    {
+      "id": "lunar_days",
+      "kind": "system"
+    },
+    {
+      "id": "lunar_return",
+      "kind": "system"
+    },
+    {
+      "id": "lunar_unlocks",
+      "kind": "system"
+    },
+    {
+      "id": "lunar_crater",
+      "kind": "script",
+      "path": "crest/lunar_crater.gd"
+    },
+    {
+      "id": "crest_pilot",
+      "kind": "script",
+      "path": "crest/crest_pilot.gd"
+    },
+    {
+      "id": "cat_model",
+      "kind": "asset",
+      "path": "assets/pilotos/gato-modelo2.glb"
+    },
+    {
+      "id": "cat_shader",
+      "kind": "shader",
+      "path": "assets/pilotos/traje_gato.gdshader"
+    },
+    {
+      "id": "astrocat_mesh",
+      "kind": "asset",
+      "path": "assets/pilotos/astrocat_guia.glb"
+    },
+    {
+      "id": "astrocat_source",
+      "kind": "asset_source",
+      "path": "tools/astrocat/AstroCat.blend"
+    },
+    {
+      "id": "lunar_suite",
+      "kind": "scene",
+      "path": "tests/lunar_suite.tscn"
+    },
+    {
+      "id": "lunar_suite_script",
+      "kind": "test",
+      "path": "tests/lunar_suite.gd"
+    },
+    {
+      "id": "lunar_export",
+      "kind": "configuration",
+      "path": "export_presets.cfg"
     }
   ],
   "edges": [
@@ -1903,11 +2017,6 @@
     ],
     [
       "crest_game",
-      "hosts",
-      "field_pilot"
-    ],
-    [
-      "crest_game",
       "displays",
       "crest_hud"
     ],
@@ -2330,6 +2439,186 @@
       "south_pole_map_catalog",
       "references",
       "nasa_assets_provenance"
+    ],
+    [
+      "config",
+      "transcribes",
+      "rules_2026"
+    ],
+    [
+      "rules",
+      "validates_against",
+      "rules_2026"
+    ],
+    [
+      "live_campaign_design",
+      "interprets",
+      "rules_2026"
+    ],
+    [
+      "art_production",
+      "applies_to",
+      "live_campaign_design"
+    ],
+    [
+      "lunar_scene",
+      "runs",
+      "lunar_game"
+    ],
+    [
+      "lunar_scene",
+      "supersedes",
+      "crest_scene"
+    ],
+    [
+      "lunar_game",
+      "owns",
+      "lunar_mission"
+    ],
+    [
+      "lunar_game",
+      "saves_with",
+      "lunar_profile"
+    ],
+    [
+      "lunar_game",
+      "draws",
+      "lunar_interface"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "lunar_routes"
+    ],
+    [
+      "lunar_game",
+      "hosts",
+      "crest_world"
+    ],
+    [
+      "lunar_game",
+      "hosts",
+      "crest_pilot"
+    ],
+    [
+      "lunar_game",
+      "synchronizes",
+      "touch_two_clients"
+    ],
+    [
+      "lunar_interface",
+      "reads",
+      "lunar_touch"
+    ],
+    [
+      "lunar_mission",
+      "extends",
+      "crest_sim"
+    ],
+    [
+      "lunar_mission",
+      "reads",
+      "config"
+    ],
+    [
+      "lunar_mission",
+      "advances",
+      "lunar_days"
+    ],
+    [
+      "lunar_mission",
+      "completes",
+      "lunar_return"
+    ],
+    [
+      "lunar_profile",
+      "persists",
+      "lunar_unlocks"
+    ],
+    [
+      "lunar_days",
+      "funds",
+      "lunar_unlocks"
+    ],
+    [
+      "lunar_return",
+      "funds",
+      "lunar_unlocks"
+    ],
+    [
+      "crest_world",
+      "creates",
+      "lunar_crater"
+    ],
+    [
+      "crest_world",
+      "displays",
+      "lro_miniatura"
+    ],
+    [
+      "crest_world",
+      "displays",
+      "astrocat_mesh"
+    ],
+    [
+      "crest_pilot",
+      "extends",
+      "field_pilot"
+    ],
+    [
+      "crest_pilot",
+      "rigs",
+      "cat_model"
+    ],
+    [
+      "crest_pilot",
+      "tints",
+      "cat_shader"
+    ],
+    [
+      "crest_game",
+      "hosts",
+      "crest_pilot"
+    ],
+    [
+      "astrocat_source",
+      "exports",
+      "astrocat_mesh"
+    ],
+    [
+      "art_production",
+      "references",
+      "lunar_crater"
+    ],
+    [
+      "lunar_suite",
+      "runs",
+      "lunar_suite_script"
+    ],
+    [
+      "lunar_suite_script",
+      "probes",
+      "lunar_scene"
+    ],
+    [
+      "lunar_suite_script",
+      "tests",
+      "touch_two_clients"
+    ],
+    [
+      "lunar_suite_script",
+      "tests",
+      "lunar_return"
+    ],
+    [
+      "lunar_suite_script",
+      "tests",
+      "lunar_days"
+    ],
+    [
+      "lunar_export",
+      "packages",
+      "lunar_scene"
     ]
   ]
 }

@@ -137,3 +137,27 @@ Los tres objetos Kenney se importan desde assets/props_luna/kenney. El registro 
 ## Recursos NASA · revisión 13
 
 CrestWorld instancia la adaptación de Apolo durante el aterrizaje y muestra el relieve LOLA en Puesto Nobile. La vista científica de CrestHUD muestra LRO en un viewport con World3D propio. Los accesorios de radio se colocan desde un origen de servicio local que compensa el desplazamiento interno de los GLB de Kenney. Las notas de procedencia y los comandos de regeneración están en [assets/props_luna/nasa/procedencia.md](../assets/props_luna/nasa/procedencia.md).
+
+## Campaña lunar táctil · revisión 14
+
+[El PDF de reglas](Artemis_Reglas_y_mecanicas.pdf) establece la versión vigente. El registro `campaign_2026` conserva sus datos. [La tabla de trazabilidad](campana_lunar_vigente.md) distingue cifras vigentes y parámetros del prototipo. El [catálogo de producción](catalogo_produccion_artemis.md) contiene las fichas de arte actualizadas y el tratamiento de los cráteres.
+
+```text
+lunar/lunar.tscn
+└── Artemis (LunarGame)
+    ├── CrestWorld (estaciones, señal de refugio y terreno)
+    │   ├── CrateresLaterales (seis LunarCrater fuera de la circulación)
+    │   ├── AstroCat, Apolo y maqueta LRO
+    │   └── relieve LOLA donde corresponde
+    ├── CrestPilot ×2 (FieldPilot, malla y traje de gato articulado)
+    ├── Cámara ortográfica a tres cuartos
+    └── LunarInterface (HUD, menú, joystick y archivo)
+
+LunarGame
+├── LunarMission (reloj, supervivencia, producción y regreso)
+├── LunarProfile (ranuras, perfil y recibos en user://)
+├── LunarRoutes (AStarGrid2D derivado de colisiones)
+└── ENetMultiplayerPeer (autoridad del anfitrión)
+```
+
+La escena principal es `lunar/lunar.tscn`. La escena de Cresta permanece disponible en el editor para reproducir e inspeccionar la revisión anterior. La campaña nueva reutiliza sus modelos y estaciones. `tests/lunar_suite.tscn` verifica el modelo y una sesión de dos pares ENet locales.

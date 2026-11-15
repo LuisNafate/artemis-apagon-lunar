@@ -1,6 +1,6 @@
 {
-  "revision": 13,
-  "progress": "lunar_bases_campaign",
+  "revision": 14,
+  "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
     "duration_minutes": 120,
@@ -635,6 +635,219 @@
       ],
       "topographic_data_integration": "nobile_backdrop_verified",
       "campaign_integration": "pending"
+    }
+  },
+  "campaign_2026": {
+    "source": {
+      "path": "context_core/Artemis_Reglas_y_mecanicas.pdf",
+      "revision": "2026-11-14",
+      "sha256": "60cfa891644077d158c0b10ffdeda826e9d088c3cf46946b0c3121f990c32a19"
+    },
+    "cycle": {
+      "day": 420,
+      "night": 480,
+      "period": 900
+    },
+    "difficulties": {
+      "easy": {
+        "label": "Fácil",
+        "coins": 1,
+        "consumption": 0.75,
+        "alerts": 1,
+        "alert_every": 2,
+        "warning": 30,
+        "outage_every": 3
+      },
+      "medium": {
+        "label": "Media",
+        "coins": 2,
+        "consumption": 1,
+        "alerts": 1,
+        "alert_every": 1,
+        "warning": 20,
+        "outage_every": 2
+      },
+      "hard": {
+        "label": "Difícil",
+        "coins": 3,
+        "consumption": 1.25,
+        "alerts": 2,
+        "alert_every": 1,
+        "warning": 20,
+        "outage_every": 1
+      }
+    },
+    "bases": {
+      "mons_mouton_plateau": {
+        "name": "Mons Mouton Plateau",
+        "difficulty": "easy",
+        "cost": 0,
+        "soil": "#6b6678",
+        "terrain": "Meseta abierta · rutas cortas"
+      },
+      "slater_plain": {
+        "name": "Slater Plain",
+        "difficulty": "easy",
+        "cost": 100,
+        "soil": "#77707a",
+        "terrain": "Colinas suaves · rutas más largas"
+      },
+      "malapert_massif": {
+        "name": "Malapert Massif",
+        "difficulty": "easy",
+        "cost": 200,
+        "soil": "#7b716f",
+        "terrain": "Cumbre iluminada · vista hacia Tierra"
+      },
+      "mons_mouton": {
+        "name": "Mons Mouton",
+        "difficulty": "medium",
+        "cost": 300,
+        "soil": "#626379",
+        "terrain": "Terrazas y pendientes"
+      },
+      "cabeus_b": {
+        "name": "Peak near Cabeus B",
+        "difficulty": "medium",
+        "cost": 450,
+        "soil": "#5b6181",
+        "terrain": "Pico y cuenca fría"
+      },
+      "nobile_rim_1": {
+        "name": "Nobile Rim 1",
+        "difficulty": "medium",
+        "cost": 650,
+        "soil": "#525e70",
+        "terrain": "Borde suroeste · luz y sombra"
+      },
+      "de_gerlache_rim_2": {
+        "name": "de Gerlache Rim 2",
+        "difficulty": "hard",
+        "cost": 900,
+        "soil": "#666075",
+        "terrain": "Arista angosta"
+      },
+      "nobile_rim_2": {
+        "name": "Nobile Rim 2",
+        "difficulty": "hard",
+        "cost": 1200,
+        "soil": "#4e596c",
+        "terrain": "Borde noreste · radio intermitente"
+      },
+      "haworth": {
+        "name": "Haworth",
+        "difficulty": "hard",
+        "cost": 1500,
+        "soil": "#4e4c64",
+        "terrain": "Cráter frío · depósitos a la sombra"
+      }
+    },
+    "starting_base": "mons_mouton_plateau",
+    "wallet": {
+      "base": 25,
+      "start_multiplier": 1,
+      "step": 0.1,
+      "cap": 2,
+      "share": 0.75,
+      "mission_bonus": 150,
+      "role_price": 250
+    },
+    "roles": {
+      "engineer": {
+        "label": "Ingeniero",
+        "speed_bonus": 0.1
+      },
+      "botanist": {
+        "label": "Botánico",
+        "bonus_every": 5
+      },
+      "geologist": {
+        "label": "Geólogo",
+        "bonus_every": 10
+      }
+    },
+    "resource": {
+      "air": 100,
+      "air_day_seconds": 3,
+      "air_night_seconds": 2,
+      "air_recovery": 2,
+      "hunger": 100,
+      "hunger_seconds": 15,
+      "meal": 30,
+      "hunger_speed": 0.7,
+      "water_initial": 6,
+      "life_water_seconds": 120,
+      "charge": 12,
+      "aux_charge": 16,
+      "solar_seconds": 20,
+      "life_energy_seconds": 60,
+      "crop_energy": 2,
+      "fuel_energy": 3,
+      "crop_water": 1,
+      "fuel_water": 2,
+      "ice_water": 1,
+      "refine_seconds": 5,
+      "drill_seconds": 6,
+      "fast_drill_seconds": 4,
+      "crop_rations": 2,
+      "efficient_rations": 3
+    },
+    "upgrade_costs": {
+      "drill": 2,
+      "battery": 2,
+      "solar": 3,
+      "irrigation": 3
+    },
+    "events": {
+      "alert_seconds": 45,
+      "outage_seconds": 60,
+      "outage_warning": 30,
+      "dawn_margin": 60,
+      "blackout_air_recovery": 1,
+      "radio_cut_base": "nobile_rim_2",
+      "radio_cut_seconds": 300,
+      "radio_warning": 30
+    },
+    "mission": {
+      "propellant": 3,
+      "food": 2,
+      "seats": 2,
+      "radio_seconds": 2.56,
+      "countdown": 30
+    },
+    "prototype_parameters": {
+      "crop_seconds": 14,
+      "fuel_seconds": 9,
+      "radio_cut_at": 420,
+      "starting_charge": 12,
+      "starting_rations": 1,
+      "upgrade_seconds": 4
+    },
+    "implementation": {
+      "entry": "res://lunar/lunar.tscn",
+      "network": "ENet anfitrión-invitado por dirección y UDP 44260; sin servicios externos",
+      "save": "user://artemis_campaign_v1.dat",
+      "input": "joystick táctil, tocar destino, acción y soltar/pasar",
+      "world": "kit compartido de cinco estaciones; seis cráteres perimetrales facetados por base",
+      "implemented_upgrades": [
+        "drill",
+        "battery",
+        "irrigation"
+      ],
+      "pending": [
+        "private room relay or matchmaking",
+        "mobile ports and device tests",
+        "nine bespoke terrain layouts",
+        "defined solar panel bonus",
+        "open rules in design document"
+      ],
+      "visible_assets": [
+        "gato-modelo2",
+        "astrocat_guia",
+        "apollo_descenso",
+        "lro_miniatura",
+        "relieve_nobile_lola"
+      ]
     }
   }
 }

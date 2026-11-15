@@ -1,22 +1,26 @@
 # ARTEMIS · Última ventana
 
-Entrenador de misión para astronautas junior. Juega en tres bases lunares 2.5D. Cresta enseña a sostener la base, Nobile añade cortes de radio y Taurus-Littrow añade averías de energía. Mantén a dos astronautas con vida, construye mejoras y prepara su ascenso a órbita lunar.
+Entrenador de misión de gestión y supervivencia lunar para astronautas junior. Dos personas comparten una base, reúnen materiales, mantienen las reservas y preparan el regreso a la Tierra. El progreso se conserva por base. Las nueve regiones y sus reglas proceden de la [especificación del 14 de noviembre](context_core/Artemis_Reglas_y_mecanicas.pdf).
 
-## Jugar
+## Jugar al corte actual
 
-En Windows ejecuta `Artemis-Ultima-Ventana.exe` de la demo. Para editarla, abre `project.godot` con Godot 4.7.2 y pulsa **F5**. El menú permite elegir un jugador o dos jugadores locales sin conexión. Luego elige base y abre su historia animada. Esc omite la historia y deja el tutorial disponible.
+Windows ejecuta `Artemis-Ultima-Ventana.exe`. Desde Godot 4.7.2, abre `project.godot` y pulsa **F5**.
 
-| Modo | Movimiento | Actuar | Pasar o soltar |
-| --- | --- | --- | --- |
-| Un jugador | WASD, Tab cambia de astronauta | E | Q |
-| Dos jugadores, J1 | WASD | E | Q |
-| Dos jugadores, J2 | Flechas | Intro | Mayús derecha o / |
+1. En el primer equipo, abre **Ver bases lunares** y elige **Mons Mouton Plateau**. La pantalla muestra la dirección del anfitrión.
+2. En el segundo, escribe esa dirección y pulsa **Unirme a una partida**. El prototipo usa conexión directa UDP 44260. En la misma red, ambos equipos deben alcanzar esa dirección. Para probar con dos procesos en el mismo equipo sin compartir el archivo del perfil, inicia el segundo con `Artemis-Ultima-Ventana.exe -- --perfil=invitado` y conéctalo a `127.0.0.1`.
+3. Mueve tu piloto con el joystick de pantalla o toca un punto del suelo. **Acción** opera una estación cercana. **Soltar / pasar** entrega o deposita la caja. En Windows se puede usar el ratón para probar estos mismos controles.
+4. Pasa la muestra a tu compañero y deposítala en la mesa de práctica. De día recarga la batería. De noche vuelve al refugio cuando baje el aire. **Menú → Guardar y salir** guarda el ciclo del anfitrión. Al amanecer se guardan las partidas y se acreditan las monedas.
+5. Para regresar a Tierra, carga tres lotes de propelente y dos raciones, confirma por radio y sienta a los dos astronautas. Después puedes seguir jugando en la base.
 
-**Esc** pausa. **F1** abre el archivo científico. Pulsa **←** desde la primera ficha para ver el orbitador LRO en 3D. En el menú de pausa o en el informe, usa **R** para empezar de nuevo.
+La conexión necesita una dirección alcanzable. Las fichas científicas se leen localmente. Hay dos pilotos felinos, AstroCat y las adaptaciones de Apolo y LRO dentro del escenario. El relieve LOLA de Nobile y el entorno de cráteres son modelos de ambientación.
 
-Los días y noches se aceleran para la misión. Usa las horas de luz para acumular energía y mira el aviso verde cuando llegue un suministro. El tutorial enseña a recoger y entregar una caja. En la misión, lleva hielo y mineral al refinado. Intercambia agua por aire, cosechas y lotes de propelente. Puedes invertir el mineral en un taladro más rápido o en una batería que te ayude durante el apagón. Para despegar, carga tres lotes y dos raciones, confirma la lista con Tierra y sienta a ambos astronautas.
+[Estado de las reglas y parámetros provisionales](context_core/campana_lunar_vigente.md) · [Catálogo para modelado](context_core/catalogo_produccion_artemis.md) · [Catálogo científico](context_core/science_catalog.md) · [Registro de modelos](assets/props_luna/asset-register.md)
 
-Las muestras históricas de NASA DONKI, RadLab y NeoWs, junto con un TLE terrestre de la ISS, funcionan sin Internet. Las magnitudes didácticas y la procedencia se explican en el [catálogo científico](context_core/science_catalog.md). El [diseño de Estación Cresta](context_core/coop_tycoon_design.md) describe los calendarios y las bases. El [registro de modelos](assets/props_luna/asset-register.md) identifica los objetos CC0 de Kenney y las adaptaciones NASA de Apolo, LRO y el relieve de Nobile.
+El preset **Android** está configurado para ARM64 y la conexión en línea. La exportación APK necesita el SDK y las plantillas Android de Godot, y aún requiere una prueba en un teléfono. [Exportar a Android](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html)
+
+## Escenas históricas
+
+Abre `crest/crest.tscn` y pulsa **F6** para revisar la demo anterior de Estación Cresta, juego local con teclado y su introducción. Su comportamiento sirve de referencia de desarrollo.
 
 ## Apagón lunar
 
