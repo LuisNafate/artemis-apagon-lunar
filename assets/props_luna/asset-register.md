@@ -16,3 +16,9 @@ Los tres modelos se importaron en Godot 4.7.2 y comparten el escenario 2.5D y la
 - [Gato piloto](../pilotos/gato-modelo2.glb). Recurso del proyecto recuperado y adaptado con esqueleto de 15 huesos, malla de 11 384 triángulos y shader por astronauta. El script de articulación está en [tools/articulate_cat.mjs](../../tools/articulate_cat.mjs).
 - [AstroCat](../pilotos/astrocat_guia.glb). Reconstrucción para el proyecto a partir de su referencia visual. Usa 9 428 triángulos, 20 huesos y cinco clips. El [archivo editable y sus comandos](../../tools/astrocat/README.md) se guardan con la autoría.
 - [Cráteres de borde](../../crest/lunar_crater.gd). Seis modelos procedurales de 99 triángulos cada uno. Los anillos facetados, la pared sombreada y la variación de boca corresponden a la referencia del usuario.
+
+## Máquina agua-hielo
+
+| Modelo | Origen | Archivo | Uso y ajuste |
+| --- | --- | --- | --- |
+| Máquina Agua-Hielo (vacío y lleno) | Carpeta `modelos` del Drive del equipo. Generados con Tripo, 10,7 mil triángulos cada uno | agua_hielo/maquina_agua_hielo_vacio.glb y agua_hielo/maquina_agua_hielo_lleno.glb | Estación REFINADO. Vacía en reposo y llena mientras la refinadora trabaja. Los originales usaban `KHR_mesh_quantization`, que Godot 4.7.2 no importa; se descuantizaron con `gltf-transform dequantize` sin cambiar la geometría. Escala 1,55 y material papel sin facetas |

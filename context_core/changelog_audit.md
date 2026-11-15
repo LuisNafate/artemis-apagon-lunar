@@ -132,3 +132,14 @@
 - Se separó Apolo en descenso y ascenso a partir del GLB optimizado. La cuenta regresiva inicia una secuencia de 17 s con ascenso, acoplamiento, viaje y entrada. La etapa de descenso permanece en la Luna. El bono y el modo libre aparecen tras volver. El grafo tiene 191 nodos y 336 aristas.
 - Godot 4.7.2. `tests/verify.ps1` pasó formato y lint de 45 scripts, importación, arranque y cinco suites. Academia 16 casos y 3884 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419. La suite de campaña pasó también renderizada a 1152 × 648 y 1280 × 720 con 419 comprobaciones en cada resolución.
 - Se verificó la exportación Windows x64 con las dos etapas y la fotografía en el paquete. Arrancó y salió con código 0. El terreno compartido y los perfiles visuales se verificaron en el motor. Geometría regional propia, validación móvil y simulación de efemérides siguen fuera de la revisión.
+
+## Render Forward+ y shader papel
+
+- Godot 4.7.2. El escritorio pasa a Forward+ y el móvil conserva Compatibility (`project.godot`). Se añadió `src/render/papel.gdshader` y `PaperMaterial`, el material único del juego: mate, facetas planas, tono por faceta y grano fino. El suelo, los primitivos, las piezas de `LunarCrater` y los GLB de `crest_world.gd` lo usan. Los gatos conservan su shader propio.
+- Cráteres con manto de eyecciones, borde, terrazas y rocas en la cresta; cráteres menores y rocas fuera de la cubierta. Suelo hacia lavanda grisácea. Luz principal desde arriba a la izquierda con sombras suaves y SSAO.
+- Comprobado en headless (Linux): Academia 16 casos y 3890 comprobaciones sin fallos, Tablero 7 y 75, Apagón lunar 3 y 35. La suite de campaña reporta 17 fallos del modo solo en Linux, los mismos antes y después del cambio; el registro anterior la daba sin fallos en Windows y no se ejecutó allí en este corte. Arranque y portada verificados en el editor de Windows. Falta revisar el HUD y el modo solo completo con Forward+.
+
+## Máquina agua-hielo en REFINADO
+
+- Godot 4.7.2. Se añadieron `maquina_agua_hielo_vacio.glb` y `maquina_agua_hielo_lleno.glb` en `assets/props_luna/agua_hielo/`, descuantizados porque el motor no admite `KHR_mesh_quantization`. `crest/crest_world.gd` los coloca en la estación REFINADO en lugar del bloque blanco; la colisión no cambió. `reflect()` muestra el modelo lleno mientras `refining` tiene un temporizador activo. `PaperMaterial.restyle` admite `faceted = false` para conservar las normales de modelos texturizados.
+- Comprobado: importación sin errores, Academia 16 casos y 3890 comprobaciones sin fallos, Apagón lunar con los mismos 17 fallos del modo solo en Linux que antes del cambio, y el cambio vacío/lleno en una prueba headless. Verificado a ojo en Windows con Forward+ (Vulkan, Intel Iris Xe).
