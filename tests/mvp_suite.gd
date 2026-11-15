@@ -119,7 +119,7 @@ func _objective_references() -> void:
 
 
 func _open(id: String) -> bool:
-	if not _press_menu("Jugar solo · sin conexión"):
+	if not _press_menu("Jugar"):
 		return false
 	if not _game.profile.open_base(id):
 		if not _check(_game.ui.globe.enter_base(id), "puede seleccionar la compra"):

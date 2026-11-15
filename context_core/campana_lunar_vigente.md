@@ -16,7 +16,7 @@
 
 ## Individual sin conexión · VAC-11
 
-En **Jugar solo** controlas a un astronauta. Recoges una muestra y la depositas en la mesa de práctica. La misión requiere tres lotes de propelente, dos raciones, radio y tu asiento. El menú pausa el tiempo y al amanecer recibes el 100 % de las monedas. **Continuar misión** abre la última base individual guardada.
+En **Jugar** controlas a un astronauta. Recoges una muestra y la depositas en la mesa de práctica. La misión requiere tres lotes de propelente, dos raciones, radio y tu asiento. El menú pausa el tiempo y al amanecer recibes el 100 % de las monedas. **Continuar misión** abre la última base individual guardada.
 
 Cada base guarda el avance individual y cooperativo en ranuras distintas. Las monedas, los desbloqueos y el registro del bono único por base pertenecen al mismo perfil. La portada indica **Campaña completada** al acreditar los regresos de las nueve bases. Después puedes seguir jugando.
 

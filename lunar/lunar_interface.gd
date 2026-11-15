@@ -196,7 +196,7 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	# Objetivo y siguiente paso viven en un desplegable arriba a la izquierda, bajo los recursos, para no
+	# El objetivo y el siguiente paso van en un desplegable bajo los recursos para no
 	# taparse con el panel de la zona ni con los botones de abajo.
 	var drop := VBoxContainer.new()
 	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -221,9 +221,10 @@ func _build_play(root: Control) -> void:
 	_drop_body.add_theme_constant_override("separation", 6)
 	drop.add_child(_drop_body)
 	_drop_body.hide()
-	drop_toggle.pressed.connect(func() -> void:
-		_drop_body.visible = not _drop_body.visible
-		drop_toggle.text = "Objetivo  -" if _drop_body.visible else "Objetivo  +"
+	drop_toggle.pressed.connect(
+		func() -> void:
+			_drop_body.visible = not _drop_body.visible
+			drop_toggle.text = "Objetivo  -" if _drop_body.visible else "Objetivo  +"
 	)
 	_objective_hint = _label(_drop_body, "", 17)
 	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -542,7 +543,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_message.add_theme_color_override("font_color", Color("#fff0cf"))
 	_message.add_theme_font_size_override("font_size", 18)
 
-	var solo := _lobby_button(_list, "Jugar solo · sin conexión", "bases", "solo", true)
+	var solo := _lobby_button(_list, "Jugar", "bases", "solo", true)
 	var recent := String(profile.data.recent)
 	if profile.data.recent_mode == "solo" and profile.saved_bases(true).has(recent):
 		_lobby_button(_list, "Continuar misión", "solo", recent)

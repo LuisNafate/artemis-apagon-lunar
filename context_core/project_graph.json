@@ -1009,7 +1009,8 @@
     {
       "id": "lunar_interface",
       "kind": "script",
-      "path": "lunar/lunar_interface.gd"
+      "path": "lunar/lunar_interface.gd",
+      "description": "El botón Jugar de la portada abre el selector de bases de la campaña individual."
     },
     {
       "id": "lunar_touch",

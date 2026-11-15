@@ -264,3 +264,8 @@
 - Forward+ en Windows. Comparativa de la mesa a 1280 × 720 con la cámara inicial y comprobación a 960 × 540. Se verificaron puerta e hielo de noche en ortográfica y perspectiva. Los ejemplos visuales usan condiciones controladas. La primera misión también se recorrió completa con clics en Forward+.
 - El conductor de navegación identifica etiquetas y pulsa sus rectángulos visibles. La selección externa de las bases y la espera acelerada en el refugio se aplican en el arnés de progresión. La [matriz de objetivos](auditoria_objetivos_mvp.md) registra las instrucciones, los objetos y su validación. Pendientes la primera partida con jugadores nuevos y los dispositivos físicos.
 - Godot 4.7.2. Formato, lint, importación, arranque y ocho ejecuciones de regresión sin fallos. La campaña normal completó nueve bases con 535 comprobaciones. La ruta de botones visibles completó las nueve con 91 comprobaciones; la variante corta en el verificador pasó 15. El registro grafica 1280 × 720, 960 × 540 y el cambio nocturno a perspectiva en `dist/evidencia-objetivos/`.
+
+## Botón Jugar en la portada
+
+- **Jugar** abre el selector de bases de la campaña individual. Se actualizaron las pruebas de navegación para pulsar el nuevo texto.
+- Godot 4.7.2. Formato, lint, importación, arranque, Academia, Puesto y 3D pasaron. El verificador completo se detuvo en la ruta de Estación Cresta con 22 fallos. Por separado pasaron campaña lunar (543 comprobaciones), mundo abierto (878) y la navegación visible desde la portada hasta el primer regreso a Tierra (15).

@@ -467,7 +467,7 @@ func _solo() -> void:
 		for frame in range(8):
 			await get_tree().process_frame
 		_capture_image(player, "artemis-portada.png")
-	_press_menu_button(player, "Jugar solo · sin conexión")
+	_press_menu_button(player, "Jugar")
 	if _capture:
 		for frame in range(8):
 			await get_tree().process_frame
@@ -579,7 +579,7 @@ func _solo() -> void:
 		"continue restores exact solo state"
 	)
 	player._leave()
-	_press_menu_button(player, "Jugar solo · sin conexión")
+	_press_menu_button(player, "Jugar")
 	_press_menu_button(player, "Reiniciar Mons Mouton Plateau…")
 	_press_menu_button(player, "Reiniciar base")
 	_check(

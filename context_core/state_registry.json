@@ -1036,6 +1036,7 @@
       "seats": 1,
       "offline": true,
       "show_online": false,
+      "play_button_label": "Jugar",
       "emergency_air": 30.0,
       "campaign_finish": "Regresar a Tierra desde las nueve bases. Después se puede explorar y repetir misiones.",
       "pause_in_menu": true,
