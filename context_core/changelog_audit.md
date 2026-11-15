@@ -152,4 +152,4 @@
 ## Mundo abierto: estado de depósitos
 
 - Godot 4.7.2. `LunarMission` guarda `world_deltas` (clave `"cx:cz:id"` → `left`, `emptied_day`), fija `world_seed` en `prepare()` y ofrece `deposit_key`, `register_deposit`, `deposit_left` y la señal `deposit_changed`. `use_station` con clave `dep:` mina el depósito; se rellena tras `deposit_refill_dawns` amaneceres (por `deposit_near_factor` cerca de la base). El bono del geólogo no resta del depósito. Los puestos fijos `ice`/`ore` siguen intactos.
-- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 5 casos y 693 comprobaciones, 0 fallos.
+- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 5 casos y 699 comprobaciones, 0 fallos.

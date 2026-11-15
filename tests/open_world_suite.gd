@@ -200,6 +200,10 @@ func _mine(m: LunarMission, key: StringName) -> void:
 	m.tick(m.drill_seconds() + 0.1, SAFE, nearby)
 
 
+func _delta(key: StringName) -> String:
+	return String(key).trim_prefix("dep:")
+
+
 func _deposits() -> void:
 	_cases += 1
 	var m := LunarMission.new()
@@ -260,6 +264,33 @@ func _deposits() -> void:
 		geo._consume_cargo(0)
 	_check(geo.pilots[0].pending_extra == &"ice", "geologist bonus earned from deposit")
 	_check(geo.deposit_left(geo_key) == 12 - bonus_every, "bonus does not drain deposit")
+	geo.use_station(0, geo_key)
+	_check(geo.cargo_kind(0) == &"ice" and geo.pilots[0].pending_extra == &"", "extra collected")
+	_check(geo.deposit_left(geo_key) == 12 - bonus_every, "extra crate keeps deposit")
+	geo._consume_cargo(0)
+	var duo := LunarMission.new()
+	duo.prepare("mons_mouton_plateau", 41, true)
+	duo.finish_tutorial()
+	duo.connected[1] = true
+	var duo_key := LunarMission.deposit_key(Vector2i(3, 3), 0)
+	duo.register_deposit(duo_key, &"ore", 1, false)
+	duo.use_station(0, duo_key)
+	duo.use_station(1, duo_key)
+	var both: Array[StringName] = [duo_key, duo_key]
+	duo.tick(duo.drill_seconds() + 0.1, SAFE, both)
+	var crates := int(duo.cargo_kind(0) != &"") + int(duo.cargo_kind(1) != &"")
+	_check(crates == 1 and duo.deposit_left(duo_key) == 0, "one crate from last unit")
+	_check(duo.world_deltas[_delta(duo_key)].left == 0, "left never negative")
+	var ghost := LunarMission.new()
+	ghost.prepare("mons_mouton_plateau", 41, true)
+	ghost.finish_tutorial()
+	var ghost_key := LunarMission.deposit_key(Vector2i(9, 9), 9)
+	ghost.pilots[0].mine = ghost_key
+	ghost.pilots[0].mine_left = 1.0
+	var at_ghost: Array[StringName] = [ghost_key, &""]
+	ghost.tick(2.0, SAFE, at_ghost)
+	_check(ghost.cargo_kind(0) == &"" and ghost.world_deltas.is_empty(), "unregistered key safe")
+	_check(ghost.pilots[0].mine == &"", "unregistered mining cancelled")
 
 
 func _check(condition: bool, label: String) -> void:

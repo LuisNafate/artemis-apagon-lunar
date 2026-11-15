@@ -171,8 +171,10 @@ func _mine_deposit(player: int, key: StringName) -> String:
 
 func _finish_deposit(player: int, key: StringName) -> StringName:
 	var pilot := pilots[player]
-	var kind: StringName = _known_deposits[key].kind
 	pilot.mine = &""
+	if deposit_left(key) <= 0:
+		return &""
+	var kind: StringName = _known_deposits[key].kind
 	_create_cargo(player, kind)
 	var delta_key := _delta_key(key)
 	var left := deposit_left(key) - 1
@@ -274,6 +276,9 @@ func use_station(player: int, station: StringName) -> String:
 	if pilots[player].seated:
 		return _embark(player)
 	if String(station).begins_with("dep:"):
+		var known: Dictionary = _known_deposits.get(station, {})
+		if not known.is_empty() and _collect_extraction_bonus(player, known.kind):
+			return "Caja extra del geólogo"
 		return _mine_deposit(player, station)
 	match station:
 		&"ice", &"ore":
