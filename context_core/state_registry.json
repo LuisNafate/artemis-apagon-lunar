@@ -1,5 +1,5 @@
 {
-  "revision": 14,
+  "revision": 15,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -826,7 +826,7 @@
     "implementation": {
       "entry": "res://lunar/lunar.tscn",
       "network": "ENet anfitrión-invitado por dirección y UDP 44260; sin servicios externos",
-      "save": "user://artemis_campaign_v1.dat",
+      "save": "user://artemis_campaign_v1.dat · ranuras individuales y cooperativas por base; saldo y desbloqueos compartidos",
       "input": "joystick táctil, tocar destino, acción y soltar/pasar",
       "world": "kit compartido de cinco estaciones; seis cráteres perimetrales facetados por base",
       "implemented_upgrades": [
@@ -847,7 +847,20 @@
         "apollo_descenso",
         "lro_miniatura",
         "relieve_nobile_lola"
-      ]
+      ],
+      "modes": {
+        "solo": "un astronauta sin conexión",
+        "host": "dos jugadores mediante ENet"
+      }
+    },
+    "solo_mode": {
+      "source": "VAC-11 resuelto por el usuario",
+      "players": 1,
+      "seats": 1,
+      "offline": true,
+      "pause_in_menu": true,
+      "day_reward_share": 1.0,
+      "save_slot": "solo_bases"
     }
   }
 }

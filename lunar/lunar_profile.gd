@@ -19,6 +19,7 @@ func _init(campaign_rules: Dictionary, save_path: String = SAVE_PATH) -> void:
 			var saved: Variant = file.get_var(false)
 			if saved is Dictionary and saved.get("version") == 1:
 				data = saved
+				data.merge({"solo_bases": {}, "recent_mode": "host"})
 				return
 		error = ERR_FILE_CORRUPT
 		return
@@ -30,7 +31,9 @@ func _init(campaign_rules: Dictionary, save_path: String = SAVE_PATH) -> void:
 		"roles": [],
 		"active_role": "",
 		"recent": "",
+		"recent_mode": "host",
 		"bases": {},
+		"solo_bases": {},
 		"paid_missions": {},
 		"guest_awards": {},
 		"received": {}
@@ -55,6 +58,10 @@ func save() -> bool:
 
 func open_base(id: String) -> bool:
 	return id in data.opened
+
+
+func saved_bases(single_player: bool) -> Dictionary:
+	return data.solo_bases if single_player else data.bases
 
 
 func balance_text() -> String:

@@ -140,7 +140,7 @@ CrestWorld instancia la adaptación de Apolo durante el aterrizaje y muestra el 
 
 ## Campaña lunar táctil · revisión 14
 
-[El PDF de reglas](Artemis_Reglas_y_mecanicas.pdf) establece la versión vigente. El registro `campaign_2026` conserva sus datos. [La tabla de trazabilidad](campana_lunar_vigente.md) distingue cifras vigentes y parámetros del prototipo. El [catálogo de producción](catalogo_produccion_artemis.md) contiene las fichas de arte actualizadas y el tratamiento de los cráteres.
+[El PDF de reglas](Artemis_Reglas_y_mecanicas.pdf) establece la base de la campaña. El registro `campaign_2026` conserva sus datos. [La tabla de trazabilidad](campana_lunar_vigente.md) distingue cifras vigentes y parámetros del prototipo. El [catálogo de producción](catalogo_produccion_artemis.md) contiene las fichas de arte actualizadas y el tratamiento de los cráteres.
 
 ```text
 lunar/lunar.tscn
@@ -149,7 +149,7 @@ lunar/lunar.tscn
     │   ├── CrateresLaterales (seis LunarCrater fuera de la circulación)
     │   ├── AstroCat, Apolo y maqueta LRO
     │   └── relieve LOLA donde corresponde
-    ├── CrestPilot ×2 (FieldPilot, malla y traje de gato articulado)
+    ├── CrestPilot (un astronauta visible en individual, dos en cooperativo)
     ├── Cámara ortográfica a tres cuartos
     └── LunarInterface (HUD, menú, joystick y archivo)
 
@@ -157,7 +157,11 @@ LunarGame
 ├── LunarMission (reloj, supervivencia, producción y regreso)
 ├── LunarProfile (ranuras, perfil y recibos en user://)
 ├── LunarRoutes (AStarGrid2D derivado de colisiones)
-└── ENetMultiplayerPeer (autoridad del anfitrión)
+└── ENetMultiplayerPeer (autoridad del anfitrión en cooperativo)
 ```
 
 La escena principal es `lunar/lunar.tscn`. La escena de Cresta permanece disponible en el editor para reproducir e inspeccionar la revisión anterior. La campaña nueva reutiliza sus modelos y estaciones. `tests/lunar_suite.tscn` verifica el modelo y una sesión de dos pares ENet locales.
+
+## Selector de modo y guardados · revisión 15
+
+`lunar/lunar.tscn` abre el menú con juego individual sin conexión y cooperativo en línea. `LunarGame` usa la misma simulación local para el jugador individual y para el anfitrión, y solo abre un par ENet para conexiones en línea. `LunarProfile` conserva las ranuras cooperativas existentes en `bases` e incorpora `solo_bases`. El saldo y los desbloqueos se comparten. `LunarMission` adapta el tutorial y los asientos al modo. La suite comprueba una partida sin red y una sesión de dos pares ENet.

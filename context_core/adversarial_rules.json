@@ -1,5 +1,5 @@
 {
-  "revision": 14,
+  "revision": 15,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -401,6 +401,26 @@
         ],
         "cause": "Reinicio confirmado",
         "effect": "Borrar ranura de esa base. Conservar saldo, compras y recibos de misión del perfil."
+      },
+      {
+        "id": "LUN-11",
+        "source": [
+          "VAC-11 resuelto por el usuario",
+          "MIS-1",
+          "MON-5"
+        ],
+        "cause": "Se elige Jugar solo",
+        "effect": "Un astronauta, sin conexión. Puede completar la práctica, abordar por sí mismo y recibir el 100 % de las monedas del día."
+      },
+      {
+        "id": "LUN-12",
+        "source": [
+          "VAC-11 resuelto por el usuario",
+          "EST-5",
+          "EST-7"
+        ],
+        "cause": "Se pausa, guarda o reinicia una base individual",
+        "effect": "El menú detiene la simulación. El guardado y el reinicio se aplican a la ranura individual; el saldo y los desbloqueos pertenecen al perfil común."
       }
     ],
     "open": [
@@ -408,7 +428,6 @@
       "VAC-3",
       "VAC-8",
       "VAC-10",
-      "VAC-11",
       "VAC-16",
       "VAC-17",
       "VAC-18"

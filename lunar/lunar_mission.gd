@@ -63,7 +63,8 @@ var installing: Dictionary = {}
 var paid_jobs := {&"crop": false, &"fuel": false}
 
 
-func prepare(id: String, seed_value: int) -> void:
+func prepare(id: String, seed_value: int, single_player: bool = false) -> void:
+	solo = single_player
 	base_id = id
 	base = rules.bases[id]
 	difficulty = rules.difficulties[base.difficulty]
@@ -148,8 +149,12 @@ func drill_seconds() -> float:
 func wallet_rate(multiplayer: bool) -> float:
 	var increment := days * float(rules.wallet.step)
 	var streak := minf(float(rules.wallet.cap), float(rules.wallet.start_multiplier) + increment)
-	var share := float(rules.wallet.share) if multiplayer else 1.0
+	var share := float(rules.wallet.share if multiplayer else rules.solo_mode.day_reward_share)
 	return float(rules.wallet.base) * float(difficulty.coins) * streak * share
+
+
+func required_seats() -> int:
+	return int(rules.solo_mode.seats if solo else rules.mission.seats)
 
 
 func speed_factor(player: int) -> float:
@@ -218,6 +223,19 @@ func use_station(player: int, station: StringName) -> String:
 		&"pad":
 			return "Misión completada. Sigue explorando la base." if returned else _pad(player)
 	return ""
+
+
+func _tutorial_use(player: int, station: StringName) -> String:
+	if not solo:
+		return super._tutorial_use(player, station)
+	if cargo_kind(player) == &"sample":
+		finish_tutorial()
+		return "Muestra entregada. Empieza el día."
+	if tutorial_step == 0:
+		_create_cargo(player, &"sample")
+		tutorial_step = 1
+		return "Toca Soltar / entregar junto a la mesa"
+	return "Recoge la muestra que dejaste en el suelo"
 
 
 func _collect_extraction_bonus(player: int, kind: StringName) -> bool:
@@ -334,13 +352,13 @@ func _embark(player: int) -> String:
 		return "Carga 3 lotes de propelente y 2 raciones"
 	if not earth_ok:
 		return "Envía la lista desde la radio"
-	if not connected[1]:
+	if not solo and not connected[1]:
 		return "Falta el otro astronauta"
 	if storm_active():
-		return "Esperen en el refugio hasta que pase la alerta"
+		return "Espera en el refugio hasta que pase la alerta"
 	pilots[player].seated = true
 	pilots[player].mine = &""
-	return "A bordo · espera a tu equipo"
+	return "A bordo · listo para despegar" if solo else "A bordo · espera a tu equipo"
 
 
 func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> void:
@@ -461,8 +479,8 @@ func _tick_launch(delta: float) -> void:
 		pilots[1].seated = false
 	if (
 		storm_active()
-		or not connected[1]
-		or crew_seated() != int(rules.mission.seats)
+		or (not solo and not connected[1])
+		or crew_seated() != required_seats()
 		or not earth_ok
 	):
 		_cancel_launch()

@@ -1,18 +1,21 @@
 # ARTEMIS · Última ventana
 
-Entrenador de misión de gestión y supervivencia lunar para astronautas junior. Dos personas comparten una base, reúnen materiales, mantienen las reservas y preparan el regreso a la Tierra. El progreso se conserva por base. Las nueve regiones y sus reglas proceden de la [especificación del 14 de noviembre](context_core/Artemis_Reglas_y_mecanicas.pdf).
+Entrenador de misión de gestión y supervivencia lunar para astronautas junior. Juega con un astronauta sin conexión o comparte la base con otra persona en línea. Reúne materiales, mantén las reservas y prepara el regreso a la Tierra. El progreso se guarda por base y por modo. Ambos modos comparten monedas y desbloqueos. Las nueve regiones y sus reglas proceden de la [especificación del 14 de noviembre](context_core/Artemis_Reglas_y_mecanicas.pdf).
 
 ## Jugar al corte actual
 
 Windows ejecuta `Artemis-Ultima-Ventana.exe`. Desde Godot 4.7.2, abre `project.godot` y pulsa **F5**.
 
-1. En el primer equipo, abre **Ver bases lunares** y elige **Mons Mouton Plateau**. La pantalla muestra la dirección del anfitrión.
-2. En el segundo, escribe esa dirección y pulsa **Unirme a una partida**. El prototipo usa conexión directa UDP 44260. En la misma red, ambos equipos deben alcanzar esa dirección. Para probar con dos procesos en el mismo equipo sin compartir el archivo del perfil, inicia el segundo con `Artemis-Ultima-Ventana.exe -- --perfil=invitado` y conéctalo a `127.0.0.1`.
-3. Mueve tu piloto con el joystick de pantalla o toca un punto del suelo. **Acción** opera una estación cercana. **Soltar / pasar** entrega o deposita la caja. En Windows se puede usar el ratón para probar estos mismos controles.
-4. Pasa la muestra a tu compañero y deposítala en la mesa de práctica. De día recarga la batería. De noche vuelve al refugio cuando baje el aire. **Menú → Guardar y salir** guarda el ciclo del anfitrión. Al amanecer se guardan las partidas y se acreditan las monedas.
-5. Para regresar a Tierra, carga tres lotes de propelente y dos raciones, confirma por radio y sienta a los dos astronautas. Después puedes seguir jugando en la base.
+- **Jugar solo · sin conexión.** Elige **Mons Mouton Plateau** y toma y entrega la muestra en la mesa azul. Puedes pausar desde el menú. El regreso a Tierra requiere tu asiento.
+- **Crear partida en línea.** Elige una base y comparte la dirección que aparece. En el segundo dispositivo, escribe esa dirección y pulsa **Unirme en línea**. El prototipo usa conexión directa UDP 44260. En la misma red, ambos equipos deben alcanzar esa dirección. Para probar con dos procesos en el mismo equipo sin compartir el archivo del perfil, inicia el segundo con `Artemis-Ultima-Ventana.exe -- --perfil=invitado` y conéctalo a `127.0.0.1`.
 
-La conexión necesita una dirección alcanzable. Las fichas científicas se leen localmente. Hay dos pilotos felinos, AstroCat y las adaptaciones de Apolo y LRO dentro del escenario. El relieve LOLA de Nobile y el entorno de cráteres son modelos de ambientación.
+Mueve tu piloto con el joystick de pantalla o toca un punto del suelo. **Acción** opera una estación cercana. **Soltar / pasar** entrega o deposita la caja. En Windows se puede usar el ratón para probar estos mismos controles.
+
+En cooperativo, pasa la muestra a tu compañero para que la deposite. De día recarga la batería. De noche vuelve al refugio cuando baje el aire. **Menú → Guardar y salir** conserva el ciclo en individual o al alojar una partida. Al amanecer se guarda el avance y se acreditan las monedas.
+
+Para regresar a Tierra, carga tres lotes de propelente y dos raciones, confirma por radio y ocupa los asientos del modo elegido. Después puedes seguir jugando en la base.
+
+Para jugar en línea necesitas una dirección alcanzable. Las fichas científicas se leen localmente. Hay pilotos felinos, AstroCat y las adaptaciones de Apolo y LRO dentro del escenario. El relieve LOLA de Nobile y el entorno de cráteres son modelos de ambientación.
 
 [Estado de las reglas y parámetros provisionales](context_core/campana_lunar_vigente.md) · [Catálogo para modelado](context_core/catalogo_produccion_artemis.md) · [Catálogo científico](context_core/science_catalog.md) · [Registro de modelos](assets/props_luna/asset-register.md)
 

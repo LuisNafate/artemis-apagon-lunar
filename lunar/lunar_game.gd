@@ -26,6 +26,7 @@ var positions_at_dawn: Array = []
 var saved_run := 0
 var play_started := false
 
+var _base_mode := "solo"
 var _address := ""
 var _vectors := [Vector2.ZERO, Vector2.ZERO]
 var _route: Array[PackedVector2Array] = [[], []]
@@ -92,7 +93,9 @@ func _physics_process(delta: float) -> void:
 		_routes.build(get_world_3d().direct_space_state)
 		_routes_ready = true
 	if net == &"host" and play_started:
-		_host_frame(delta)
+		_local_frame(delta)
+	elif net == &"solo" and ui.play.visible:
+		_local_frame(delta)
 	elif net == &"guest":
 		_guest_frame(delta)
 
@@ -109,7 +112,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var ray := camera.project_ray_normal(event.position)
 		var point: Variant = Plane(Vector3.UP, 0.0).intersects_ray(origin, ray)
 		if point is Vector3:
-			if net == &"host":
+			if net in [&"host", &"solo"]:
 				_set_destination(0, point)
 			elif net == &"guest":
 				_guest_destination.rpc_id(1, point)
@@ -123,12 +126,14 @@ func _choose(action: String, argument: String) -> void:
 		"lobby":
 			ui.lobby(profile, "")
 		"bases":
-			ui.bases(profile)
+			if not argument.is_empty():
+				_base_mode = argument
+			ui.bases(profile, _base_mode)
 		"roles":
 			ui.roles(profile)
 		"buy_base":
 			if profile.buy(argument, false):
-				ui.bases(profile)
+				ui.bases(profile, _base_mode)
 			else:
 				ui.lobby(profile, "Reúne más monedas para abrir esa base.")
 		"buy_role":
@@ -143,9 +148,11 @@ func _choose(action: String, argument: String) -> void:
 		"reset_confirm":
 			ui.confirm_reset(sim.rules.bases[argument].name, argument)
 		"reset":
-			profile.data.bases.erase(argument)
+			profile.saved_bases(_base_mode == "solo").erase(argument)
 			profile.save()
-			ui.bases(profile)
+			ui.bases(profile, _base_mode)
+		"solo":
+			_start_solo(argument)
 		"host":
 			host(argument)
 		"join":
@@ -153,16 +160,16 @@ func _choose(action: String, argument: String) -> void:
 		"leave":
 			_leave()
 		"menu":
-			ui.session_menu(net == &"host")
+			ui.session_menu(net)
 		"back_to_play":
 			ui.playing()
 		"action", "release":
-			if net == &"host":
+			if net in [&"host", &"solo"]:
 				_interact(0, action == "release")
 			elif net == &"guest":
 				_guest_action.rpc_id(1, action == "release")
 		"science":
-			_science_from_session = net in [&"host", &"guest"]
+			_science_from_session = net in [&"host", &"guest", &"solo"]
 			_show_science(0)
 		"previous_science":
 			_show_science(-1)
@@ -170,7 +177,7 @@ func _choose(action: String, argument: String) -> void:
 			_show_science(1)
 		"close_science":
 			if _science_from_session:
-				ui.session_menu(net == &"host")
+				ui.session_menu(net)
 			else:
 				ui.lobby(profile, "")
 
@@ -185,22 +192,36 @@ func host(id: String, port: int = PORT) -> void:
 	multiplayer.multiplayer_peer = peer
 	net = &"host"
 	play_started = false
-	var slot: Dictionary = profile.data.bases.get(id, {})
+	_open_base(id)
+	_address = _lan_address(port)
+	ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+
+
+func _start_solo(id: String) -> void:
+	if not profile.open_base(id):
+		return
+	net = &"solo"
+	_open_base(id)
+	ui.playing()
+
+
+func _open_base(id: String) -> void:
+	var single_player := net == &"solo"
+	var slot: Dictionary = profile.saved_bases(single_player).get(id, {})
 	saved_run = int(slot.get("run", randi()))
 	_coins_by_guest = slot.get("guest_pending", {}).duplicate()
-	_prepare_base(id, saved_run)
+	_prepare_base(id, saved_run, single_player)
 	if not slot.is_empty():
 		sim.restore(slot.active.duplicate(true))
 		sim.checkpoint = slot.checkpoint.duplicate(true)
 		_set_positions(slot.positions)
 		positions_at_dawn = slot.checkpoint_positions.duplicate()
 	profile.data.recent = id
+	profile.data.recent_mode = String(net)
 	if slot.is_empty():
-		_save_host(false)
+		_save_base(false)
 	else:
 		profile.save()
-	_address = _lan_address(port)
-	ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
 
 
 func join(address: String, port: int = PORT) -> void:
@@ -216,9 +237,10 @@ func join(address: String, port: int = PORT) -> void:
 	ui.wait_for_guest("UNIÉNDOTE A LA BASE", address, "Conectando…")
 
 
-func _prepare_base(id: String, seed_value: int) -> void:
+func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> void:
 	sim = LunarMission.new()
-	sim.prepare(id, seed_value)
+	sim.prepare(id, seed_value, single_player)
+	_feedback_time = 0.0
 	sim.roles[0] = String(profile.data.active_role)
 	world.set_base(sim.base.soil, StringName(id))
 	world.show_field_models("")
@@ -240,10 +262,10 @@ func _set_positions(points: Array) -> void:
 		pilots[index].velocity = Vector3.ZERO
 
 
-func _save_host(exact: bool) -> bool:
+func _save_base(exact: bool) -> bool:
 	var current := sim.state() if exact else sim.checkpoint.duplicate(true)
 	var points := _positions() if exact else positions_at_dawn.duplicate()
-	profile.data.bases[sim.base_id] = {
+	profile.saved_bases(sim.solo)[sim.base_id] = {
 		"active": current,
 		"checkpoint": sim.checkpoint.duplicate(true),
 		"positions": points,
@@ -255,9 +277,12 @@ func _save_host(exact: bool) -> bool:
 
 
 func _leave() -> void:
-	if net == &"host":
-		if not _save_host(true):
-			ui.wait_for_guest(sim.base.name, _address, "El guardado falló. Inténtalo de nuevo.")
+	if net in [&"host", &"solo"]:
+		if not _save_base(true):
+			if play_started or net == &"solo":
+				ui.session_menu(net, "El guardado falló. Inténtalo de nuevo.")
+			else:
+				ui.wait_for_guest(sim.base.name, _address, "El guardado falló. Inténtalo de nuevo.")
 			return
 		if guest_peer != 0:
 			_end_session.rpc_id(guest_peer)
@@ -345,7 +370,7 @@ func _peer_left(peer: int) -> void:
 	sim.set_guest(false, pilots[1].position)
 	if tutorial:
 		positions_at_dawn = _positions()
-		_save_host(false)
+		_save_base(false)
 	_route[1].clear()
 	_vectors[1] = Vector2.ZERO
 	guest_peer = 0
@@ -365,7 +390,7 @@ func _connection_failed() -> void:
 		ui.lobby(profile, "No se encontró la partida en esa dirección.")
 
 
-func _host_frame(delta: float) -> void:
+func _local_frame(delta: float) -> void:
 	_vectors[0] = ui.joystick.axis if ui.play.visible else Vector2.ZERO
 	_inactivity += delta
 	if _inactivity > 0.45:
@@ -384,7 +409,7 @@ func _host_frame(delta: float) -> void:
 		_coins_by_guest[guest_id] = (
 			float(_coins_by_guest.get(guest_id, 0.0)) + sim.wallet_rate(true) * time / period
 		)
-	var day_rate := sim.wallet_rate(true)
+	var day_rate := sim.wallet_rate(not sim.solo)
 	var had_returned := sim.returned
 	sim.tick(delta, _sheltered(), _spots)
 	if sim.withdrew:
@@ -392,12 +417,12 @@ func _host_frame(delta: float) -> void:
 		_route[0].clear()
 		_route[1].clear()
 		_coins_by_guest.clear()
-		_notice("Sin aire. Volvieron al último amanecer.")
+		_notice("Sin aire. Regreso al último amanecer.")
 	if sim.dawn:
 		positions_at_dawn = _positions()
 		profile.pay_day(sim.base_id, saved_run, sim.days, day_rate, _coins_by_guest)
 		_coins_by_guest.clear()
-		if _save_host(false):
+		if _save_base(false):
 			_send_awards()
 			_notice("Amanecer. Progreso y monedas asegurados.")
 		else:
@@ -407,7 +432,7 @@ func _host_frame(delta: float) -> void:
 		sim.checkpoint.returned = true
 		sim.checkpoint.earth_ok = false
 		sim.checkpoint.radio_left = 0.0
-		if _save_host(false):
+		if _save_base(false):
 			_send_awards()
 		_notice("¡Misión de regreso a Tierra completada!")
 	_render(delta, 0)
@@ -446,9 +471,12 @@ func _interact(player: int, release: bool) -> void:
 	var pilot := pilots[player]
 	var spot := _spots[player]
 	var message := ""
+	var was_tutorial := sim.phase == &"tutorial"
 	if release:
 		var cargo := sim.cargo_kind(player)
-		var station_deposit := spot == &"training" and player == 1 and cargo == &"sample"
+		var station_deposit := (
+			spot == &"training" and (sim.solo or player == 1) and cargo == &"sample"
+		)
 		station_deposit = station_deposit or (spot == &"refinery" and cargo in [&"ice", &"ore"])
 		station_deposit = station_deposit or (spot == &"pad" and cargo in [&"fuel", &"food"])
 		if station_deposit:
@@ -466,13 +494,12 @@ func _interact(player: int, release: bool) -> void:
 		if crate != 0 and sim.pickup(player, crate):
 			_notice("Caja recogida")
 			return
-		var was_tutorial := sim.phase == &"tutorial"
 		message = sim.use_station(player, spot)
 		if sim.pilots[player].seated:
 			pilot.position = CrestWorld.BOARDING[player]
-		if was_tutorial and sim.phase == &"active":
-			positions_at_dawn = _positions()
-			_save_host(false)
+	if was_tutorial and sim.phase == &"active":
+		positions_at_dawn = _positions()
+		_save_base(false)
 	if message.is_empty():
 		message = "Acércate a una estación o a una caja" if not release else "Toma una caja primero"
 	_notice(message)

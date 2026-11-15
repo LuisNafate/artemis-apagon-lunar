@@ -1,6 +1,8 @@
 
 # Artemis · Última ventana
 
+Documento histórico de Estación Cresta. Para la campaña actual con juego individual y cooperativo, consulta [Campaña lunar · Reglas vigentes](campana_lunar_vigente.md).
+
 ## Demo · Estación Cresta
 
 Una estación lunar ficticia en el entorno de Shackleton. Dos astronautas comparten una pantalla 3D y deben despegar juntos hacia órbita lunar. La partida apunta a **6–8 minutos**. Ambos pueden extraer, construir, cocinar, reparar y transportar. La cámara fija a tres cuartos mantiene visibles las rutas y el refugio. La cresta iluminada y las sombras del cráter se inspiran en observaciones lunares de NASA. [Shackleton](https://science.nasa.gov/resource/shackleton-craters-illuminated-rim-shadowed-interior/)

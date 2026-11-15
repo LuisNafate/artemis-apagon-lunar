@@ -20,6 +20,7 @@ var play: Control
 var menu: PanelContainer
 var address: LineEdit
 var action_button: Button
+var release_button: Button
 var details: Label
 var location: Label
 var alert: Label
@@ -92,7 +93,8 @@ func _build_play(root: Control) -> void:
 	bottom.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
 	action_button.custom_minimum_size = Vector2(210, 55)
-	_button(buttons, "Soltar / pasar", "release").custom_minimum_size = Vector2(210, 55)
+	release_button = _button(buttons, "Soltar / pasar", "release")
+	release_button.custom_minimum_size = Vector2(210, 55)
 	play.hide()
 
 
@@ -124,47 +126,49 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_prepare_menu(
 		"ARTEMIS · ÚLTIMA VENTANA",
 		(
-			"Elige una base o únete a otro astronauta.\nSaldo · %s monedas\n%s"
+			"Juega por tu cuenta o con otro astronauta.\nSaldo · %s monedas\n%s"
 			% [profile.balance_text(), status]
 		)
 	)
 	if not String(profile.data.recent).is_empty():
-		_button(_list, "Continuar", "host", profile.data.recent)
-	_button(_list, "Ver bases lunares", "bases")
-	_button(_list, "Roles", "roles")
+		var mode: String = profile.data.recent_mode
+		var caption := "Continuar solo" if mode == "solo" else "Continuar en línea"
+		_button(_list, caption, mode, profile.data.recent)
+	_button(_list, "Jugar solo · sin conexión", "bases", "solo")
+	_button(_list, "Crear partida en línea", "bases", "host")
 	address = LineEdit.new()
 	address.custom_minimum_size.y = 52
 	address.max_length = 100
 	address.placeholder_text = "Dirección del anfitrión"
 	_list.add_child(address)
-	_button(_list, "Unirme a una partida", "join")
+	_button(_list, "Unirme en línea", "join")
+	_button(_list, "Roles", "roles")
 	_button(_list, "Archivo científico", "science")
 
 
-func bases(profile: LunarProfile) -> void:
-	_prepare_menu(
-		"BASES LUNARES", "%s monedas · Elige dónde alojar tu partida." % profile.balance_text()
-	)
+func bases(profile: LunarProfile, mode: String) -> void:
+	var single_player := mode == "solo"
+	var title := "JUGAR SOLO" if single_player else "CREAR PARTIDA EN LÍNEA"
+	_prepare_menu(title, "%s monedas · Elige una base lunar." % profile.balance_text())
 	_button(_list, "Volver", "lobby")
 	for id: String in profile.rules.bases:
 		var entry: Dictionary = profile.rules.bases[id]
 		var difficulty: String = profile.rules.difficulties[entry.difficulty].label
 		_label(_list, entry.terrain, 20).modulate = SOFT
 		var owned := profile.open_base(id)
-		var has_save: bool = profile.data.bases.has(id)
+		var has_save := profile.saved_bases(single_player).has(id)
 		var suffix := " · partida guardada" if has_save else ""
 		if not owned:
 			suffix = " · %d monedas" % entry.cost
-		var title := "%s · %s%s" % [entry.name, difficulty, suffix]
-		_button(_list, title, "host" if owned else "buy_base", id)
+		var caption := "%s · %s%s" % [entry.name, difficulty, suffix]
+		_button(_list, caption, mode if owned else "buy_base", id)
 		if has_save:
 			_button(_list, "Reiniciar %s…" % entry.name, "reset_confirm", id)
 
 
 func roles(profile: LunarProfile) -> void:
 	_prepare_menu(
-		"ROLES",
-		"%s monedas · Un rol por partida. Elige antes de conectar." % profile.balance_text()
+		"ROLES", "%s monedas · Un rol por partida. Elige antes de entrar." % profile.balance_text()
 	)
 	_button(_list, "Volver", "lobby")
 	for id in ["", "engineer", "botanist", "geologist"]:
@@ -189,11 +193,12 @@ func wait_for_guest(base_name: String, host_address: String, status: String) -> 
 	_button(_list, "Volver al inicio", "leave")
 
 
-func session_menu(is_host: bool) -> void:
-	_prepare_menu("OPCIONES", "La base sigue en actividad mientras este menú está abierto.")
+func session_menu(mode: StringName, status: String = "") -> void:
+	var note := "Partida en pausa." if mode == &"solo" else "La base sigue en actividad."
+	_prepare_menu("OPCIONES", status if not status.is_empty() else note)
 	_button(_list, "Volver a la partida", "back_to_play")
 	_button(_list, "Archivo científico", "science")
-	_button(_list, "Guardar y salir" if is_host else "Salir de la partida", "leave")
+	_button(_list, "Salir de la partida" if mode == &"guest" else "Guardar y salir", "leave")
 
 
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
@@ -229,36 +234,48 @@ func sync(
 	for person in range(2):
 		if night and not sheltered[person] and mission.connected[person]:
 			cold[person] = " ❄"
-	var partner_air := (
-		"%d%s" % [ceili(mission.pilots[1].air), cold[1]] if mission.connected[1] else "ausente"
-	)
+	var air := "Aire %d%s" % [ceili(mission.pilots[0].air), cold[0]]
+	if not mission.solo:
+		var partner_air := (
+			"%d%s" % [ceili(mission.pilots[1].air), cold[1]] if mission.connected[1] else "ausente"
+		)
+		air = (
+			"Aire azul %d%s   ◇   naranja %s" % [ceili(mission.pilots[0].air), cold[0], partner_air]
+		)
 	details.text = (
-		"Aire azul %d%s   ◇   naranja %s      Batería %.1f/%.0f      Agua %.1f      Hambre %d"
+		"%s      Batería %.1f/%.0f      Agua %.1f      Hambre %d"
 		% [
-			ceili(mission.pilots[0].air),
-			cold[0],
-			partner_air,
+			air,
 			mission.charge,
 			mission.battery_capacity(),
 			mission.water,
 			ceili(mission.pilots[player].hunger)
 		]
 	)
+	release_button.text = "Soltar / entregar" if mission.solo else "Soltar / pasar"
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
-		next_step.text = PROMPTS[mission.tutorial_step][1]
+		if mission.solo:
+			next_step.text = (
+				"Acércate a la mesa azul y toma la muestra."
+				if mission.tutorial_step == 0
+				else "Lleva la muestra a la mesa y toca Soltar / entregar."
+			)
+		else:
+			next_step.text = PROMPTS[mission.tutorial_step][1]
 	elif mission.returned:
 		next_step.text = "Regreso a Tierra completado. Puedes seguir jugando en la base."
 	else:
 		next_step.text = (
-			"Regreso a Tierra · Propelente %d/%d · Raciones %d/%d · Radio %s · A bordo %d/2"
+			"Regreso a Tierra · Propelente %d/%d · Raciones %d/%d · Radio %s · A bordo %d/%d"
 			% [
 				mission.fuel_loaded,
 				flight.propellant,
 				mission.food_loaded,
 				flight.food,
 				"lista" if mission.earth_ok else "pendiente",
-				mission.crew_seated()
+				mission.crew_seated(),
+				mission.required_seats()
 			]
 		)
 	_show_alert(mission)
@@ -268,8 +285,13 @@ func sync(
 		else String(CrestWorld.NAMES.get(spot, "Toca el destino o usa el joystick"))
 	)
 	action_button.text = "Bajar" if mission.pilots[player].seated else _action_caption(spot)
-	if mission.phase == &"tutorial" and mission.tutorial_step == 2 and player == 1:
-		action_button.text = "Entregar muestra"
+	if mission.phase == &"tutorial" and spot == &"training":
+		if mission.solo:
+			action_button.text = (
+				"Tomar muestra" if mission.tutorial_step == 0 else "Entregar muestra"
+			)
+		elif mission.tutorial_step == 2 and player == 1:
+			action_button.text = "Entregar muestra"
 
 
 func _show_alert(mission: LunarMission) -> void:

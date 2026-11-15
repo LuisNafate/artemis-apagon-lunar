@@ -22,6 +22,7 @@ func _run() -> void:
 	_logistics()
 	_launch()
 	_profile()
+	await _solo()
 	await _network()
 	print("LUNAR SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
@@ -222,6 +223,131 @@ func _profile() -> void:
 	DirAccess.remove_absolute(path)
 
 
+func _solo() -> void:
+	_cases += 1
+	var player := _endpoint("Solo")
+	var existing_peer: MultiplayerPeer = player.multiplayer.multiplayer_peer
+	var base_id := "mons_mouton_plateau"
+	player.profile.data.bases[base_id] = {"run": 12345}
+	player.profile.data.erase("solo_bases")
+	player.profile.data.erase("recent_mode")
+	player.profile.save()
+	player.profile = LunarProfile.new(player.sim.rules, player.profile_path)
+	_check(
+		player.profile.data.recent_mode == "host",
+		"previous profiles default to online continuation"
+	)
+	_check(player.profile.saved_bases(true).is_empty(), "previous profiles gain empty solo slots")
+	_press_menu_button(player, "Jugar solo · sin conexión")
+	_press_menu_button(player, "Mons Mouton Plateau · Fácil")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(player.net == &"solo" and player.ui.play.visible, "main menu opens solo directly")
+	_check(player.multiplayer.multiplayer_peer == existing_peer, "no network peer opened")
+	_check(player.pilots[0].visible and not player.pilots[1].visible, "only one astronaut in solo")
+	player.ui.action_button.pressed.emit()
+	_check(player.sim.cargo_kind(0) == &"sample", "solo tutorial picks up a sample")
+	player.ui.release_button.pressed.emit()
+	_check(
+		player.sim.phase == &"active" and player.sim.crates.is_empty(),
+		"solo tutorial deposits and completes"
+	)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check("A bordo 0/1" in player.ui.next_step.text, "solo HUD shows one required seat")
+	if _capture:
+		_capture_image(player, "artemis-modo-individual.png")
+
+	var elapsed: float = player.sim.elapsed
+	player.ui.selected.emit("menu", "")
+	for index in range(10):
+		await get_tree().physics_frame
+	_check(player.sim.elapsed == elapsed, "solo menu pauses the simulation")
+	_press_menu_button(player, "Volver a la partida")
+	player.sim.elapsed = 899.99
+	for index in range(5):
+		await get_tree().physics_frame
+	_check(
+		player.profile.data.balance == 25 * LunarProfile.SCALE,
+		"solo gets 100 percent of daily coins"
+	)
+
+	var pad: Vector3 = CrestWorld.STATIONS[&"pad"]
+	player._set_positions([pad, Vector3.ZERO])
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	player.ui.action_button.pressed.emit()
+	_check(not player.sim.pilots[0].seated, "solo still requires cargo and radio")
+	for kind in [&"fuel", &"fuel", &"fuel", &"food", &"food"]:
+		player.sim._create_cargo(0, kind)
+		player.ui.release_button.pressed.emit()
+	_check(
+		player.sim.fuel_loaded == 3 and player.sim.food_loaded == 2,
+		"solo loads normal cargo targets"
+	)
+	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
+	player._set_positions([radio, Vector3.ZERO])
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	player.ui.action_button.pressed.emit()
+	for index in range(167):
+		await get_tree().physics_frame
+	_check(player.sim.earth_ok, "solo receives radio confirmation")
+	player._set_positions([pad, Vector3.ZERO])
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	player.ui.action_button.pressed.emit()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(
+		player.sim.phase == &"countdown" and player.sim.crew_seated() == 1,
+		"one seat starts launch countdown"
+	)
+	player.sim.countdown = 0.01
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(
+		player.sim.returned and player.profile.data.balance == 175 * LunarProfile.SCALE,
+		"solo completes the mission and earns its bonus"
+	)
+
+	elapsed = player.sim.elapsed
+	player.ui.selected.emit("menu", "")
+	_press_menu_button(player, "Guardar y salir")
+	player.profile = LunarProfile.new(player.sim.rules, player.profile_path)
+	player.ui.lobby(player.profile, "")
+	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
+	_press_menu_button(player, "Continuar solo")
+	_check(
+		player.sim.returned and is_equal_approx(player.sim.elapsed, elapsed),
+		"continue restores exact solo state"
+	)
+	player._leave()
+	_press_menu_button(player, "Jugar solo · sin conexión")
+	_press_menu_button(player, "Reiniciar Mons Mouton Plateau…")
+	_press_menu_button(player, "Reiniciar base")
+	_check(
+		(
+			not player.profile.saved_bases(true).has(base_id)
+			and player.profile.saved_bases(false).has(base_id)
+		),
+		"solo reset only removes the solo slot"
+	)
+	_check(
+		player.profile.data.balance == 175 * LunarProfile.SCALE, "reset preserves the shared wallet"
+	)
+	DirAccess.remove_absolute(player.profile_path)
+	player.get_parent().queue_free()
+
+
+func _press_menu_button(player: Node, caption: String) -> void:
+	for item: Control in player.ui._list.get_children():
+		if item is Button and item.text == caption:
+			item.pressed.emit()
+			return
+	_check(false, "menu button %s" % caption)
+
+
 func _network() -> void:
 	_cases += 1
 	var host := _endpoint("Host")
@@ -333,10 +459,10 @@ func _endpoint(label: String) -> Node:
 	return endpoint
 
 
-func _capture_image(host: Node) -> void:
+func _capture_image(host: Node, filename: String = "mons-mouton-crateres.png") -> void:
 	var image := host.get_viewport().get_texture().get_image()
 	if image != null and not image.is_empty():
-		image.save_png("user://mons-mouton-crateres.png")
+		image.save_png("user://" + filename)
 
 
 func _touch_joystick(host: Node) -> void:

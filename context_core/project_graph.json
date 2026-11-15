@@ -1,5 +1,5 @@
 {
-  "revision": 14,
+  "revision": 15,
   "nodes": [
     {
       "id": "config",
@@ -965,7 +965,11 @@
     {
       "id": "lunar_scene",
       "kind": "scene",
-      "path": "lunar/lunar.tscn"
+      "path": "lunar/lunar.tscn",
+      "modes": [
+        "lunar_solo",
+        "touch_two_clients"
+      ]
     },
     {
       "id": "lunar_game",
@@ -999,7 +1003,9 @@
     },
     {
       "id": "touch_two_clients",
-      "kind": "system"
+      "kind": "system",
+      "players": 2,
+      "network": "ENet"
     },
     {
       "id": "lunar_days",
@@ -1057,6 +1063,12 @@
       "id": "lunar_export",
       "kind": "configuration",
       "path": "export_presets.cfg"
+    },
+    {
+      "id": "lunar_solo",
+      "kind": "system",
+      "players": 1,
+      "offline": true
     }
   ],
   "edges": [
@@ -2619,6 +2631,46 @@
       "lunar_export",
       "packages",
       "lunar_scene"
+    ],
+    [
+      "lunar_game",
+      "runs",
+      "lunar_solo"
+    ],
+    [
+      "lunar_interface",
+      "offers",
+      "lunar_solo"
+    ],
+    [
+      "lunar_interface",
+      "offers",
+      "touch_two_clients"
+    ],
+    [
+      "lunar_solo",
+      "uses",
+      "lunar_mission"
+    ],
+    [
+      "lunar_solo",
+      "persists_with",
+      "lunar_profile"
+    ],
+    [
+      "lunar_suite_script",
+      "tests",
+      "lunar_solo"
+    ],
+    [
+      "live_campaign_design",
+      "documents",
+      "lunar_solo"
+    ],
+    [
+      "lunar_solo",
+      "completes",
+      "lunar_return"
     ]
   ]
 }
