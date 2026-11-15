@@ -1,6 +1,8 @@
 extends Node
 
 const REGISTRY := "res://context_core/state_registry.json"
+const SAFE: Array[bool] = [true, true]
+const AWAY: Array[StringName] = [&"", &""]
 
 var _checks := 0
 var _failed := 0
@@ -16,6 +18,7 @@ func _run() -> void:
 	_regions()
 	_ice_and_ids()
 	_base_exits()
+	_deposits()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -183,6 +186,80 @@ func _side(rect: Rect2, p: Vector2) -> int:
 	if south and not (west or east):
 		return 3
 	return -1
+
+
+func _advance_dawns(m: LunarMission, count: int) -> void:
+	for _i in range(count):
+		m.elapsed = float(m.rules.cycle.period) - 0.1
+		m.tick(0.2, SAFE, AWAY)
+
+
+func _mine(m: LunarMission, key: StringName) -> void:
+	var nearby: Array[StringName] = [key, &""]
+	m.use_station(0, key)
+	m.tick(m.drill_seconds() + 0.1, SAFE, nearby)
+
+
+func _deposits() -> void:
+	_cases += 1
+	var m := LunarMission.new()
+	m.prepare("mons_mouton_plateau", 41, true)
+	m.finish_tutorial()
+	var key := LunarMission.deposit_key(Vector2i(4, 2), 3)
+	m.register_deposit(key, &"ice", 2, false)
+	_check(m.deposit_left(key) == 2, "fresh deposit full")
+	for _trip in range(2):
+		_mine(m, key)
+		_check(m.cargo_kind(0) == &"ice", "mined ice crate")
+		m._consume_cargo(0)
+	var delta_key := String(key).trim_prefix("dep:")
+	_check(
+		m.deposit_left(key) == 0 and m.world_deltas[delta_key].emptied_day == m.days,
+		"emptied on day"
+	)
+	_check(m.use_station(0, key).begins_with("Depósito vacío"), "empty message")
+	_advance_dawns(m, 1)
+	_check(m.deposit_left(key) == 0, "still empty after 1 dawn")
+	_advance_dawns(m, 1)
+	_check(m.deposit_left(key) == 2, "refilled after 2 dawns")
+	var near := LunarMission.deposit_key(Vector2i(1, 1), 0)
+	m.register_deposit(near, &"ore", 1, true)
+	_mine(m, near)
+	m._consume_cargo(0)
+	_advance_dawns(m, 3)
+	_check(m.deposit_left(near) == 0, "near base waits 4 dawns")
+	_advance_dawns(m, 1)
+	_check(m.deposit_left(near) == 1, "near base refilled at 4")
+	m.store_checkpoint()
+	_mine(m, key)
+	m.pilots[0].air = 0.0
+	m.tick(0.1, [false, false] as Array[bool], AWAY)
+	_check(m.withdrew and m.deposit_left(key) == 2, "air-out reverts mining since dawn")
+	var copy := LunarMission.new()
+	copy.prepare("mons_mouton_plateau", 41, true)
+	copy.restore(m.state())
+	copy.register_deposit(key, &"ice", 2, false)
+	_check(copy.world_deltas == m.world_deltas, "deltas survive state round trip")
+	var legacy := m.state()
+	legacy.erase("world_deltas")
+	copy.restore(legacy)
+	_check(copy.world_deltas is Dictionary, "old save loads")
+	_check(
+		copy.world_seed == ChunkGenerator.world_seed("mons_mouton_plateau", 41), "world seed set"
+	)
+	var geo := LunarMission.new()
+	geo.prepare("mons_mouton_plateau", 41, true)
+	geo.finish_tutorial()
+	geo.roles[0] = "geologist"
+	var geo_key := LunarMission.deposit_key(Vector2i(2, 2), 1)
+	geo.register_deposit(geo_key, &"ice", 12, false)
+	var bonus_every := int(geo.rules.roles.geologist.bonus_every)
+	for _i in range(bonus_every):
+		_mine(geo, geo_key)
+		_check(geo.cargo_kind(0) == &"ice", "geologist crate is ice")
+		geo._consume_cargo(0)
+	_check(geo.pilots[0].pending_extra == &"ice", "geologist bonus earned from deposit")
+	_check(geo.deposit_left(geo_key) == 12 - bonus_every, "bonus does not drain deposit")
 
 
 func _check(condition: bool, label: String) -> void:

@@ -2,6 +2,8 @@
 class_name LunarMission
 extends CrestSim
 
+signal deposit_changed(key: StringName, left: int)
+
 const SAVE_FIELDS := [
 	"elapsed",
 	"days",
@@ -37,7 +39,8 @@ const SAVE_FIELDS := [
 	"crops_harvested",
 	"deliveries",
 	"tutorial_step",
-	"crew_briefed"
+	"crew_briefed",
+	"world_deltas"
 ]
 
 var rules: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH)).campaign_2026
@@ -61,6 +64,9 @@ var crew_briefed := false
 var refining: Array = []
 var installing: Dictionary = {}
 var paid_jobs := {&"crop": false, &"fuel": false}
+var world_deltas: Dictionary = {}
+var world_seed := 0
+var _known_deposits: Dictionary = {}
 
 
 func prepare(id: String, seed_value: int, single_player: bool = false) -> void:
@@ -77,6 +83,7 @@ func prepare(id: String, seed_value: int, single_player: bool = false) -> void:
 	for pilot in pilots:
 		pilot.merge({"hunger": 100.0, "mined": 0, "harvested": 0, "pending_extra": &""})
 	cycle_seed = seed_value
+	world_seed = ChunkGenerator.world_seed(id, seed_value)
 	_roll_events()
 	store_checkpoint()
 
@@ -102,6 +109,76 @@ func restore(saved: Dictionary) -> void:
 	pilots = list
 	dawn = false
 	withdrew = false
+	if not saved.has("world_deltas"):
+		world_deltas = {}
+
+
+static func deposit_key(coord: Vector2i, id: int) -> StringName:
+	return StringName("dep:%d:%d:%d" % [coord.x, coord.y, id])
+
+
+func register_deposit(key: StringName, kind: StringName, capacity: int, near_base: bool) -> void:
+	_known_deposits[key] = {"kind": kind, "capacity": capacity, "near": near_base}
+	_refill_deposit(key)
+
+
+func deposit_left(key: StringName) -> int:
+	var known: Dictionary = _known_deposits.get(key, {})
+	if known.is_empty():
+		return 0
+	var delta: Dictionary = world_deltas.get(_delta_key(key), {})
+	return int(delta.get("left", known.capacity))
+
+
+func _delta_key(key: StringName) -> String:
+	return String(key).trim_prefix("dep:")
+
+
+## Rellena un deposito vaciado cuando han pasado los amaneceres necesarios.
+func _refill_deposit(key: StringName) -> void:
+	var delta_key := _delta_key(key)
+	var known: Dictionary = _known_deposits.get(key, {})
+	if known.is_empty() or not world_deltas.has(delta_key):
+		return
+	var delta: Dictionary = world_deltas[delta_key]
+	if int(delta.left) > 0:
+		return
+	var open_world: Dictionary = rules.open_world
+	var wait := int(open_world.deposit_refill_dawns)
+	if known.near:
+		wait *= int(open_world.deposit_near_factor)
+	if days - int(delta.emptied_day) >= wait:
+		world_deltas.erase(delta_key)
+		deposit_changed.emit(key, deposit_left(key))
+
+
+func _refill_deposits() -> void:
+	for key: StringName in _known_deposits:
+		_refill_deposit(key)
+
+
+func _mine_deposit(player: int, key: StringName) -> String:
+	if deposit_left(key) <= 0:
+		var open_world: Dictionary = rules.open_world
+		var wait := int(open_world.deposit_refill_dawns)
+		if _known_deposits.get(key, {}).get("near", false):
+			wait *= int(open_world.deposit_near_factor)
+		var delta: Dictionary = world_deltas.get(_delta_key(key), {"emptied_day": days})
+		var remaining := maxi(1, wait - (days - int(delta.emptied_day)))
+		return "Depósito vacío · vuelve en %d amaneceres" % remaining
+	return _start_mining(player, key)
+
+
+func _finish_deposit(player: int, key: StringName) -> StringName:
+	var pilot := pilots[player]
+	var kind: StringName = _known_deposits[key].kind
+	pilot.mine = &""
+	_create_cargo(player, kind)
+	var delta_key := _delta_key(key)
+	var left := deposit_left(key) - 1
+	world_deltas[delta_key] = {"left": left, "emptied_day": days if left <= 0 else -1}
+	deposit_changed.emit(key, left)
+	return kind
 
 
 func shadow_active() -> bool:
@@ -196,6 +273,8 @@ func use_station(player: int, station: StringName) -> String:
 		return message
 	if pilots[player].seated:
 		return _embark(player)
+	if String(station).begins_with("dep:"):
+		return _mine_deposit(player, station)
 	match station:
 		&"ice", &"ore":
 			if _collect_extraction_bonus(player, station):
@@ -249,17 +328,28 @@ func _collect_extraction_bonus(player: int, kind: StringName) -> bool:
 
 func _tick_mining(delta: float, nearby: Array[StringName]) -> void:
 	var before := [pilots[0].mine, pilots[1].mine]
+	var finished := [&"", &""]
+	for player in range(2):
+		var pilot := pilots[player]
+		var key: StringName = pilot.mine
+		if not String(key).begins_with("dep:"):
+			continue
+		if key == nearby[player] and pilot.cargo == 0 and pilot.mine_left - delta <= 0.0:
+			finished[player] = _finish_deposit(player, key)
 	super._tick_mining(delta, nearby)
 	for player in range(2):
 		var pilot := pilots[player]
+		var kind: StringName = finished[player]
 		if (
-			roles[player] == "geologist"
-			and before[player] != &""
+			kind == &""
+			and not String(before[player]).begins_with("dep:")
 			and cargo_kind(player) == before[player]
 		):
+			kind = before[player]
+		if roles[player] == "geologist" and kind != &"":
 			pilot.mined += 1
 			if int(pilot.mined) % int(rules.roles.geologist.bonus_every) == 0:
-				pilot.pending_extra = before[player]
+				pilot.pending_extra = kind
 
 
 func _refine(player: int) -> String:
@@ -378,6 +468,7 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 	if elapsed >= float(rules.cycle.period):
 		elapsed -= float(rules.cycle.period)
 		days += 1
+		_refill_deposits()
 		_roll_events()
 		dawn = true
 		store_checkpoint()

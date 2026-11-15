@@ -148,3 +148,8 @@
 
 - Godot 4.7.2. Se añadieron `lunar/open_world/chunk_data.gd` y `chunk_generator.gd` (generador determinista, sin escena) y `campaign_2026.open_world` en `state_registry.json` con las nueve regiones, `max_walk_slope` y `deposit_distance_curve`. Suite nueva `tests/open_world_suite.tscn` y paso `Regresión mundo abierto` en `verify.ps1`.
 - Comprobado: `tests/verify.ps1` pasó formato y lint, importación, arranque y seis suites. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 1 caso y 49 comprobaciones, 0 fallos.
+
+## Mundo abierto: estado de depósitos
+
+- Godot 4.7.2. `LunarMission` guarda `world_deltas` (clave `"cx:cz:id"` → `left`, `emptied_day`), fija `world_seed` en `prepare()` y ofrece `deposit_key`, `register_deposit`, `deposit_left` y la señal `deposit_changed`. `use_station` con clave `dep:` mina el depósito; se rellena tras `deposit_refill_dawns` amaneceres (por `deposit_near_factor` cerca de la base). El bono del geólogo no resta del depósito. Los puestos fijos `ice`/`ore` siguen intactos.
+- Comprobado: `tests/verify.ps1` en verde (formato, lint, importación, arranque y suites). Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 5 casos y 693 comprobaciones, 0 fallos.
