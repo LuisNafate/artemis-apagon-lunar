@@ -183,7 +183,7 @@ func _mine_deposit(player: int, key: StringName) -> String:
 	if deposit_kind(key) == &"":
 		return "Acércate a un depósito cargado"
 	if deposit_left(key) <= 0:
-		return "Depósito vacío · vuelve en %d amaneceres" % deposit_refill_left(key)
+		return LunarLanguage.t("Depósito vacío · vuelve en %d amaneceres") % deposit_refill_left(key)
 	return _start_mining(player, key)
 
 
@@ -368,7 +368,7 @@ func use_station(player: int, station: StringName) -> String:
 	if not connected[player] or phase == &"flight":
 		return ""
 	if checkup_left(player) > 0.0:
-		return "Revisión médica · espera %d s" % ceili(checkup_left(player))
+		return LunarLanguage.t("Revisión médica · espera %d s") % ceili(checkup_left(player))
 	if phase == &"tutorial":
 		if station != &"training":
 			return "Acércate a la mesa de práctica"
@@ -397,7 +397,7 @@ func use_station(player: int, station: StringName) -> String:
 		&"power":
 			priority = &"fuel" if priority == &"crop" else &"crop"
 			return (
-				"Primero %s después del aire" % ("cultivo" if priority == &"crop" else "propelente")
+				LunarLanguage.t("Primero %s después del aire") % ("cultivo" if priority == &"crop" else "propelente")
 			)
 		&"life":
 			return _eat(player)
@@ -496,7 +496,7 @@ func _operate_job(player: int, station: StringName) -> String:
 	if not crop and fuel_quota_met():
 		return "La nave ya tiene su propelente"
 	if jobs[station] > 0.0:
-		return "En proceso · %d s" % ceili(jobs[station])
+		return LunarLanguage.t("En proceso · %d s") % ceili(jobs[station])
 	var cost := job_water_cost(station)
 	if water < cost:
 		return "Busca hielo y refínalo en el taller"
@@ -556,7 +556,7 @@ func _queue_upgrade(player: int, station: StringName) -> String:
 		return "Mejora instalada o en montaje"
 	var cost := int(rules.upgrade_costs[String(station)])
 	if ore < cost:
-		return "Necesitas %d de mineral" % cost
+		return LunarLanguage.t("Necesitas %d de mineral") % cost
 	ore -= cost
 	var seconds := float(rules.prototype_parameters.upgrade_seconds)
 	if roles[player] == "engineer":

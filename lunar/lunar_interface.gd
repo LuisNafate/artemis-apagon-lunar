@@ -517,7 +517,7 @@ func flight_status(phase: int, progress: float) -> void:
 		"Rumbo a la Tierra",
 		"Regreso a la Tierra"
 	][phase]
-	details.text = "Etapa %d de 4  ·  %d %%" % [phase + 1, roundi(progress * 100)]
+	details.text = LunarLanguage.t("Etapa %d de 4  ·  %d %%") % [phase + 1, roundi(progress * 100)]
 	next_step.text = [
 		"La etapa de ascenso se separa. La base de descenso queda en la Luna.",
 		"La tripulación pasa al módulo de mando tras acoplarse.",
@@ -530,7 +530,7 @@ func flight_status(phase: int, progress: float) -> void:
 func lobby(profile: LunarProfile, status: String) -> void:
 	var subtitle := "ÚLTIMA VENTANA"
 	if profile.campaign_finished():
-		subtitle += "\nCampaña completada"
+		subtitle += LunarLanguage.t("\nCampaña completada")
 	if not status.is_empty():
 		subtitle += "\n" + status
 	_prepare_menu("ARTEMIS", subtitle)
@@ -732,13 +732,13 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 		_label(_list, entry.terrain, 20).modulate = SOFT
 		var owned := profile.open_base(id)
 		var has_save := profile.saved_bases(single_player).has(id)
-		var suffix := " · partida guardada" if has_save else ""
+		var suffix := LunarLanguage.t(" · partida guardada") if has_save else ""
 		if not owned:
-			suffix = " · %d monedas" % entry.cost
+			suffix = LunarLanguage.t(" · %d monedas") % entry.cost
 		var caption := "%s · %s%s" % [entry.name, difficulty, suffix]
 		_button(_list, caption, mode if owned else "buy_base", id)
 		if has_save:
-			_button(_list, "Reiniciar %s…" % entry.name, "reset_confirm", id)
+			_button(_list, LunarLanguage.t("Reiniciar %s…") % entry.name, "reset_confirm", id)
 		var note := "%s · misión nueva" % difficulty
 		var resume := ""
 		if id == focus and owned and not has_save:
@@ -749,7 +749,7 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 			var slot: Dictionary = profile.saved_bases(single_player)[id]
 			var day := int(slot.get("active", {}).get("days", 0)) + 1
 			note = "%s · guardada" % difficulty
-			resume = "Continuar día %d" % day
+			resume = LunarLanguage.t("Continuar día %d") % day
 		spots.append(
 			{
 				"id": id,
@@ -861,7 +861,7 @@ func _role_card(
 	perk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	perk.modulate = SOFT
-	var caption := "Elegido" if picked else ("Elegir" if owned else "Comprar · %d" % price)
+	var caption := "Elegido" if picked else ("Elegir" if owned else LunarLanguage.t("Comprar · %d") % price)
 	var button := _button(card, caption, action, id)
 	button.custom_minimum_size = Vector2(240.0, 50.0)
 	button.focus_mode = Control.FOCUS_ALL
@@ -911,7 +911,7 @@ func _card_frame(picked: bool, hover: bool) -> StyleBoxFlat:
 
 func wait_for_guest(base_name: String, host_address: String, status: String) -> void:
 	_prepare_menu(
-		base_name, "Comparte esta dirección con tu compañero.\n%s\n%s" % [host_address, status]
+		base_name, LunarLanguage.t("Comparte esta dirección con tu compañero.\n%s\n%s") % [host_address, status]
 	)
 	_button(_list, "Volver al inicio", "leave")
 
@@ -988,7 +988,7 @@ func sync(
 		next_step.text = "Regreso a Tierra completado. Puedes seguir jugando en la base."
 	else:
 		next_step.text = (
-			"Propelente %d/%d   ·   Raciones %d/%d   ·   Radio %s   ·   A bordo %d/%d"
+			LunarLanguage.t("Propelente %d/%d   ·   Raciones %d/%d   ·   Radio %s   ·   A bordo %d/%d")
 			% [
 				mission.fuel_loaded,
 				flight.propellant,
@@ -1019,9 +1019,9 @@ func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: S
 	if cargo != &"":
 		var name: String = LunarItemContext.LOAD_NAMES[cargo]
 		if LunarItemContext.delivers(mission, player, spot):
-			release_button.text = "Entregar %s" % name
+			release_button.text = LunarLanguage.t("Entregar %s") % name
 		else:
-			release_button.text = "Soltar %s" % name if mission.solo else "Soltar / pasar"
+			release_button.text = LunarLanguage.t("Soltar %s") % name if mission.solo else "Soltar / pasar"
 	_zone_buttons.visible = action_button.visible or release_button.visible
 	_zone_detail.text = context[1]
 	_zone_detail.visible = not _zone_detail.text.is_empty()
@@ -1033,7 +1033,7 @@ func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: S
 	elif not caption.is_empty():
 		_zone_title.text = caption
 	elif cargo != &"":
-		_zone_title.text = "CARGA · %s" % String(LunarItemContext.LOAD_NAMES[cargo]).to_upper()
+		_zone_title.text = LunarLanguage.t("CARGA · %s") % String(LunarItemContext.LOAD_NAMES[cargo]).to_upper()
 	elif seated:
 		_zone_title.text = "A BORDO"
 	else:
@@ -1069,7 +1069,7 @@ static func flare_label(record: Dictionary) -> String:
 	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
 	var kind := String(record.class_type)
 	return (
-		"Llamarada real del %d %s %s · %s (%s)"
+		LunarLanguage.t("Llamarada real del %d %s %s · %s (%s)")
 		% [int(date.substr(8, 2)), month, date.left(4), STRENGTH.get(kind.left(1), "pequeña"), kind]
 	)
 
@@ -1136,24 +1136,24 @@ func _show_alert(mission: LunarMission, safe: bool) -> void:
 	var real := "" if flare.is_empty() else "\n" + flare_label(flare)
 	if mission.storm_active():
 		alert.text = (
-			"⚠ Lluvia de partículas del Sol · "
+			LunarLanguage.t("⚠ Lluvia de partículas del Sol · ")
 			+ ("Estás a salvo aquí" if safe else "¡Entra al refugio!")
 			+ real
 		)
 	elif mission.storm_warning() > 0:
 		var seconds := ceili(mission.storm_warning())
-		alert.text = "☀ ¡Explosión en el Sol! Corre al refugio: %d s%s" % [seconds, real]
+		alert.text = LunarLanguage.t("☀ ¡Explosión en el Sol! Corre al refugio: %d s%s") % [seconds, real]
 	elif not quiet.is_empty():
 		alert.add_theme_color_override("font_color", Color("#ffd36b"))
 		alert.text = (
-			"☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n" + flare_label(quiet)
+			LunarLanguage.t("☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n") + flare_label(quiet)
 		)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
 	elif mission.outage_warning() > 0:
-		alert.text = "⚡ Apagón en %d s" % ceili(mission.outage_warning())
+		alert.text = LunarLanguage.t("⚡ Apagón en %d s") % ceili(mission.outage_warning())
 	elif mission.phase == &"countdown":
-		alert.text = "Despegue en %d s" % ceili(mission.countdown)
+		alert.text = LunarLanguage.t("Despegue en %d s") % ceili(mission.countdown)
 	elif mission.radio_cut():
 		alert.text = "Radio sin señal"
 	elif mission.radio_warning():
