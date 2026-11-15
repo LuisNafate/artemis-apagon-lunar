@@ -54,6 +54,7 @@ var _resources: GridContainer
 var _readouts: Array[Label] = []
 var _controls: HBoxContainer
 var _pause: Button
+var _wallet_balance: Label
 
 
 func build() -> void:
@@ -151,6 +152,12 @@ func _build_play(root: Control) -> void:
 	notes.offset_top = -120
 	notes.offset_bottom = -90
 	notes.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	feedback = _label(notes, "", 22)
+	feedback.hide()
+	feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_float_text(feedback)
+	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
@@ -165,6 +172,16 @@ func _build_play(root: Control) -> void:
 			if play.visible:
 				show_title()
 	)
+	_wallet_balance = _label(play, "", 20, TITLE)
+	_wallet_balance.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_wallet_balance.offset_left = -320
+	_wallet_balance.offset_right = -106
+	_wallet_balance.offset_top = 26
+	_wallet_balance.offset_bottom = 67
+	_wallet_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_wallet_balance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_float_text(_wallet_balance)
+	_wallet_balance.add_theme_color_override("font_color", Color("#ffda7a"))
 	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_pause.offset_left = -90
@@ -202,14 +219,6 @@ func _build_play(root: Control) -> void:
 	bottom.offset_bottom = -11
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(joystick)
-	feedback = _label(bottom, "", 23)
-	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	feedback.hide()
-	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	feedback.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	feedback.add_theme_color_override("font_outline_color", Color("#271e20"))
-	feedback.add_theme_constant_override("outline_size", 8)
 	_zone_panel = PanelContainer.new()
 	_zone_panel.add_theme_stylebox_override("panel", _style(FILL, EDGE))
 	play.add_child(_zone_panel)
@@ -337,6 +346,7 @@ func flight_status(phase: int, progress: float) -> void:
 	if flying:
 		_zone_panel.hide()
 	_pause.visible = not flying
+	_wallet_balance.visible = not flying
 	_resources.visible = not flying
 	details.visible = flying
 	if not flying:
@@ -549,6 +559,10 @@ func confirm_reset(base_name: String, id: String) -> void:
 	_button(_list, "Reiniciar base", "reset", id)
 
 
+func show_balance(balance: String) -> void:
+	_wallet_balance.text = "%s monedas" % balance
+
+
 func playing() -> void:
 	hide_lobby()
 	if globe != null:
@@ -607,7 +621,7 @@ func sync(
 	var deposit := String(spot).begins_with("dep:")
 	var named: StringName = mission.deposit_kind(spot) if deposit else spot
 	feedback.text = message
-	feedback.visible = not message.is_empty()
+	feedback.visible = not message.is_empty() and mission.phase != &"flight"
 	var carrying: bool = mission.pilots[player].cargo != 0
 	var seated: bool = mission.pilots[player].seated
 	var spot_name := String(CrestWorld.NAMES.get(named, ""))

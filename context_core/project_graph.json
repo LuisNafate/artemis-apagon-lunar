@@ -1,5 +1,5 @@
 {
-  "revision": 21,
+  "revision": 22,
   "nodes": [
     {
       "id": "config",
@@ -1018,6 +1018,11 @@
     {
       "id": "lunar_unlocks",
       "kind": "system"
+    },
+    {
+      "id": "lunar_wallet_receipts",
+      "kind": "protocol",
+      "description": "Recibos idempotentes, guardado del abono y confirmación de entrega ENet."
     },
     {
       "id": "lunar_crater",
@@ -2627,6 +2632,26 @@
       "lunar_profile",
       "persists",
       "lunar_unlocks"
+    ],
+    [
+      "lunar_profile",
+      "persists",
+      "lunar_wallet_receipts"
+    ],
+    [
+      "lunar_game",
+      "delivers",
+      "lunar_wallet_receipts"
+    ],
+    [
+      "lunar_interface",
+      "displays_balance_from",
+      "lunar_profile"
+    ],
+    [
+      "lunar_suite_script",
+      "probes",
+      "lunar_wallet_receipts"
     ],
     [
       "lunar_days",
