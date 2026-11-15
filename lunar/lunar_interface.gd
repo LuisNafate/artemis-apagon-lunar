@@ -296,12 +296,11 @@ func _build_play(root: Control) -> void:
 	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
 	action_button.custom_minimum_size = Vector2(200, 50)
-	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
 	release_button.custom_minimum_size = Vector2(200, 50)
 	jump_button = _button(play, "Saltar", "jump")
 	jump_button.custom_minimum_size = Vector2(110, 56)
-	_emphasize(jump_button)
+	LunarButtonKit.apply(jump_button, &"mejorar")
 	jump_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	jump_button.offset_left = -382
 	jump_button.offset_right = -266
@@ -499,7 +498,8 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	var roles := LunarOpening.corner_button("Roles")
 	var archive := LunarOpening.corner_button("Archivo científico")
 	for link in [roles, archive]:
-		link.custom_minimum_size = Vector2(110, 48)
+		link.custom_minimum_size = Vector2(150, 50)
+		LunarButtonKit.apply(link, &"soltar", 20)
 		extras.add_child(link)
 		_animate_button(link, _list.get_child_count() + 1, false)
 	roles.pressed.connect(func() -> void: selected.emit("roles", ""))
@@ -549,31 +549,7 @@ func _lobby_button(
 	button.custom_minimum_size.y = 48
 	button.focus_mode = Control.FOCUS_ALL
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.add_theme_font_override("font", TITLE)
-	button.add_theme_font_size_override("font_size", 24)
-	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, Color("#251911"))
-	var paper := Color("#ffd05b") if primary else Color("#e6c9a0")
-	for state in ["normal", "hover", "pressed", "focus"]:
-		var fill := paper
-		if state == "hover":
-			fill = paper.lightened(0.26)
-		elif state == "pressed":
-			fill = paper.darkened(0.13)
-		var sign := _style(fill, Color("#4e3624"))
-		sign.set_corner_radius_all(2)
-		sign.skew = Vector2(-0.12, 0.0)
-		sign.border_width_bottom = 3 if state == "pressed" else 7
-		sign.shadow_color = Color("#00000066")
-		sign.shadow_size = 8
-		sign.shadow_offset = Vector2(0.0, 5.0)
-		if state == "focus":
-			sign.bg_color = Color.TRANSPARENT
-			sign.border_color = Color("#fff0cf")
-			sign.shadow_size = 0
-			sign.set_border_width_all(2)
-		button.add_theme_stylebox_override(state, sign)
+	LunarButtonKit.apply(button, &"mejorar" if primary else &"accion", 26)
 	_animate_button(button, _list.get_child_count(), primary)
 	return button
 
@@ -819,13 +795,14 @@ func _role_card(
 	button.custom_minimum_size = Vector2(240.0, 50.0)
 	button.focus_mode = Control.FOCUS_ALL
 	if picked:
-		_emphasize(button)
-	elif not owned:
+		LunarButtonKit.apply(button, &"construir")
+	elif owned:
+		LunarButtonKit.apply(button, &"accion")
+	else:
+		LunarButtonKit.apply(button, &"mejorar" if can_afford else &"bloqueado")
 		button.icon = COIN_ICON
 		button.expand_icon = true
 		button.add_theme_constant_override("icon_max_width", 26)
-		if not can_afford:
-			button.modulate = Color(1.0, 0.78, 0.74)
 
 	art.mouse_entered.connect(func() -> void: _pop(card, Vector2(1.04, 1.04), 0.18))
 	art.mouse_exited.connect(func() -> void: _pop(card, Vector2.ONE, 0.18))
@@ -1091,15 +1068,10 @@ func _button(parent: Control, caption: String, action: String, argument: String 
 	button.text = caption
 	button.custom_minimum_size = Vector2(54, 50)
 	button.focus_mode = Control.FOCUS_NONE
+	LunarButtonKit.apply(button, LunarButtonKit.kind_for(caption))
 	parent.add_child(button)
 	button.pressed.connect(func() -> void: selected.emit(action, argument))
 	return button
-
-
-func _emphasize(button: Button) -> void:
-	button.add_theme_stylebox_override("normal", _style(TEAL, Color("#163c38")))
-	button.add_theme_stylebox_override("hover", _style(Color("#286f63"), TEAL))
-	button.add_theme_stylebox_override("pressed", _style(Color("#183e39"), TEAL))
 
 
 func _label(parent: Control, caption: String, font_size: int, font: Font = BODY) -> Label:
