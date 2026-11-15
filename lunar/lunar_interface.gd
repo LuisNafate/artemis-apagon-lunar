@@ -1,3 +1,4 @@
+# gdlint: disable=max-file-lines
 class_name LunarInterface
 extends CanvasLayer
 
@@ -584,9 +585,13 @@ func _animate_button(button: Button, index: int, primary: bool) -> void:
 	button.modulate.a = 0.0
 	var wait := 0.55 + index * 0.11
 	var intro := button.create_tween().set_parallel(true)
-	intro.tween_property(button, "scale", Vector2.ONE, 0.55).set_delay(wait).set_trans(
-		Tween.TRANS_BACK
-	).set_ease(Tween.EASE_OUT)
+	(
+		intro
+		. tween_property(button, "scale", Vector2.ONE, 0.55)
+		. set_delay(wait)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
 	intro.tween_property(button, "modulate:a", 1.0, 0.3).set_delay(wait)
 	_pop_on_hover(button)
 	if primary:
@@ -747,7 +752,9 @@ func roles(profile: LunarProfile) -> void:
 	footer.add_theme_constant_override("separation", 18)
 	_list.add_child(footer)
 	var none_picked: bool = String(profile.data.active_role).is_empty()
-	var none := _button(footer, "Sin rol · elegido" if none_picked else "Sin rol", "choose_role", "")
+	var none := _button(
+		footer, "Sin rol · elegido" if none_picked else "Sin rol", "choose_role", ""
+	)
 	none.custom_minimum_size = Vector2(200, 50)
 	var back := _button(footer, "Volver", "lobby")
 	back.custom_minimum_size = Vector2(200, 50)
@@ -833,9 +840,13 @@ func _role_card(
 	card.modulate.a = 0.0
 	var wait := 0.08 + index * 0.12
 	var intro := card.create_tween().set_parallel(true)
-	intro.tween_property(card, "scale", Vector2.ONE, 0.5).set_delay(wait).set_trans(
-		Tween.TRANS_BACK
-	).set_ease(Tween.EASE_OUT)
+	(
+		intro
+		. tween_property(card, "scale", Vector2.ONE, 0.5)
+		. set_delay(wait)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
 	intro.tween_property(card, "modulate:a", 1.0, 0.3).set_delay(wait)
 	if picked:
 		var glow := art.create_tween().set_loops()

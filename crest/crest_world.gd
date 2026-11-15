@@ -649,7 +649,8 @@ func _stations() -> void:
 
 
 func _build_fuel_cabinet(root: Node3D) -> void:
-	# El deposito de propelente es un modelo propio (tumbado a lo largo) y sustituye al armario de cubos.
+	# El deposito de propelente es un modelo propio (tumbado a lo largo);
+	# sustituye al armario de cubos.
 	var point := Vector3(0, 0.0, -1.42)
 	station_prop(root, MODEL_FUEL_TANK, point, 1.7, 0.364, -90.0)
 	_solid(root.position + point + Vector3(0, 0.62, 0), Vector3(1.7, 1.24, 1.27))
