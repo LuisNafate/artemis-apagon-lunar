@@ -12,6 +12,8 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
+const LOGO := preload("res://assets/ui/logo_artemis.png")
+const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
 const ROLE_CARDS := {
 	"engineer": preload("res://assets/ui/roles/engineer.png"),
@@ -71,7 +73,7 @@ var _controls: HBoxContainer
 var _pause: Button
 var _wallet_balance: Label
 var _wallet_icon: TextureRect
-var _logo: RichTextLabel
+var _logo: TextureRect
 var _poster: TextureRect
 var _sparks: CPUParticles2D
 var _lobby_tweens: Array[Tween] = []
@@ -320,21 +322,15 @@ func _build_menu(root: Control) -> void:
 	content.add_theme_constant_override("separation", 8)
 	menu.add_child(content)
 	_heading = _label(content, "", 43, TITLE)
-	_logo = RichTextLabel.new()
-	_logo.bbcode_enabled = true
-	_logo.fit_content = true
-	_logo.scroll_active = false
-	_logo.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_logo = TextureRect.new()
+	_logo.texture = LOGO
+	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_logo.add_theme_font_override("normal_font", TITLE)
-	_logo.add_theme_font_size_override("normal_font_size", 128)
-	_logo.add_theme_color_override("default_color", Color("#ffe9b0"))
-	_logo.add_theme_color_override("font_outline_color", Color("#6b2f17"))
-	_logo.add_theme_constant_override("outline_size", 14)
-	_logo.add_theme_color_override("font_shadow_color", Color("#00000099"))
-	_logo.add_theme_constant_override("shadow_offset_x", 0)
-	_logo.add_theme_constant_override("shadow_offset_y", 8)
-	_logo.text = "[wave amp=14.0 freq=2.6]ARTEMIS[/wave]"
+	_logo.custom_minimum_size = Vector2(396.0, 139.0)
+	var waves := ShaderMaterial.new()
+	waves.shader = LOGO_WAVES
+	_logo.material = waves
 	content.add_child(_logo)
 	content.move_child(_logo, 1)
 	_logo.hide()
@@ -627,7 +623,7 @@ func _start_backdrop() -> void:
 
 
 func _animate_lobby() -> void:
-	_logo.pivot_offset = Vector2(0.0, 90.0)
+	_logo.pivot_offset = Vector2(0.0, 70.0)
 	_logo.scale = Vector2(0.3, 0.3)
 	_logo.rotation = -0.2
 	_logo.modulate.a = 0.0
