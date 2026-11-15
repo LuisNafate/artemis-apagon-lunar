@@ -134,6 +134,14 @@ func _show_opening() -> void:
 	opening.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
+## La intro se cierra al entrar al menu o al abrir una base por cualquier camino: si
+## siguiera viva, al terminar devolveria la partida al lobby.
+func _close_opening() -> void:
+	if is_instance_valid(opening):
+		opening.get_parent().queue_free()
+		opening = null
+
+
 func _surface_camera() -> void:
 	var view := Vector2(0.228, 0.974).normalized()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -195,7 +203,10 @@ func _follow_camera(delta: float) -> void:
 		for point in points:
 			focus += point
 		focus /= maxf(1.0, float(points.size()))
-		var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -6.0, 6.0))
+		# En z llega hasta el borde de la plataforma: con el desplazamiento vertical de la
+		# vista, un tope menor dejaba al piloto bajo el borde inferior de la pantalla.
+		var reach_z := CrestWorld.HALF_Z
+		var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -reach_z, reach_z))
 		camera.position = camera.position.lerp(_camera_home + shift, blend)
 		camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
 		camera.v_offset = lerpf(camera.v_offset, PLAY_V_OFFSET, blend)
@@ -257,9 +268,7 @@ func _choose(action: String, argument: String) -> void:
 		return
 	match action:
 		"title_enter":
-			if is_instance_valid(opening):
-				opening.get_parent().queue_free()
-				opening = null
+			_close_opening()
 			net = &"lobby"
 			_surface_camera()
 			ui.lobby(profile, "")
@@ -421,6 +430,7 @@ func join(address: String, port: int = PORT) -> void:
 
 
 func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> void:
+	_close_opening()
 	sim = LunarMission.new()
 	sim.prepare(id, seed_value, single_player)
 	_feedback_time = 0.0

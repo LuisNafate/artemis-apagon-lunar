@@ -480,6 +480,7 @@ func _camera() -> void:
 	_cases += 1
 	var game := await _game_solo("mons_mouton_plateau")
 	await _frames(240)
+	_check(not is_instance_valid(game.opening), "opening a base closes the intro")
 	_check(game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "orthographic inside base")
 	_check(absf(game.camera.size - LunarGame.PLAY_SIZE) < 0.05, "team follow zoom kept in base")
 	var basis_home: Basis = game.camera.global_basis
@@ -504,6 +505,23 @@ func _camera() -> void:
 		game.camera.unproject_position(game.pilots[0].position) / Vector2(game.get_viewport().size)
 	)
 	_check(absf(in_base.x - 0.5) < 0.1, "solo team camera centres the only pilot (%s)" % in_base)
+	for edge_z in [10.5, -10.5, 11.9, -11.9]:
+		game._set_positions([Vector3(2, 0.1, edge_z), Vector3.ZERO])
+		await _frames(240)
+		var framed: Vector2 = (
+			game.camera.unproject_position(game.pilots[0].position)
+			/ Vector2(game.get_viewport().size)
+		)
+		_check(
+			(
+				game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL
+				and framed.y > 0.1
+				and framed.y < 0.9
+				and framed.x > 0.1
+				and framed.x < 0.9
+			),
+			"team camera keeps the pilot framed at z %.1f (%s)" % [edge_z, framed]
+		)
 	_check(
 		(
 			game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL
