@@ -356,6 +356,10 @@ func _solo() -> void:
 	_check(player.net == &"solo" and player.ui.play.visible, "main menu opens solo directly")
 	_check(player.multiplayer.multiplayer_peer == existing_peer, "no network peer opened")
 	_check(player.pilots[0].visible and not player.pilots[1].visible, "only one astronaut in solo")
+	# Los puntos de salida del plano 40x22 quedan a unos 3.9 m del puesto de práctica.
+	var desk: Vector3 = CrestWorld.STATIONS[&"training"]
+	player._set_positions([desk, Vector3.ZERO])
+	await get_tree().physics_frame
 	player.ui.action_button.pressed.emit()
 	_check(player.sim.cargo_kind(0) == &"sample", "solo tutorial picks up a sample")
 	player.ui.release_button.pressed.emit()
@@ -500,7 +504,8 @@ func _network() -> void:
 		await get_tree().physics_frame
 	host.ui.joystick.clear()
 	_check(frame_position.distance_to(host.pilots[0].position) > 0.9, "joystick drives host")
-	host._set_positions([Vector3(-0.68, 0.1, 5.85), Vector3(0.68, 0.1, 5.85)])
+	var desk: Vector3 = CrestWorld.STATIONS[&"training"]
+	host._set_positions([desk + Vector3(-0.68, 0.1, 0), desk + Vector3(0.68, 0.1, 0)])
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	host.ui.selected.emit("action", "")

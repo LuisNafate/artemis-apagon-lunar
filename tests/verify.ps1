@@ -46,7 +46,7 @@ try {
     Invoke-GodotCheck -Name 'Regresión' -GodotArguments @('--quit-after', '300', 'res://tests/mission_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión del puesto lunar' -GodotArguments @('--quit-after', '300', 'res://tests/outpost_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión 3D' -GodotArguments @('--disable-render-loop', '--fixed-fps', '60', '--quit-after', '8000', 'res://tests/field_suite.tscn')
-    Invoke-GodotCheck -Name 'Regresión Estación Cresta' -GodotArguments @('--fixed-fps', '60', '--quit-after', '25000', 'res://tests/crest_suite.tscn')
+    Invoke-GodotCheck -Name 'Regresión Estación Cresta' -GodotArguments @('--fixed-fps', '60', '--quit-after', '60000', 'res://tests/crest_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión campaña lunar' -GodotArguments @('--fixed-fps', '60', '--quit-after', '2400', 'res://tests/lunar_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión mundo abierto' -GodotArguments @('--fixed-fps', '60', '--quit-after', '6000', 'res://tests/open_world_suite.tscn')
 } finally {

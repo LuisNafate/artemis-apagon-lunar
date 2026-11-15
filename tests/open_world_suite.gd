@@ -23,6 +23,10 @@ func _run() -> void:
 	get_tree().quit(int(_failed > 0))
 
 
+func _rect(values: Array) -> Rect2:
+	return Rect2(float(values[0]), float(values[1]), float(values[2]), float(values[3]))
+
+
 func _rules() -> Dictionary:
 	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(REGISTRY))
 	return data.campaign_2026
@@ -45,7 +49,7 @@ func _generation() -> void:
 		)
 	var home := ChunkGenerator.generate(world, region, s, Vector2i(0, 0))
 	_check(absf(home.height_at(Vector2(3, 3))) < 0.001, "base deck flat at Y=0")
-	var exclusion := Rect2(-23.45, -16.7, 46.9, 33.4)
+	var exclusion := _rect(s.base_exclusion_rect)
 	var border: Array[Vector2i] = []
 	for cx in range(-2, 2):
 		border.append_array([Vector2i(cx, -2), Vector2i(cx, 1)])
@@ -147,7 +151,7 @@ func _base_exits() -> void:
 	_cases += 1
 	var rules: Dictionary = _rules()
 	var s: Dictionary = rules.open_world
-	var exclusion := Rect2(-23.45, -16.7, 46.9, 33.4)
+	var exclusion := _rect(s.base_exclusion_rect)
 	var outer := exclusion.grow(16.0)
 	for base_id: String in rules.bases:
 		var world := ChunkGenerator.world_seed(base_id, 11)
