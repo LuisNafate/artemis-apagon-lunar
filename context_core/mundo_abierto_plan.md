@@ -582,3 +582,45 @@ Cambio aprobado por el usuario el 2026-11-15. Ver la sección "Muro, puerta y fl
 - [ ] **Step 3: Implementar.**
 - [ ] **Step 4: `verify.ps1 -Godot $G` en verde**, con todas las suites a 0 fallos y sin avisos.
 - [ ] **Step 5: Commit** `Muro con puerta en la base y flecha de regreso` (en español, sin líneas de atribución).
+
+---
+
+### Task R1: Rover · radio, desbloqueo y conducción
+
+Cambio aprobado por el usuario el 2026-11-16. Ver la sección "Rover manejable" de la spec.
+
+**Files:**
+- Modify: `context_core/state_registry.json` (`campaign_2026.rover`: `unlock` {`ore`: 3, `ice`: 3}, `speed` 12.0, `acceleration`, `turn_rate`, `reach` 2.0, `park_point`, `park_radius` 2.0, `tray_capacity` 2, escala del modelo).
+- Modify: `lunar/lunar_mission.gd`: estado `rover` (`unlocked`, `delivered` {ore, ice}, `position`, `yaw`, `driver` −1/0/1, `tray` []) en `SAVE_FIELDS`; entregar al rover; subir y bajar; `radio_available()` (bloqueado, o desbloqueado y aparcado). La acción de radio actual sigue igual y solo cambia dónde está disponible.
+- Create: `lunar/rover/rover_body.gd` (`CharacterBody3D`: modelo, colisión, conducción cinemática, inclinación según el terreno) y la lógica de presentación necesaria. `lunar/lunar_game.gd` no crece en líneas netas: la lógica va en archivos nuevos.
+- Modify: `crest/crest_world.gd` (campaña): el rover deja de ser decoración y la estación `radio` queda anclada al punto de aparcamiento del rover. La escena histórica de Cresta no cambia.
+- Modify: `lunar/lunar_item_context.gd` y/o `lunar/lunar_interface.gd`: textos de Acción y Entregar ("Enviar a Tierra", "Entregar al rover", "Subir al rover", "Bajar") y el detalle "Mineral x/3 · Hielo y/3".
+- Test: casos nuevos en un archivo aparte (`tests/rover_cases.gd`) enganchado a `open_world_suite`. Hay que actualizar lo que dependa de la posición de la radio en las demás suites.
+
+- [ ] **Step 1: Escribir las pruebas que fallan** (y anotar la salida RED):
+  - Bloqueado, junto al rover: Acción es la radio y enviar la lista funciona como ahora.
+  - Con caja de hielo o mineral, Entregar suma 1/3. Cajas de otro tipo no cuentan.
+  - Al llegar a 3/3 y 3/3 queda desbloqueado, y sigue desbloqueado tras guardar y continuar.
+  - Subir, conducir con el joystick hasta 12 m/s ±5 % y bajar. No atraviesa el muro. Sale por la puerta. No salta. Si el chunk no está listo, se congela.
+  - Desbloqueado y fuera de su sitio: la radio no envía. Aparcado dentro de `park_radius`: envía.
+  - Si se agota el aire, el rover vuelve a su posición del amanecer.
+  - Cooperativo (dos pares ENet locales): el invitado ve al anfitrión conducir. Solo uno conduce a la vez.
+- [ ] **Step 2: Verlas fallar.**
+- [ ] **Step 3: Implementar.**
+- [ ] **Step 4: `verify.ps1` en verde** (todas las suites a 0 fallos, salvo los fallos que ya trae `main`, que se anotan aparte con sus nombres).
+- [ ] **Step 5: Commit** `Rover manejable: radio, desbloqueo y conducción` (en español, sin atribución).
+
+---
+
+### Task R2: Rover · bandeja de carga
+
+**Files:** `lunar/lunar_mission.gd` (bandeja), `lunar/rover/*`, contexto de ítems e interfaz, `tests/rover_cases.gd`.
+
+- [ ] **Step 1: Pruebas que fallan:**
+  - Conduciendo junto a una caja suelta (≤ `reach`), Acción "Cargar caja" la sube a la bandeja, con un máximo de 2. Con la bandeja llena no carga.
+  - Bajado junto al rover con caja en la mano, se carga en la bandeja.
+  - En la refinería, conduciendo, Entregar descarga una caja: el hielo se refina y el mineral se guarda.
+  - En otro sitio, Soltar deja una caja en el suelo junto al rover y se puede volver a recoger.
+  - La bandeja se ve en el modelo, se guarda y viaja en cooperativo.
+- [ ] **Step 2: Verlas fallar.** **Step 3: Implementar.** **Step 4: `verify.ps1`.**
+- [ ] **Step 5: Commit** `Rover: bandeja de carga` (en español, sin atribución).

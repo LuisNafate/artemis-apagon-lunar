@@ -200,3 +200,23 @@ Para que la base sea un lugar donde estar, la plataforma tiene muro y una puerta
 - **Rutas:** al tocar el suelo, una ruta que entra o sale de la base pasa por la puerta, no por el borde más cercano.
 - **Flecha:** es una flecha plana en el suelo alrededor del piloto, con una etiqueta de distancia en metros (por ejemplo, "➤ 120 m"). Apunta siempre a la puerta, solo se ve fuera de la base, y cada dispositivo muestra la de su propio piloto.
 - **Escena histórica:** Cresta no cambia; solo la campaña tiene muro y puerta.
+
+## Rover manejable · aprobado por el usuario el 2026-11-16
+
+El rover de la antena (`assets/props_luna/estaciones/antena_rover.glb`, junto a la radio de la base) sigue siendo la radio de la base y además se puede desbloquear para conducirlo y llevar carga. El objetivo es facilitar la exploración.
+
+**Decisiones del usuario**
+
+- **Bloqueado:** funciona como ahora, como la radio para enviar la lista de vuelo. Junto a él, **Acción** = "Enviar a Tierra" (la acción actual de radio).
+- **Desbloqueo:** hay que entregarle **3 cajas de mineral y 3 cajas de hielo**. Se entregan caja a caja con **Entregar** cuando se lleva una caja de ese tipo junto al rover. Son cajas traídas a mano, no el mineral guardado. El panel muestra "Mineral x/3 · Hielo y/3". Al completarse queda desbloqueado para siempre en esa base: se guarda con la partida y en cooperativo vale para los dos.
+- **Carga:** el rover lleva cajas en una bandeja trasera.
+- **Radio tras el desbloqueo:** solo funciona con el rover aparcado en su sitio de la base, dentro del radio de aparcamiento. Si está fuera, junto a su sitio el panel indica que hay que traer el rover para usar la radio.
+
+**Propuestas aprobadas**
+
+- **Conducción:** junto al rover desbloqueado, Acción = "Subir al rover"; dentro, Acción = "Bajar". El joystick conduce con la dirección relativa a la cámara, como al caminar, a unos 12 m/s. No salta. Sigue el relieve inclinándose con el terreno. Choca con rocas y muros y pasa por la puerta de la base. Mientras se conduce, tocar el suelo no traza rutas.
+- **Supervivencia:** el astronauta sigue gastando aire del traje porque el rover no está presurizado. Noche y tormentas sin cambios.
+- **Cooperativo:** conduce uno solo. El otro sigue a pie y se mantiene el límite de 40 m entre los dos. El anfitrión es la autoridad, como en todo lo demás.
+- **Carga:** **2 cajas** como máximo. Al conducir junto a una caja suelta, Acción = "Cargar caja". Bajado junto al rover con una caja en la mano, se puede cargar en la bandeja. En la refinería, conduciendo, **Entregar** descarga una caja directamente (el hielo se refina y el mineral se guarda, igual que si la entregara el astronauta). En cualquier otro sitio, **Soltar** deja una caja en el suelo junto al rover.
+- **Construcción:** el rover es un cuerpo cinemático (`CharacterBody3D`, como el astronauta), no `VehicleBody3D`. Reutiliza el movimiento, las colisiones y la regla de congelar si el chunk no está cargado. Hay que comprobar que el modelo cabe por la puerta de 3 m; si no, se escala o se ensancha la puerta (registro `base_wall.door_width`).
+- **Estado guardado:** desbloqueo, entregas, posición, orientación, conductor y bandeja forman parte del estado de la misión (`SAVE_FIELDS`), así que viajan en la snapshot y vuelven al amanecer si se agota el aire, igual que el resto del progreso.
