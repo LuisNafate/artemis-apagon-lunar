@@ -103,3 +103,8 @@
 - Se revisó en el motor el aterrizaje, la miniatura giratoria de LRO y el paisaje de Nobile. Durante la revisión se encontró que los GLB de Kenney traían el plato y el receptor desplazados. Ambos quedaron alineados con el punto de servicio de la radio.
 - Godot 4.7.2. Pasaron formato y lint de 34 scripts, importación, arranque y las cuatro regresiones. Academia 16 casos y 3767 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Estación Cresta 10 y 277. Con gráficos a 1280 × 720 y 1152 × 648 pasaron 9 casos y 93 comprobaciones en cada resolución.
 - Se verificó la exportación Windows x64 con los tres GLB y los datos sin conexión. El ejecutable abrió sin errores. El ZIP incluye créditos y procedencia. Los nueve mapas nuevos siguen en producción. El recorte de Nobile se usa como paisaje en el mapa actual.
+
+## Limpieza e importación desde cero
+
+- Se apartaron 102 archivos de la caché de Godot y dos bytecodes de Python, unos 6,2 MB en total. Se comprobó que ambas rutas contienen archivos generados fuera de Git. La compilación y los recursos de producción siguen disponibles.
+- Godot 4.7.2 importó desde una caché vacía y pasó formato y lint de 34 scripts, arranque principal y cuatro regresiones. Academia 16 casos y 3767 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Estación Cresta 10 y 277. Se comprobó además que la ventana del ejecutable de Windows seguía abierta y respondía.
