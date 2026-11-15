@@ -20,6 +20,7 @@ const PROMPTS := [
 
 var joystick := LunarTouch.new()
 var play: Control
+var globe: LunarGlobe
 var menu: PanelContainer
 var address: LineEdit
 var action_button: Button
@@ -60,6 +61,13 @@ func build() -> void:
 		design.set_stylebox(state, "Button", _style(fill, EDGE))
 	root.theme = design
 	_build_play(root)
+	globe = LunarGlobe.new()
+	root.add_child(globe)
+	globe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	globe.picked.connect(
+		func(action: String, argument: String) -> void: selected.emit(action, argument)
+	)
+	globe.hide()
 	_build_menu(root)
 
 
@@ -233,12 +241,14 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_button(_list, "Unirme en línea", "join")
 	_button(_list, "Roles", "roles")
 	_button(_list, "Archivo científico", "science")
+	globe.show_backdrop()
 
 
-func bases(profile: LunarProfile, mode: String) -> void:
+func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 	var single_player := mode == "solo"
 	var title := "JUGAR SOLO" if single_player else "CREAR PARTIDA EN LÍNEA"
 	_prepare_menu(title, "%s monedas · Elige una base lunar." % profile.balance_text())
+	var spots: Array[Dictionary] = []
 	_button(_list, "Volver", "lobby")
 	for id: String in profile.rules.bases:
 		var entry: Dictionary = profile.rules.bases[id]
@@ -253,6 +263,24 @@ func bases(profile: LunarProfile, mode: String) -> void:
 		_button(_list, caption, mode if owned else "buy_base", id)
 		if has_save:
 			_button(_list, "Reiniciar %s…" % entry.name, "reset_confirm", id)
+		var note := difficulty
+		if not owned:
+			note = "%s - %d" % [difficulty, entry.cost]
+		elif has_save:
+			note = "%s · guardada" % difficulty
+		spots.append(
+			{
+				"id": id,
+				"name": String(entry.name),
+				"note": note,
+				"owned": owned,
+				"priced": not owned,
+				"saved": owned and has_save,
+				"action": mode if owned else "buy_base"
+			}
+		)
+	menu.hide()
+	globe.show_bases(title, profile.balance_text(), spots, notice)
 
 
 func roles(profile: LunarProfile) -> void:
@@ -310,6 +338,8 @@ func confirm_reset(base_name: String, id: String) -> void:
 
 func playing() -> void:
 	menu.hide()
+	if globe != null:
+		globe.hide()
 	play.show()
 
 
@@ -422,6 +452,8 @@ func _action_caption(spot: StringName) -> String:
 func _prepare_menu(title: String, status: String) -> void:
 	joystick.clear()
 	play.hide()
+	if globe != null:
+		globe.hide()
 	menu.show()
 	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	menu.offset_left = -270
