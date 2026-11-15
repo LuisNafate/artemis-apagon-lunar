@@ -175,3 +175,15 @@ La [auditoría de terreno](auditoria_terreno_campana.md) registra medidas, inter
 ## Entrega Android · revisión 17
 
 El preset Android usa ETC2/ASTC, ARM64 y orientación horizontal. El icono compartido vive en `assets/ui/artemis_icon.svg`. Godot exporta una compilación de prueba firmada por el certificado de desarrollo a `dist/Artemis-Ultima-Ventana.apk`. Las compilaciones de la versión en curso quedan en `dist/` y la edición anterior en `dist/Anterior/`. Los binarios de `dist/` se excluyen de Git.
+
+## Portada cinematográfica · revisión 18
+
+LunarGame aloja LunarOpening sobre la campaña actual. La portada enlaza el viaje de 16 segundos y el bucle lunar de 4 segundos. Su señal de entrada retira la portada y abre el menú con el selector de bases. Los clips y los subtítulos se configuran en state_registry.json.
+
+## Menú de modos · revisión 19
+
+LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al acabar o al pulsar Saltar. LunarInterface presenta los modos sobre el fotograma lunar y puede solicitar que LunarGame reproduzca la intro desde el principio.
+
+## Pilotos y alunizaje · revisión 20
+
+CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por piloto y poses por velocidad y carga. La cinemática suprime toda la geometría del astronauta durante el descenso y la revela al desembarcar en el fotograma 271.

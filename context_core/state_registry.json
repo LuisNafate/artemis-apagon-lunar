@@ -1,5 +1,5 @@
 {
-  "revision": 17,
+  "revision": 20,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -885,7 +885,6 @@
       ],
       "visible_assets": [
         "gato-modelo2",
-        "astrocat_guia",
         "lro_miniatura",
         "relieve_nobile_lola",
         "apollo_base_lunar",
@@ -923,6 +922,41 @@
       "pause_in_menu": true,
       "day_reward_share": 1.0,
       "save_slot": "solo_bases"
+    },
+    "pilot_animation": {
+      "model": "res://assets/pilotos/gato-modelo2.glb",
+      "poses": ["reposo", "marcha", "carga"],
+      "bones_per_pilot": 15
+    },
+    "opening": {
+      "frames": 480,
+      "fps": 24,
+      "landing_starts_at": 16.0,
+      "flight": "res://assets/cinematica/artemis-viaje.ogv",
+      "landing": "res://assets/cinematica/artemis-luna.ogv",
+      "poster": "res://assets/cinematica/artemis-luna.png",
+      "captions": [
+        [
+          0,
+          "01 / TIERRA",
+          "Dos cadetes despegan con semillas, herramientas y un puesto lunar por montar."
+        ],
+        [
+          5,
+          "02 / RUMBO A LA LUNA",
+          "En la Luna, cada noche pondrá a prueba la energía que logren guardar."
+        ],
+        [
+          11,
+          "03 / PRIMERA LUZ",
+          "Al tocar suelo, despliegan el panel que dará energía a su base."
+        ],
+        [
+          16,
+          "04 / TU MISIÓN",
+          "Mantén la base en marcha y prepara el regreso de la tripulación."
+        ]
+      ]
     }
   }
 }

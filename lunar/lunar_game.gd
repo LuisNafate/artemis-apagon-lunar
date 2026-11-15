@@ -34,11 +34,11 @@ var guest_id := ""
 var positions_at_dawn: Array = []
 var saved_run := 0
 var play_started := false
+var opening: LunarOpening
 var _camera_home := Vector3.ZERO
 
 var _base_mode := "solo"
 var _loading := false
-var _title_age := 0.0
 var _address := ""
 var _vectors := [Vector2.ZERO, Vector2.ZERO]
 var _route: Array[PackedVector2Array] = [[], []]
@@ -102,8 +102,21 @@ func _ready() -> void:
 	if profile.error != OK:
 		ui.wait_for_guest("PERFIL LOCAL", "", "No se pudo leer el progreso guardado.")
 	else:
-		net = &"title"
-		ui.title_screen()
+		_show_opening()
+
+
+func _show_opening() -> void:
+	if is_instance_valid(opening):
+		return
+	net = &"title"
+	ui.hide_lobby()
+	var layer := CanvasLayer.new()
+	layer.layer = 2
+	add_child(layer)
+	opening = LunarOpening.new()
+	opening.enter_requested.connect(func() -> void: _choose("title_enter", ""))
+	layer.add_child(opening)
+	opening.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 func _surface_camera() -> void:
@@ -120,11 +133,6 @@ func _surface_camera() -> void:
 
 func _process(delta: float) -> void:
 	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
-	if net == &"title":
-		_title_age += delta
-		camera.h_offset = -3.7 + sin(_title_age * 0.22) * 1.35
-		camera.v_offset = 3.45 + cos(_title_age * 0.24) * 0.48
-		camera.size = 28.4 + sin(_title_age * 0.14) * 0.58
 
 
 func _notification(what: int) -> void:
@@ -180,9 +188,14 @@ func _choose(action: String, argument: String) -> void:
 		return
 	match action:
 		"title_enter":
+			if is_instance_valid(opening):
+				opening.get_parent().queue_free()
+				opening = null
 			net = &"lobby"
 			_surface_camera()
 			ui.lobby(profile, "")
+		"title_replay":
+			_show_opening()
 		"lobby":
 			ui.lobby(profile, "")
 		"bases":
@@ -195,7 +208,7 @@ func _choose(action: String, argument: String) -> void:
 			if profile.buy(argument, false):
 				ui.bases(profile, _base_mode)
 			else:
-				ui.lobby(profile, "Reúne más monedas para abrir esa base.")
+				ui.bases(profile, _base_mode, "No tienes suficientes monedas para abrir esa base.")
 		"buy_role":
 			if profile.buy(argument, true):
 				ui.roles(profile)

@@ -1,5 +1,5 @@
 {
-  "revision": 17,
+  "revision": 20,
   "nodes": [
     {
       "id": "config",
@@ -1120,6 +1120,36 @@
       "output": "dist/Artemis-Ultima-Ventana.apk",
       "platform": "Android",
       "abi": "arm64-v8a"
+    },
+    {
+      "id": "lunar_opening",
+      "kind": "script",
+      "path": "lunar/lunar_opening.gd"
+    },
+    {
+      "id": "lunar_opening_flight",
+      "kind": "asset",
+      "path": "assets/cinematica/artemis-viaje.ogv"
+    },
+    {
+      "id": "lunar_opening_loop",
+      "kind": "asset",
+      "path": "assets/cinematica/artemis-luna.ogv"
+    },
+    {
+      "id": "lunar_opening_poster",
+      "kind": "asset",
+      "path": "assets/cinematica/artemis-luna.png"
+    },
+    {
+      "id": "opening_blender",
+      "kind": "tool",
+      "path": "tools/blender_artemis_intro.py"
+    },
+    {
+      "id": "opening_encode",
+      "kind": "tool",
+      "path": "tools/encode_artemis_intro.ps1"
     }
   ],
   "edges": [
@@ -2619,11 +2649,6 @@
       "lro_miniatura"
     ],
     [
-      "crest_world",
-      "displays",
-      "astrocat_mesh"
-    ],
-    [
       "crest_pilot",
       "extends",
       "field_pilot"
@@ -2640,6 +2665,11 @@
     ],
     [
       "crest_game",
+      "hosts",
+      "crest_pilot"
+    ],
+    [
+      "lunar_game",
       "hosts",
       "crest_pilot"
     ],
@@ -2817,6 +2847,51 @@
       "android_test_apk",
       "displays",
       "artemis_icon"
+    ],
+    [
+      "lunar_game",
+      "displays",
+      "lunar_opening"
+    ],
+    [
+      "lunar_opening",
+      "loads",
+      "config"
+    ],
+    [
+      "lunar_opening",
+      "plays",
+      "lunar_opening_flight"
+    ],
+    [
+      "lunar_opening",
+      "plays",
+      "lunar_opening_loop"
+    ],
+    [
+      "lunar_interface",
+      "uses_as_backdrop",
+      "lunar_opening_poster"
+    ],
+    [
+      "lunar_interface",
+      "replays",
+      "lunar_opening"
+    ],
+    [
+      "opening_encode",
+      "produces",
+      "lunar_opening_flight"
+    ],
+    [
+      "opening_encode",
+      "produces",
+      "lunar_opening_loop"
+    ],
+    [
+      "lunar_suite_script",
+      "verifies",
+      "lunar_opening"
     ]
   ]
 }

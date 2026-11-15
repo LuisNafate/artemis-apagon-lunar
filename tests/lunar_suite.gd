@@ -337,12 +337,25 @@ func _solo() -> void:
 	)
 	_check(player.profile.saved_bases(true).is_empty(), "previous profiles gain empty solo slots")
 	_check(player.net == &"title", "startup shows the title")
-	for index in range(8):
-		await get_tree().process_frame
+	var opening: LunarOpening = player.opening
+	_check(opening._film.stream != null and not opening.landing, "title starts the flight clip")
+	opening._film.finished.emit()
+	_check(opening.landing and not opening._film.loop, "title plays the landing once")
+	opening._film.finished.emit()
+	_check(player.net == &"lobby" and player.opening == null, "intro ends in the mode menu")
+	player.ui.selected.emit("title_replay", "")
+	_check(player.net == &"title" and not player.opening.landing, "replay restarts the flight")
+	player.opening._skip.pressed.emit()
+	_check(player.net == &"lobby" and player.opening == null, "skip opens the mode menu")
 	if _capture:
+		for frame in range(8):
+			await get_tree().process_frame
 		_capture_image(player, "artemis-portada.png")
-	_press_menu_button(player, "Entrar al puesto lunar")
 	_press_menu_button(player, "Jugar solo · sin conexión")
+	if _capture:
+		for frame in range(8):
+			await get_tree().process_frame
+		_capture_image(player, "artemis-bases.png")
 	_press_menu_button(player, "Mons Mouton Plateau · Fácil")
 	_check(player._loading and not player.ui.play.visible, "base selection displays loading")
 	if _capture:
