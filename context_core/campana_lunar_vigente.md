@@ -20,6 +20,10 @@ En **Jugar solo** controlas a un astronauta. Recoges una muestra y la depositas 
 
 Cada base guarda el avance individual y cooperativo en ranuras distintas. Las monedas, los desbloqueos y el registro del bono único por base pertenecen al mismo perfil. **Continuar** indica y abre el último modo guardado.
 
+## Regreso por órbita lunar
+
+El objetivo sigue siendo volver a la Tierra. Al terminar la cuenta regresiva solo sale la etapa de ascenso del módulo lunar. La cinemática presenta el encuentro con la nave orbital, el viaje y la entrada de la cápsula de mando. El bono se confirma al terminar la secuencia. La [auditoría de terreno](auditoria_terreno_campana.md) documenta colocación, cámara y fuentes.
+
 ## Decisiones pendientes de diseño
 
 - **REC-E7.** En Media, una noche usa 8 unidades de soporte vital y un cultivo usa 2. El total calculado es 10 de 12. La descripción cualitativa indica insuficiencia. Registrar ambos en las pruebas y usar las cifras explícitas hasta aclarar la fuente del consumo adicional.

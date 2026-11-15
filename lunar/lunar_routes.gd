@@ -12,26 +12,17 @@ func build(space: PhysicsDirectSpaceState3D) -> void:
 	_grid.cell_size = Vector2.ONE * CELL
 	_grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	_grid.update()
-	var probe := PhysicsRayQueryParameters3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.38
+	capsule.height = 1.55
+	var probe := PhysicsShapeQueryParameters3D.new()
 	probe.collision_mask = 1
+	probe.shape = capsule
 	for x in range(LIMITS.position.x, LIMITS.end.x):
 		for z in range(LIMITS.position.y, LIMITS.end.y):
-			var blocked := false
-			for offset: Vector2 in [
-				Vector2.ZERO,
-				Vector2(0.26, 0),
-				Vector2(-0.26, 0),
-				Vector2(0, 0.26),
-				Vector2(0, -0.26)
-			]:
-				var point := Vector3(x * CELL + offset.x, 0.28, z * CELL + offset.y)
-				probe.from = point + Vector3.UP * 0.8
-				probe.to = point
-				probe.hit_from_inside = true
-				if not space.intersect_ray(probe).is_empty():
-					blocked = true
-					break
-			_grid.set_point_solid(Vector2i(x, z), blocked)
+			var point := Vector3(x * CELL, 0.805, z * CELL)
+			probe.transform = Transform3D(Basis.IDENTITY, point)
+			_grid.set_point_solid(Vector2i(x, z), not space.intersect_shape(probe, 1).is_empty())
 
 
 func path(start: Vector3, end: Vector3) -> PackedVector2Array:

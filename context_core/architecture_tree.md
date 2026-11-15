@@ -165,3 +165,9 @@ La escena principal es `lunar/lunar.tscn`. La escena de Cresta permanece disponi
 ## Selector de modo y guardados · revisión 15
 
 `lunar/lunar.tscn` abre el menú con juego individual sin conexión y cooperativo en línea. `LunarGame` usa la misma simulación local para el jugador individual y para el anfitrión, y solo abre un par ENet para conexiones en línea. `LunarProfile` conserva las ranuras cooperativas existentes en `bases` e incorpora `solo_bases`. El saldo y los desbloqueos se comparten. `LunarMission` adapta el tutorial y los asientos al modo. La suite comprueba una partida sin red y una sesión de dos pares ENet.
+
+## Terreno, portada y regreso lunar · revisión 16
+
+La [auditoría de terreno](auditoria_terreno_campana.md) registra medidas, interferencias y las comprobaciones de navegación y proyección. `CrestWorld` ensambla la plataforma y las dos etapas Apolo. `LunarRoutes` sondea un volumen de cápsula compatible con el avatar. La escena de Cresta conserva sus recursos históricos.
+
+`LunarBackdrop` pinta el cielo y el relieve detrás del suelo 3D según el perfil de cada base. `LunarGame` inicia con una portada animada sobre Mons Mouton Plateau, muestra la carga al abrir un guardado y ajusta la cámara a 34° para jugar. `LunarFlightView` muestra las etapas orbitales en un SubViewport; `LunarMission` gobierna el tiempo de las fases y el resultado.

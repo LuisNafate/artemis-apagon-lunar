@@ -185,7 +185,7 @@ func finish_tutorial() -> void:
 
 
 func use_station(player: int, station: StringName) -> String:
-	if not connected[player]:
+	if not connected[player] or phase == &"flight":
 		return ""
 	if phase == &"tutorial":
 		if station != &"training":
@@ -362,10 +362,18 @@ func _embark(player: int) -> String:
 
 
 func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> void:
-	if phase == &"tutorial":
-		return
 	dawn = false
 	withdrew = false
+	if phase == &"tutorial":
+		return
+	if phase == &"flight":
+		launch_fx = maxf(0.0, launch_fx - delta)
+		if launch_fx == 0.0:
+			returned = true
+			phase = &"active"
+			pilots[0].seated = false
+			pilots[1].seated = false
+		return
 	elapsed += delta
 	if elapsed >= float(rules.cycle.period):
 		elapsed -= float(rules.cycle.period)
@@ -470,8 +478,22 @@ func _tick_crew(delta: float, sheltered: Array[bool]) -> void:
 			return
 
 
+func flight_stage() -> Vector2:
+	if phase != &"flight":
+		return Vector2(-1, 0)
+	var stages: Array = rules.mission.flight_stages
+	var elapsed_flight := (
+		float(stages.reduce(func(total, part): return total + part, 0.0)) - launch_fx
+	)
+	for index in range(stages.size()):
+		var duration := float(stages[index])
+		if elapsed_flight < duration or index == stages.size() - 1:
+			return Vector2(index, clampf(elapsed_flight / duration, 0.0, 1.0))
+		elapsed_flight -= duration
+	return Vector2(-1, 0)
+
+
 func _tick_launch(delta: float) -> void:
-	launch_fx = maxf(0.0, launch_fx - delta)
 	if returned:
 		return
 	if storm_active() and phase == &"countdown":
@@ -491,13 +513,12 @@ func _tick_launch(delta: float) -> void:
 		return
 	countdown = maxf(0.0, countdown - delta)
 	if countdown == 0.0:
-		returned = true
 		radio_left = 0.0
 		earth_ok = false
-		launch_fx = 4.0
-		pilots[0].seated = false
-		pilots[1].seated = false
-		_cancel_launch()
+		launch_fx = 0.0
+		for seconds: float in rules.mission.flight_stages:
+			launch_fx += seconds
+		phase = &"flight"
 
 
 func _cancel_launch() -> void:

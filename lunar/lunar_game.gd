@@ -3,6 +3,8 @@ extends Node3D
 
 const PORT := 44260
 const SAMPLE_RATE := 0.10
+const CAMERA_ELEVATION := 34.0
+const SURFACE_SIZE := 19.6
 const ROUTES := preload("res://lunar/lunar_routes.gd")
 const MATCOLORS := {
 	&"sample": CrestWorld.BLUE,
@@ -18,6 +20,8 @@ var profile_path := LunarProfile.SAVE_PATH
 var world := CrestWorld.new()
 var camera := Camera3D.new()
 var ui := LunarInterface.new()
+var sky := LunarBackdrop.new()
+var flight := LunarFlightView.new()
 var pilots: Array[CrestPilot] = []
 var net := &"lobby"
 var guest_peer := 0
@@ -27,6 +31,8 @@ var saved_run := 0
 var play_started := false
 
 var _base_mode := "solo"
+var _loading := false
+var _title_age := 0.0
 var _address := ""
 var _vectors := [Vector2.ZERO, Vector2.ZERO]
 var _route: Array[PackedVector2Array] = [[], []]
@@ -56,15 +62,27 @@ func _ready() -> void:
 				if label.is_valid_ascii_identifier() and label.length() <= 30:
 					profile_path = "user://artemis_campaign_%s.dat" % label
 	profile = LunarProfile.new(sim.rules, profile_path)
+	var backdrop_layer := CanvasLayer.new()
+	backdrop_layer.layer = -1
+	add_child(backdrop_layer)
+	backdrop_layer.add_child(sky)
+	world.campaign_layout = true
 	add_child(world)
 	world.build()
 	world.build_lunar_workshop()
+	var starting_id: String = sim.rules.starting_base
+	var initial: Dictionary = sim.rules.bases[starting_id]
+	world.set_base(initial.soil, StringName(starting_id))
+	world.show_field_models("")
+	for station: Node3D in world.markers.values():
+		station.hide()
+	sky.configure(starting_id, initial.horizon)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 23.1
-	camera.position = Vector3(7.8, 24.5, 22.8)
 	add_child(camera)
-	camera.look_at(Vector3(0.1, 0, 0.55))
+	_surface_camera()
 	camera.make_current()
+	add_child(flight)
+	flight.build()
 	for player in range(2):
 		_add_pilot(player)
 	add_child(ui)
@@ -78,7 +96,29 @@ func _ready() -> void:
 	if profile.error != OK:
 		ui.wait_for_guest("PERFIL LOCAL", "", "No se pudo leer el progreso guardado.")
 	else:
-		ui.lobby(profile, "")
+		net = &"title"
+		ui.title_screen()
+
+
+func _surface_camera() -> void:
+	var view := Vector2(0.228, 0.974).normalized()
+	camera.position = Vector3(
+		view.x * 26.0, 26.0 * tan(deg_to_rad(CAMERA_ELEVATION)), view.y * 26.0
+	)
+	camera.look_at(Vector3.ZERO)
+	camera.size = SURFACE_SIZE
+	camera.h_offset = 0.0
+	camera.v_offset = 2.9
+
+
+func _process(delta: float) -> void:
+	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
+	if net == &"title":
+		_title_age += delta
+		camera.h_offset = -3.7 + sin(_title_age * 0.22) * 1.35
+		camera.v_offset = 3.45 + cos(_title_age * 0.24) * 0.48
+		camera.size = 20.9 + sin(_title_age * 0.14) * 0.58
+		world.guide_animator.speed_scale = 0.83
 
 
 func _notification(what: int) -> void:
@@ -101,7 +141,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not ui.play.visible:
+	if not ui.play.visible or sim.phase == &"flight":
 		return
 	var tap: bool = event is InputEventScreenTouch and event.pressed
 	if event is InputEventMouseButton:
@@ -120,9 +160,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _choose(action: String, argument: String) -> void:
-	if profile.error != OK:
+	if profile.error != OK or _loading:
 		return
 	match action:
+		"title_enter":
+			net = &"lobby"
+			_surface_camera()
+			ui.lobby(profile, "")
 		"lobby":
 			ui.lobby(profile, "")
 		"bases":
@@ -151,10 +195,8 @@ func _choose(action: String, argument: String) -> void:
 			profile.saved_bases(_base_mode == "solo").erase(argument)
 			profile.save()
 			ui.bases(profile, _base_mode)
-		"solo":
-			_start_solo(argument)
-		"host":
-			host(argument)
+		"solo", "host":
+			_load_base(argument, action == "solo")
 		"join":
 			join(ui.address.text.strip_edges())
 		"leave":
@@ -180,6 +222,24 @@ func _choose(action: String, argument: String) -> void:
 				ui.session_menu(net)
 			else:
 				ui.lobby(profile, "")
+
+
+func _load_base(id: String, single_player: bool) -> void:
+	if not profile.open_base(id):
+		return
+	_loading = true
+	var base_name: String = sim.rules.bases[id].name
+	ui.loading(base_name, "Preparando la base lunar", 0.25)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	ui.loading(base_name, "Comprobando las rutas de superficie", 0.68)
+	_routes_ready = false
+	await get_tree().create_timer(0.32).timeout
+	if single_player:
+		_start_solo(id)
+	else:
+		host(id)
+	_loading = false
 
 
 func host(id: String, port: int = PORT) -> void:
@@ -244,6 +304,9 @@ func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> 
 	sim.roles[0] = String(profile.data.active_role)
 	world.set_base(sim.base.soil, StringName(id))
 	world.show_field_models("")
+	sky.configure(id, sim.base.horizon)
+	_surface_camera()
+	world.guide_animator.speed_scale = 1.0
 	_set_positions(CrestWorld.SPAWNS)
 	positions_at_dawn = _positions()
 	_route[0].clear()
@@ -297,6 +360,8 @@ func _close_network() -> void:
 	guest_id = ""
 	_replica_positions.clear()
 	_replica_headings.clear()
+	flight.present(-1, 0.0)
+	ui.flight_status(-1, 0.0)
 	multiplayer.multiplayer_peer = null
 	for pilot in pilots:
 		pilot.show()
@@ -398,12 +463,8 @@ func _local_frame(delta: float) -> void:
 	for index in range(2):
 		_move_pilot(index, delta)
 		_spots[index] = world.nearest(pilots[index].position, sim.phase == &"tutorial")
-		var position := pilots[index].position
-		for station: StringName in [&"solar", &"irrigation"]:
-			var marker: Node3D = world.markers[station]
-			if _spots[index] == &"" and position.distance_to(marker.position) <= 1.55:
-				_spots[index] = station
-	if guest_peer != 0 and sim.phase != &"tutorial":
+
+	if guest_peer != 0 and sim.phase not in [&"tutorial", &"flight"]:
 		var period := float(sim.rules.cycle.period)
 		var time := minf(delta, period - sim.elapsed)
 		_coins_by_guest[guest_id] = (
@@ -468,6 +529,8 @@ func _guest_frame(delta: float) -> void:
 
 
 func _interact(player: int, release: bool) -> void:
+	if sim.phase == &"flight":
+		return
 	var pilot := pilots[player]
 	var spot := _spots[player]
 	var message := ""
@@ -524,7 +587,7 @@ func _set_destination(player: int, point: Vector3) -> void:
 
 func _move_pilot(index: int, delta: float) -> void:
 	var pilot := pilots[index]
-	if not sim.connected[index] or sim.pilots[index].seated:
+	if sim.phase == &"flight" or not sim.connected[index] or sim.pilots[index].seated:
 		pilot.velocity = Vector3.ZERO
 		return
 	var input: Vector2 = _vectors[index]
@@ -563,7 +626,7 @@ func _sheltered() -> Array[bool]:
 
 func _render(delta: float, player: int) -> void:
 	for index in range(2):
-		pilots[index].visible = sim.connected[index] and sim.launch_fx <= 0.0
+		pilots[index].visible = sim.connected[index] and sim.phase != &"flight"
 	for id: int in _boxes.keys():
 		if not sim.crates.has(id):
 			_boxes[id].queue_free()
@@ -584,9 +647,13 @@ func _render(delta: float, player: int) -> void:
 		)
 	world.reflect(sim, _spots, delta)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
-	world.animate_free_play_launch(sim.launch_fx > 0.0, sim.returned, delta)
+	var view := sim.flight_stage()
+	var flight_phase := int(view.x)
+	world.present_lander(flight_phase, view.y, sim.returned)
+	flight.present(flight_phase, view.y)
 	_feedback_time = maxf(0.0, _feedback_time - delta)
 	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
+	ui.flight_status(flight_phase, view.y)
 	_alert_if_changed()
 
 

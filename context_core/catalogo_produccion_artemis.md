@@ -8,10 +8,10 @@ Diseño de producción para **Última ventana**, con prioridad para **Mons Mouto
 | --- | --- |
 | Gato piloto | `assets/pilotos/gato-modelo2.glb`. El rig y el shader ya permiten dos pilotos con traje azul y naranja. Mantener el esqueleto y el anclaje de la caja. |
 | AstroCat | `assets/pilotos/astrocat_guia.glb`. Modelo con cinco clips y fuente editable en `tools/astrocat/AstroCat.blend`. Sirve de personaje de ambientación y queda disponible para la futura ayuda interactiva. |
-| Apolo y LRO | `assets/props_luna/nasa/`. Apolo es el transporte histórico usado en el aterrizaje y LRO la maqueta científica. La nave jugable para regresar a Tierra tiene su propio diseño. |
+| Apolo y LRO | `assets/props_luna/nasa/`. Apolo ocupa la plataforma con la base de descenso y la etapa de ascenso. LRO sigue como maqueta científica. La nave de regreso aparece en órbita. |
 | Relieve LOLA | `assets/props_luna/nasa/relieve_nobile_lola.glb`. Paisaje del área de Nobile. Conservar escala y procedencia del recorte al integrarlo. |
 | Electrónica | `assets/props_luna/kenney/`. Reusar antena y receptor para la radio. El transporte de Kenney queda disponible como repuesto o elemento de fondo. |
-| Prototipos en Godot | `crest/crest_world.gd`. Es la referencia de las huellas y la altura que ya funcionan para refugio, paneles, cantera, taller, cultivo y cohete. Son las piezas que se reemplazarán con este catálogo. |
+| Prototipos en Godot | `crest/crest_world.gd`. Es la referencia de las huellas y la altura que ya funcionan para refugio, paneles, cantera, taller, cultivo y módulo lunar. Son las piezas que se reemplazarán con este catálogo. |
 
 ## Guía común de Blender a Godot
 
@@ -40,7 +40,7 @@ Diseño de producción para **Última ventana**, con prioridad para **Mons Mouto
 | Planta de propelente · `planta_propelente.glb` | 2,3 × 1,65 × 1,55 m. Dos tanques claros asimétricos, ducto grueso y bandeja de bidón. Base grafito y conexiones cian y ámbar. Hasta 1 450 tris. | `action`, `water_in` y `fuel_out`. Tres estados (en espera, trabajando, sin potencia) y soporte para caja visible a la salida. Evitar cilindros de más de 12 lados salvo que cambien la silueta. |
 | Radio y estación de vuelo · `radio_consola.glb` | 2,1 × 2,1 × 1,5 m con antena existente, receptor y una base propia. Bandeja azul con perilla y panel inclinado. Hasta 700 tris nuevos. | `action` y `antenna_pivot`. Iconos de espera, transmisión, confirmación y sin señal en un soporte inclinado. Mantener una posición utilizable aunque se corte la señal. |
 | Plataforma · `plataforma_retorno.glb` | Disco octogonal de 4,6 × 0,15 × 4,6 m, núcleo gris oscuro, perímetro ámbar y placas de servicio. Hasta 1 050 tris. | `fuel_drop`, `food_drop`, `board_1`, `board_2` y `rocket_origin`. Incorporar un acceso de 2 m libre de cajas decorativas. Habilitar balizas por separado. |
-| Nave de regreso · `nave_retorno.glb` | 2,1 × 3,3 × 2,0 m. Cápsula cónica marfil con visor azul, dos aletas bajas y motor grafito. Dos portillos y tres marcas de carga ámbar. Hasta 2 800 tris. | Origen bajo la tobera. `hatch`, `seat_01/02`, `plume` y `booster_slot`. Mallas para cubierta, motor y señalización. Entregar rampa y compuerta abiertas o cerradas. Animar de forma separada carga, cuenta regresiva de 30 s y ascenso. |
+| Nave orbital · `nave_orbital.glb` | Módulo de servicio cilíndrico en plata, campana oscura atrás y cápsula cónica marfil con puerto de acoplamiento enfrente. Longitud de juego aproximada 4,4 m, diámetro 1,5 m y hasta 2 800 tris. | Submallas independientes para servicio y cápsula. `dock`, `main_engine`, `capsule_origin` y `heat_shield`. La etapa Apolo usa su GLB de NASA y se acopla por el frente. La cápsula se separa para la entrada. La cinemática usa actualmente un bloqueado procedural. |
 
 ## P2 · Variantes, piezas menores y señalización
 

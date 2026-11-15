@@ -1,5 +1,5 @@
 {
-  "revision": 15,
+  "revision": 16,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -421,6 +421,26 @@
         ],
         "cause": "Se pausa, guarda o reinicia una base individual",
         "effect": "El menú detiene la simulación. El guardado y el reinicio se aplican a la ranura individual; el saldo y los desbloqueos pertenecen al perfil común."
+      },
+      {
+        "id": "LUN-13",
+        "source": [
+          "ESC-6",
+          "auditoria_terreno_campana.md"
+        ],
+        "cause": "Se solicita una ruta a una estación",
+        "effect": "La cuadrícula respeta la cápsula del piloto y deja alcanzables los 14 anclajes; los cráteres y el cielo regional quedan fuera de la navegación."
+      },
+      {
+        "id": "LUN-14",
+        "source": [
+          "MIS-1",
+          "MIS-3b",
+          "MIS-4",
+          "NASA NTRS 20070030988"
+        ],
+        "cause": "La cuenta regresiva llega a cero",
+        "effect": "La etapa superior del módulo lunar sale, el descenso queda en el suelo y se muestra el acoplamiento, viaje y entrada. El turno de superficie se detiene y el bono se acredita tras la secuencia."
       }
     ],
     "open": [

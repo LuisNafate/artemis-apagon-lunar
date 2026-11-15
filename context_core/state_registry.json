@@ -1,5 +1,5 @@
 {
-  "revision": 15,
+  "revision": 16,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -683,63 +683,99 @@
         "difficulty": "easy",
         "cost": 0,
         "soil": "#6b6678",
-        "terrain": "Meseta abierta · rutas cortas"
+        "terrain": "Meseta abierta · rutas cortas",
+        "horizon": {
+          "earth": "visible",
+          "relief": 0.12
+        }
       },
       "slater_plain": {
         "name": "Slater Plain",
         "difficulty": "easy",
         "cost": 100,
         "soil": "#77707a",
-        "terrain": "Colinas suaves · rutas más largas"
+        "terrain": "Colinas suaves · rutas más largas",
+        "horizon": {
+          "earth": "visible",
+          "relief": 0.07
+        }
       },
       "malapert_massif": {
         "name": "Malapert Massif",
         "difficulty": "easy",
         "cost": 200,
         "soil": "#7b716f",
-        "terrain": "Cumbre iluminada · vista hacia Tierra"
+        "terrain": "Cumbre iluminada · vista hacia Tierra",
+        "horizon": {
+          "earth": "visible",
+          "relief": 0.19
+        }
       },
       "mons_mouton": {
         "name": "Mons Mouton",
         "difficulty": "medium",
         "cost": 300,
         "soil": "#626379",
-        "terrain": "Terrazas y pendientes"
+        "terrain": "Terrazas y pendientes",
+        "horizon": {
+          "earth": "visible",
+          "relief": 0.3
+        }
       },
       "cabeus_b": {
         "name": "Peak near Cabeus B",
         "difficulty": "medium",
         "cost": 450,
         "soil": "#5b6181",
-        "terrain": "Pico y cuenca fría"
+        "terrain": "Pico y cuenca fría",
+        "horizon": {
+          "earth": "hidden",
+          "relief": 0.37
+        }
       },
       "nobile_rim_1": {
         "name": "Nobile Rim 1",
         "difficulty": "medium",
         "cost": 650,
         "soil": "#525e70",
-        "terrain": "Borde suroeste · luz y sombra"
+        "terrain": "Borde suroeste · luz y sombra",
+        "horizon": {
+          "earth": "visible",
+          "relief": 0.23
+        }
       },
       "de_gerlache_rim_2": {
         "name": "de Gerlache Rim 2",
         "difficulty": "hard",
         "cost": 900,
         "soil": "#666075",
-        "terrain": "Arista angosta"
+        "terrain": "Arista angosta",
+        "horizon": {
+          "earth": "hidden",
+          "relief": 0.29
+        }
       },
       "nobile_rim_2": {
         "name": "Nobile Rim 2",
         "difficulty": "hard",
         "cost": 1200,
         "soil": "#4e596c",
-        "terrain": "Borde noreste · radio intermitente"
+        "terrain": "Borde noreste · radio intermitente",
+        "horizon": {
+          "earth": "radio",
+          "relief": 0.28
+        }
       },
       "haworth": {
         "name": "Haworth",
         "difficulty": "hard",
         "cost": 1500,
         "soil": "#4e4c64",
-        "terrain": "Cráter frío · depósitos a la sombra"
+        "terrain": "Cráter frío · depósitos a la sombra",
+        "horizon": {
+          "earth": "hidden",
+          "relief": 0.35
+        }
       }
     },
     "starting_base": "mons_mouton_plateau",
@@ -813,7 +849,13 @@
       "food": 2,
       "seats": 2,
       "radio_seconds": 2.56,
-      "countdown": 30
+      "countdown": 30,
+      "flight_stages": [
+        4.0,
+        5.0,
+        4.0,
+        4.0
+      ]
     },
     "prototype_parameters": {
       "crop_seconds": 14,
@@ -828,7 +870,7 @@
       "network": "ENet anfitrión-invitado por dirección y UDP 44260; sin servicios externos",
       "save": "user://artemis_campaign_v1.dat · ranuras individuales y cooperativas por base; saldo y desbloqueos compartidos",
       "input": "joystick táctil, tocar destino, acción y soltar/pasar",
-      "world": "kit compartido de cinco estaciones; seis cráteres perimetrales facetados por base",
+      "world": "kit compartido de cinco zonas; suelo Y=0, seis cráteres fuera del área navegable, perfil de horizonte por región",
       "implemented_upgrades": [
         "drill",
         "battery",
@@ -844,14 +886,23 @@
       "visible_assets": [
         "gato-modelo2",
         "astrocat_guia",
-        "apollo_descenso",
         "lro_miniatura",
-        "relieve_nobile_lola"
+        "relieve_nobile_lola",
+        "apollo_base_lunar",
+        "apollo_etapa_ascenso",
+        "tierra_apolo17"
       ],
       "modes": {
         "solo": "un astronauta sin conexión",
         "host": "dos jugadores mediante ENet"
-      }
+      },
+      "presentation": {
+        "camera_elevation_degrees": 34,
+        "title": "animación de cámara sobre la base",
+        "loading": "preparación de base y rutas",
+        "horizon": "composición didáctica por base, sin cálculo celeste"
+      },
+      "audit": "context_core/auditoria_terreno_campana.md"
     },
     "solo_mode": {
       "source": "VAC-11 resuelto por el usuario",

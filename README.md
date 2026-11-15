@@ -4,7 +4,7 @@ Entrenador de misión de gestión y supervivencia lunar para astronautas junior.
 
 ## Jugar al corte actual
 
-Windows ejecuta `Artemis-Ultima-Ventana.exe`. Desde Godot 4.7.2, abre `project.godot` y pulsa **F5**.
+Windows ejecuta `Artemis-Ultima-Ventana.exe`. Desde Godot 4.7.2, abre `project.godot` y pulsa **F5**. Pulsa **Entrar al puesto lunar** en la portada.
 
 - **Jugar solo · sin conexión.** Elige **Mons Mouton Plateau** y toma y entrega la muestra en la mesa azul. Puedes pausar desde el menú. El regreso a Tierra requiere tu asiento.
 - **Crear partida en línea.** Elige una base y comparte la dirección que aparece. En el segundo dispositivo, escribe esa dirección y pulsa **Unirme en línea**. El prototipo usa conexión directa UDP 44260. En la misma red, ambos equipos deben alcanzar esa dirección. Para probar con dos procesos en el mismo equipo sin compartir el archivo del perfil, inicia el segundo con `Artemis-Ultima-Ventana.exe -- --perfil=invitado` y conéctalo a `127.0.0.1`.
@@ -13,11 +13,11 @@ Mueve tu piloto con el joystick de pantalla o toca un punto del suelo. **Acción
 
 En cooperativo, pasa la muestra a tu compañero para que la deposite. De día recarga la batería. De noche vuelve al refugio cuando baje el aire. **Menú → Guardar y salir** conserva el ciclo en individual o al alojar una partida. Al amanecer se guarda el avance y se acreditan las monedas.
 
-Para regresar a Tierra, carga tres lotes de propelente y dos raciones, confirma por radio y ocupa los asientos del modo elegido. Después puedes seguir jugando en la base.
+Para regresar a Tierra, carga tres lotes de propelente y dos raciones, confirma por radio y ocupa los asientos del modo elegido. El módulo lunar asciende, se acopla en órbita y la nave de mando y servicio emprende el regreso. Después puedes seguir jugando en la base.
 
 Para jugar en línea necesitas una dirección alcanzable. Las fichas científicas se leen localmente. Hay pilotos felinos, AstroCat y las adaptaciones de Apolo y LRO dentro del escenario. El relieve LOLA de Nobile y el entorno de cráteres son modelos de ambientación.
 
-[Estado de las reglas y parámetros provisionales](context_core/campana_lunar_vigente.md) · [Catálogo para modelado](context_core/catalogo_produccion_artemis.md) · [Catálogo científico](context_core/science_catalog.md) · [Registro de modelos](assets/props_luna/asset-register.md)
+[Auditoría de terreno y cámara](context_core/auditoria_terreno_campana.md) · [Estado de las reglas y parámetros provisionales](context_core/campana_lunar_vigente.md) · [Catálogo para modelado](context_core/catalogo_produccion_artemis.md) · [Catálogo científico](context_core/science_catalog.md) · [Registro de modelos](assets/props_luna/asset-register.md)
 
 El preset **Android** está configurado para ARM64 y la conexión en línea. La exportación APK necesita el SDK y las plantillas Android de Godot, y aún requiere una prueba en un teléfono. [Exportar a Android](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html)
 

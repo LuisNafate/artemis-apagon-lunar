@@ -5,9 +5,12 @@ signal selected(action: String, argument: String)
 
 const TITLE := preload("res://assets/ui/fonts/BarlowCondensed-Bold.ttf")
 const BODY := preload("res://assets/ui/fonts/Barlow-SemiBold.ttf")
-const FILL := Color("#121d2df2")
-const EDGE := Color("#364d65")
-const SOFT := Color("#c8d7e8")
+const FILL := Color("#f1dfbf")
+const EDGE := Color("#a47556")
+const SOFT := Color("#755f52")
+const INK := Color("#30251e")
+const TEAL := Color("#205851")
+const BRICK := Color("#8e3e33")
 const PROMPTS := [
 	["Toma la muestra", "El gato azul se acerca a la mesa y toca Acción."],
 	["Pasa la caja", "Acércate a tu compañero y toca Soltar / pasar."],
@@ -29,6 +32,10 @@ var feedback: Label
 var _heading: Label
 var _message: Label
 var _list: VBoxContainer
+var _resources: HBoxContainer
+var _readouts: Array[Label] = []
+var _controls: HBoxContainer
+var _pause: Button
 
 
 func build() -> void:
@@ -40,8 +47,14 @@ func build() -> void:
 	design.default_font = BODY
 	design.default_font_size = 22
 	design.set_stylebox("panel", "PanelContainer", _style(FILL, EDGE))
+	design.set_color("font_color", "Label", INK)
+	design.set_color("font_color", "LineEdit", INK)
+	design.set_color("font_placeholder_color", "LineEdit", SOFT)
+	design.set_color("caret_color", "LineEdit", INK)
+	design.set_stylebox("normal", "LineEdit", _style(Color("#fff2d6"), EDGE))
+	design.set_stylebox("focus", "LineEdit", _style(Color("#fff2d6"), TEAL))
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var fill := Color("#233d56") if state == "normal" else Color("#365879")
+		var fill := Color("#43352e") if state == "normal" else Color("#604839")
 		if state == "disabled":
 			fill = Color("#202937")
 		design.set_stylebox(state, "Button", _style(fill, EDGE))
@@ -59,23 +72,45 @@ func _build_play(root: Control) -> void:
 	play.add_child(header)
 	header.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	header.offset_left = 16
-	header.offset_right = -16
-	header.offset_top = 12
+	header.offset_right = -430
+	header.offset_top = 15
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var content := VBoxContainer.new()
 	header.add_child(content)
-	location = _label(content, "", 30, TITLE)
-	details = _label(content, "", 23)
+	location = _label(content, "", 29, TITLE)
+	location.modulate = BRICK
+	_resources = HBoxContainer.new()
+	content.add_child(_resources)
+	_resources.add_theme_constant_override("separation", 7)
+	var colors := [Color("#24536a"), Color("#814b32"), TEAL, Color("#36585d"), Color("#665038")]
+	for tint: Color in colors:
+		var chip := PanelContainer.new()
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var border := _style(tint, tint.darkened(0.32))
+		border.content_margin_top = 2
+		border.content_margin_bottom = 3
+		border.content_margin_left = 9
+		border.content_margin_right = 9
+		border.shadow_size = 0
+		chip.add_theme_stylebox_override("panel", border)
+		_resources.add_child(chip)
+		var reading := _label(chip, "", 19)
+		reading.add_theme_color_override("font_color", Color("#fff2d6"))
+		_readouts.append(reading)
+	details = _label(content, "", 21)
+	details.hide()
 	next_step = _label(content, "", 22)
+	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	alert = _label(content, "", 25, TITLE)
-	alert.modulate = CrestWorld.AMBER
-	var pause := _button(play, "Menú", "menu")
-	pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	pause.offset_left = -140
-	pause.offset_top = 24
-	pause.offset_right = -32
-	pause.offset_bottom = 78
+	alert.modulate = BRICK
+	_pause = _button(play, "Menú", "menu")
+	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_pause.offset_left = -137
+	_pause.offset_top = 15
+	_pause.offset_right = -19
+	_pause.offset_bottom = 67
 	var bottom := HBoxContainer.new()
+	_controls = bottom
 	play.add_child(bottom)
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_top = -123
@@ -87,12 +122,16 @@ func _build_play(root: Control) -> void:
 	feedback = _label(bottom, "", 23)
 	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	feedback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	feedback.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
+	feedback.add_theme_color_override("font_outline_color", Color("#271e20"))
+	feedback.add_theme_constant_override("outline_size", 8)
 	var buttons := VBoxContainer.new()
 	buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
 	action_button.custom_minimum_size = Vector2(210, 55)
+	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
 	release_button.custom_minimum_size = Vector2(210, 55)
 	play.hide()
@@ -122,6 +161,56 @@ func _build_menu(root: Control) -> void:
 	scroll.add_child(_list)
 
 
+func title_screen() -> void:
+	_prepare_menu("ARTEMIS", "ÚLTIMA VENTANA\nMisión de supervivencia lunar")
+	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	menu.offset_left = 64
+	menu.offset_right = 468
+	menu.offset_top = -164
+	menu.offset_bottom = 120
+	_heading.add_theme_font_size_override("font_size", 80)
+	_message.add_theme_font_size_override("font_size", 25)
+	_emphasize(_button(_list, "Entrar al puesto lunar", "title_enter"))
+
+
+func loading(base_name: String, status: String, progress: float) -> void:
+	_prepare_menu(base_name, status)
+	menu.offset_top = -106
+	menu.offset_bottom = 109
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size.y = 34
+	bar.show_percentage = false
+	bar.max_value = 1.0
+	bar.value = progress
+	bar.add_theme_stylebox_override("background", _style(Color("#c09a7c"), EDGE))
+	bar.add_theme_stylebox_override("fill", _style(TEAL, Color("#18443e")))
+	_list.add_child(bar)
+
+
+func flight_status(phase: int, progress: float) -> void:
+	var flying := phase >= 0
+	_controls.visible = not flying
+	_pause.visible = not flying
+	_resources.visible = not flying
+	details.visible = flying
+	if not flying:
+		return
+	location.text = [
+		"Ascenso desde la Luna",
+		"Acoplamiento en órbita",
+		"Rumbo a la Tierra",
+		"Regreso a la Tierra"
+	][phase]
+	details.text = "Etapa %d de 4  ·  %d %%" % [phase + 1, roundi(progress * 100)]
+	next_step.text = [
+		"La etapa de ascenso se separa. La base de descenso queda en la Luna.",
+		"La tripulación pasa al módulo de mando tras acoplarse.",
+		"El módulo de servicio impulsa la nave hacia la Tierra.",
+		"La cápsula de mando se separa y entra en la atmósfera."
+	][phase]
+	alert.hide()
+
+
 func lobby(profile: LunarProfile, status: String) -> void:
 	_prepare_menu(
 		"ARTEMIS · ÚLTIMA VENTANA",
@@ -134,7 +223,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 		var mode: String = profile.data.recent_mode
 		var caption := "Continuar solo" if mode == "solo" else "Continuar en línea"
 		_button(_list, caption, mode, profile.data.recent)
-	_button(_list, "Jugar solo · sin conexión", "bases", "solo")
+	_emphasize(_button(_list, "Jugar solo · sin conexión", "bases", "solo"))
 	_button(_list, "Crear partida en línea", "bases", "host")
 	address = LineEdit.new()
 	address.custom_minimum_size.y = 52
@@ -234,24 +323,17 @@ func sync(
 	for person in range(2):
 		if night and not sheltered[person] and mission.connected[person]:
 			cold[person] = " ❄"
-	var air := "Aire %d%s" % [ceili(mission.pilots[0].air), cold[0]]
+	var air_caption := "Aire" if mission.solo else "Aire azul"
+	_readouts[0].text = "%s %d%s" % [air_caption, ceili(mission.pilots[0].air), cold[0]]
+	_readouts[1].get_parent().visible = not mission.solo
 	if not mission.solo:
-		var partner_air := (
+		var air := (
 			"%d%s" % [ceili(mission.pilots[1].air), cold[1]] if mission.connected[1] else "ausente"
 		)
-		air = (
-			"Aire azul %d%s   ◇   naranja %s" % [ceili(mission.pilots[0].air), cold[0], partner_air]
-		)
-	details.text = (
-		"%s      Batería %.1f/%.0f      Agua %.1f      Hambre %d"
-		% [
-			air,
-			mission.charge,
-			mission.battery_capacity(),
-			mission.water,
-			ceili(mission.pilots[player].hunger)
-		]
-	)
+		_readouts[1].text = "Aire naranja " + air
+	_readouts[2].text = "Batería %.1f/%.0f" % [mission.charge, mission.battery_capacity()]
+	_readouts[3].text = "Agua %.1f" % mission.water
+	_readouts[4].text = "Hambre %d" % ceili(mission.pilots[player].hunger)
 	release_button.text = "Soltar / entregar" if mission.solo else "Soltar / pasar"
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
@@ -267,7 +349,7 @@ func sync(
 		next_step.text = "Regreso a Tierra completado. Puedes seguir jugando en la base."
 	else:
 		next_step.text = (
-			"Regreso a Tierra · Propelente %d/%d · Raciones %d/%d · Radio %s · A bordo %d/%d"
+			"Propelente %d/%d   ·   Raciones %d/%d   ·   Radio %s   ·   A bordo %d/%d"
 			% [
 				mission.fuel_loaded,
 				flight.propellant,
@@ -282,7 +364,11 @@ func sync(
 	feedback.text = (
 		message
 		if not message.is_empty()
-		else String(CrestWorld.NAMES.get(spot, "Toca el destino o usa el joystick"))
+		else (
+			"MÓDULO LUNAR"
+			if spot == &"pad"
+			else String(CrestWorld.NAMES.get(spot, "Toca el destino o usa el joystick"))
+		)
 	)
 	action_button.text = "Bajar" if mission.pilots[player].seated else _action_caption(spot)
 	if mission.phase == &"tutorial" and spot == &"training":
@@ -337,6 +423,14 @@ func _prepare_menu(title: String, status: String) -> void:
 	joystick.clear()
 	play.hide()
 	menu.show()
+	menu.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	menu.offset_left = -270
+	menu.offset_right = 270
+	menu.offset_top = -295
+	menu.offset_bottom = 295
+	_heading.add_theme_font_size_override("font_size", 43)
+	_message.add_theme_font_size_override("font_size", 22)
+	_heading.modulate = BRICK
 	_heading.text = title
 	_message.text = status
 	for child in _list.get_children():
@@ -354,6 +448,12 @@ func _button(parent: Control, caption: String, action: String, argument: String 
 	return button
 
 
+func _emphasize(button: Button) -> void:
+	button.add_theme_stylebox_override("normal", _style(TEAL, Color("#163c38")))
+	button.add_theme_stylebox_override("hover", _style(Color("#286f63"), TEAL))
+	button.add_theme_stylebox_override("pressed", _style(Color("#183e39"), TEAL))
+
+
 func _label(parent: Control, caption: String, font_size: int, font: Font = BODY) -> Label:
 	var label := Label.new()
 	label.text = caption
@@ -368,8 +468,11 @@ func _style(fill: Color, stroke: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill
 	style.border_color = stroke
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(10)
+	style.set_border_width_all(2)
+	style.border_width_bottom = 4
+	style.set_corner_radius_all(7)
+	style.shadow_color = Color("#231b2466")
+	style.shadow_size = 4
 	style.content_margin_left = 15.0
 	style.content_margin_right = 15.0
 	style.content_margin_top = 8.0

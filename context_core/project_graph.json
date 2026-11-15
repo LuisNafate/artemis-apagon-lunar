@@ -1,5 +1,5 @@
 {
-  "revision": 15,
+  "revision": 16,
   "nodes": [
     {
       "id": "config",
@@ -1069,6 +1069,45 @@
       "kind": "system",
       "players": 1,
       "offline": true
+    },
+    {
+      "id": "terrain_alignment",
+      "kind": "document",
+      "path": "context_core/auditoria_terreno_campana.md"
+    },
+    {
+      "id": "lunar_backdrop",
+      "kind": "script",
+      "path": "lunar/lunar_backdrop.gd"
+    },
+    {
+      "id": "lunar_flight_view",
+      "kind": "script",
+      "path": "lunar/lunar_flight_view.gd"
+    },
+    {
+      "id": "apollo_base_lunar",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/apollo_base_lunar.glb"
+    },
+    {
+      "id": "apollo_ascent_stage",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/apollo_etapa_ascenso.glb"
+    },
+    {
+      "id": "apollo17_earth",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/tierra_apolo17.jpg"
+    },
+    {
+      "id": "apollo_stage_tool",
+      "kind": "tool",
+      "path": "tools/separar_modulo_apolo.py"
+    },
+    {
+      "id": "lunar_title_loading",
+      "kind": "system"
     }
   ],
   "edges": [
@@ -2671,6 +2710,86 @@
       "lunar_solo",
       "completes",
       "lunar_return"
+    ],
+    [
+      "terrain_alignment",
+      "audits",
+      "crest_world"
+    ],
+    [
+      "terrain_alignment",
+      "audits",
+      "lunar_routes"
+    ],
+    [
+      "lunar_game",
+      "displays",
+      "lunar_backdrop"
+    ],
+    [
+      "lunar_game",
+      "displays",
+      "lunar_flight_view"
+    ],
+    [
+      "lunar_interface",
+      "implements",
+      "lunar_title_loading"
+    ],
+    [
+      "lunar_flight_view",
+      "illustrates",
+      "lunar_return"
+    ],
+    [
+      "lunar_backdrop",
+      "displays",
+      "apollo17_earth"
+    ],
+    [
+      "crest_world",
+      "instantiates",
+      "apollo_base_lunar"
+    ],
+    [
+      "crest_world",
+      "instantiates",
+      "apollo_ascent_stage"
+    ],
+    [
+      "lunar_flight_view",
+      "animates",
+      "apollo_ascent_stage"
+    ],
+    [
+      "lunar_flight_view",
+      "uses",
+      "lunar_backdrop"
+    ],
+    [
+      "apollo_stage_tool",
+      "reads",
+      "apollo_descenso"
+    ],
+    [
+      "apollo_stage_tool",
+      "generates",
+      "apollo_base_lunar"
+    ],
+    [
+      "apollo_stage_tool",
+      "generates",
+      "apollo_ascent_stage"
+    ],
+    [
+      "lunar_suite_script",
+      "verifies",
+      "terrain_alignment"
+    ],
+    [
+      "lunar_suite_script",
+      "verifies",
+      "lunar_title_loading"
     ]
   ]
 }

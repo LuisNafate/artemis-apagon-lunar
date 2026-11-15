@@ -22,6 +22,7 @@ func _run() -> void:
 	_logistics()
 	_launch()
 	_profile()
+	await _terrain()
 	await _solo()
 	await _network()
 	print("LUNAR SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
@@ -193,7 +194,15 @@ func _launch() -> void:
 	mission.use_station(1, &"pad")
 	mission.tick(0.01, SAFE, AWAY)
 	mission.tick(30.0, SAFE, AWAY)
+	_check(mission.flight_stage().x == 0 and not mission.returned, "ascent is not Earth arrival")
 	var elapsed := mission.elapsed
+	mission.tick(4.0, SAFE, AWAY)
+	_check(mission.flight_stage().x == 1 and mission.elapsed == elapsed, "orbital docking")
+	mission.tick(5.0, SAFE, AWAY)
+	_check(mission.flight_stage().x == 2, "trans-Earth flight")
+	mission.tick(4.0, SAFE, AWAY)
+	_check(mission.flight_stage().x == 3, "command module separates for Earth entry")
+	mission.tick(4.0, SAFE, AWAY)
 	mission.tick(1.0, SAFE, AWAY)
 	_check(
 		mission.returned and mission.phase == &"active" and mission.elapsed > elapsed,
@@ -223,6 +232,95 @@ func _profile() -> void:
 	DirAccess.remove_absolute(path)
 
 
+func _terrain() -> void:
+	_cases += 1
+	var player := _endpoint("Alignment")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	player.net = &"lobby"
+	player._surface_camera()
+	var stations := CrestWorld.STATIONS.merged(CrestWorld.WORKSHOP)
+	stations.erase(&"supply")
+	var coordinates: Array[Vector3] = [CrestWorld.SPAWNS[0], CrestWorld.SPAWNS[1]]
+	for key: StringName in stations:
+		coordinates.append(stations[key])
+		for spawn: Vector3 in CrestWorld.SPAWNS:
+			var points: PackedVector2Array = player._routes.path(spawn, stations[key])
+			_check(not points.is_empty(), "route exists from spawn to %s" % key)
+			if endpoints_close(points, stations[key]):
+				_check(true, "route reaches the station")
+			else:
+				_check(
+					false,
+					(
+						"%s goal redirects to %s"
+						% [key, points[-1] if not points.is_empty() else "nowhere"]
+					)
+				)
+		var projected: Vector2 = player.camera.unproject_position(stations[key])
+		_check(
+			Rect2(Vector2(0.017, 0.197), Vector2(0.966, 0.672)).has_point(
+				projected / Vector2(player.get_viewport().size)
+			),
+			"%s fits the gameplay camera" % key
+		)
+	var direct: PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
+	for point in coordinates:
+		var ray := PhysicsRayQueryParameters3D.create(
+			point + Vector3.UP * 0.2, point - Vector3.UP * 0.2, 1
+		)
+		var hit := direct.intersect_ray(ray)
+		_check(not hit.is_empty() and absf(hit.position.y) < 0.002, "station and spawn floor datum")
+	var longest := 0.0
+	for point in coordinates:
+		var path: PackedVector2Array = player._routes.path(point, CrestWorld.STATIONS[&"life"])
+		var length := 0.0
+		for index in range(1, path.size()):
+			length += path[index - 1].distance_to(path[index])
+		longest = maxf(longest, length)
+	_check(
+		longest / FieldPilot.WALK_SPEED < 9.0, "longest refuge route fits inside a 20 second alert"
+	)
+	for base_id: String in player.sim.rules.bases:
+		var profile: Dictionary = player.sim.rules.bases[base_id]
+		player.world.set_base(profile.soil, StringName(base_id))
+		player.sky.configure(base_id, profile.horizon)
+		var dimensions := Rect2(-15.24, -8.35, 30.48, 16.70)
+		for crater: MeshInstance3D in player.world.get_node("CrateresLaterales").get_children():
+			var box := crater.get_aabb()
+			var point := crater.position + box.position
+			_check(
+				not dimensions.intersects(Rect2(point.x, point.z, box.size.x, box.size.z)),
+				"%s crater clears the walkable area" % base_id
+			)
+		player.sky.update_sky(2.0, true)
+		_check(
+			player.sky.earth_level == float(profile.horizon.earth == "visible"),
+			"%s planet obeys its horizon profile" % base_id
+		)
+
+	player._start_solo("mons_mouton_plateau")
+	player.sim.finish_tutorial()
+	player._set_positions([CrestWorld.STATIONS[&"ice"], Vector3.ZERO])
+	player._set_destination(0, CrestWorld.STATIONS[&"life"])
+	var frames := 0
+	while not player.world.sheltered(player.pilots[0].position) and frames < 420:
+		frames += 1
+		await get_tree().physics_frame
+	_check(
+		player.world.sheltered(player.pilots[0].position),
+		"pilot follows a real route from the quarry into cover"
+	)
+	print("TERRAIN: tested quarry-to-cover motion %.2f simulated seconds" % (frames / 60.0))
+	DirAccess.remove_absolute(player.profile_path)
+	print("TERRAIN: %d station anchors, longest refuge path %.2f m" % [stations.size(), longest])
+	player.get_parent().queue_free()
+
+
+func endpoints_close(points: PackedVector2Array, station: Vector3) -> bool:
+	return not points.is_empty() and points[-1].distance_to(Vector2(station.x, station.z)) <= 0.77
+
+
 func _solo() -> void:
 	_cases += 1
 	var player := _endpoint("Solo")
@@ -238,8 +336,21 @@ func _solo() -> void:
 		"previous profiles default to online continuation"
 	)
 	_check(player.profile.saved_bases(true).is_empty(), "previous profiles gain empty solo slots")
+	_check(player.net == &"title", "startup shows the title")
+	for index in range(8):
+		await get_tree().process_frame
+	if _capture:
+		_capture_image(player, "artemis-portada.png")
+	_press_menu_button(player, "Entrar al puesto lunar")
 	_press_menu_button(player, "Jugar solo · sin conexión")
 	_press_menu_button(player, "Mons Mouton Plateau · Fácil")
+	_check(player._loading and not player.ui.play.visible, "base selection displays loading")
+	if _capture:
+		for frame in range(8):
+			await get_tree().process_frame
+		_capture_image(player, "artemis-carga.png")
+	for index in range(36):
+		await get_tree().process_frame
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(player.net == &"solo" and player.ui.play.visible, "main menu opens solo directly")
@@ -307,6 +418,18 @@ func _solo() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(
+		player.sim.phase == &"flight" and player.world.descent_stage.visible,
+		"the descent stage stays parked"
+	)
+	player.sim.launch_fx = 10.5
+	for index in range(4):
+		await get_tree().process_frame
+	if _capture:
+		_capture_image(player, "artemis-acoplamiento.png")
+	player.sim.launch_fx = 0.01
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(
 		player.sim.returned and player.profile.data.balance == 175 * LunarProfile.SCALE,
 		"solo completes the mission and earns its bonus"
 	)
@@ -318,8 +441,12 @@ func _solo() -> void:
 	player.ui.lobby(player.profile, "")
 	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
 	_press_menu_button(player, "Continuar solo")
+	for index in range(36):
+		await get_tree().process_frame
+		if not player._loading:
+			break
 	_check(
-		player.sim.returned and is_equal_approx(player.sim.elapsed, elapsed),
+		player.sim.returned and absf(player.sim.elapsed - elapsed) < 0.04,
 		"continue restores exact solo state"
 	)
 	player._leave()
@@ -446,7 +573,11 @@ func _network() -> void:
 func _endpoint(label: String) -> Node:
 	var scope := SubViewport.new()
 	scope.name = label
-	scope.size = Vector2i(1152, 648)
+	scope.size = (
+		Vector2i(1280, 720)
+		if "--capture-720" in OS.get_cmdline_user_args()
+		else Vector2i(1152, 648)
+	)
 	scope.own_world_3d = true
 	scope.render_target_update_mode = (
 		SubViewport.UPDATE_ALWAYS if _capture else SubViewport.UPDATE_DISABLED

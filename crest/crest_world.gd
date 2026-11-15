@@ -3,6 +3,8 @@ extends Node3D
 
 const MONO := preload("res://assets/ui/fonts/IBMPlexMono-Medium.ttf")
 const TRANSPORT := preload("res://assets/props_luna/nasa/apollo_descenso.glb")
+const APOLLO_BASE := preload("res://assets/props_luna/nasa/apollo_base_lunar.glb")
+const APOLLO_ASCENT := preload("res://assets/props_luna/nasa/apollo_etapa_ascenso.glb")
 const NOBILE_RELIEF := preload("res://assets/props_luna/nasa/relieve_nobile_lola.glb")
 const LRO_MODEL := preload("res://assets/props_luna/nasa/lro_miniatura.glb")
 const GUIDE_MODEL := preload("res://assets/pilotos/astrocat_guia.glb")
@@ -33,6 +35,8 @@ const STATIONS := {
 	&"radio": Vector3(6.3, 0, 3.9),
 	&"pad": Vector3(11.2, 0, 0.7),
 }
+const WORKSHOP := {&"solar": Vector3(4.88, 0, -5.95), &"irrigation": Vector3(3.14, 0, 0.65)}
+const LANDER_PAD := Vector3(11.1, 0.04, -2.9)
 const SPAWNS := [Vector3(-1.0, 0.1, 6.1), Vector3(1.0, 0.1, 6.1)]
 const BOARDING := [Vector3(10.45, 0.04, 0.5), Vector3(11.95, 0.04, 0.5)]
 const SHELTER := Rect2(-2.9, 1.55, 5.8, 5.75)
@@ -52,6 +56,12 @@ const NAMES := {
 	&"pad": "COHETE"
 }
 
+static var campaign_stations := STATIONS.merged(WORKSHOP)
+
+var campaign_layout := false
+var deck_index := 0
+var descent_stage: Node3D
+var ascent_stage: Node3D
 var markers: Dictionary = {}
 var rocket: Node3D
 var plume: Node3D
@@ -71,8 +81,6 @@ var shelter_shell: Node3D
 var refuge_alert: MeshInstance3D
 var _lro_display: Node3D
 var _craters: Node3D
-var _last_launch := false
-var _rocket_home: Vector3
 var _floor_color: StandardMaterial3D
 var _equipment: Array[Node3D] = []
 var _soil := SOIL
@@ -83,15 +91,19 @@ func build() -> void:
 	_lighting()
 	_terrain()
 	nobile_relief = NOBILE_RELIEF.instantiate()
-	nobile_relief.position = Vector3(-6.0, 0.015, 8.77)
+	nobile_relief.position = (
+		Vector3(-10.0, 0.015, -12.6) if campaign_layout else Vector3(-6.0, 0.015, 8.77)
+	)
 	nobile_relief.rotation.y = PI
 	nobile_relief.scale = Vector3(0.71, 0.58, 1.0)
 	add_child(nobile_relief)
 	nobile_relief.hide()
 	_walkways()
 	_stations()
-	_build_rocket()
-	_rocket_home = rocket.position
+	if campaign_layout:
+		_build_lander()
+	else:
+		_build_rocket()
 	transport = TRANSPORT.instantiate()
 	transport.position = Vector3(-4, 0.25, 6.1)
 	transport.rotation_degrees.y = 21
@@ -111,10 +123,11 @@ func build() -> void:
 func build_lunar_workshop() -> void:
 	for station: StringName in [&"solar", &"irrigation"]:
 		var is_solar := station == &"solar"
-		var point := Vector3(4.88, 0, -5.95) if is_solar else Vector3(3.14, 0, 0.65)
+		var point: Vector3 = WORKSHOP[station]
 		var tint := AMBER if is_solar else LIME
 		FieldWorld.box(self, point + Vector3(0, 0.28, -0.56), Vector3(0.9, 0.56, 0.55), FRAME)
 		FieldWorld.box(self, point + Vector3(0, 0.59, -0.56), Vector3(0.76, 0.06, 0.49), tint, true)
+		_solid(point + Vector3(0, 0.28, -0.56), Vector3(0.9, 0.56, 0.55))
 		var label := Label3D.new()
 		label.text = "REFUERZO SOLAR" if is_solar else "RIEGO"
 		label.position = point + Vector3.UP * 0.68
@@ -140,7 +153,7 @@ func show_field_models(science_key: String = "F1") -> void:
 	lro_label.text = ("LRO · " + science_key) if not science_key.is_empty() else "LRO"
 	transport.position = TRANSPORT_PARK
 	transport.scale = Vector3.ONE * 0.72
-	transport.show()
+	transport.visible = not campaign_layout
 	field_models.show()
 	guide_animator.play(&"Wave")
 	guide_animator.queue(&"Idle")
@@ -170,7 +183,8 @@ func _build_field_models() -> void:
 	_lro_display.scale = Vector3.ONE * 0.64
 	field_models.add_child(_lro_display)
 	_model_label("LRO · F1", display_point + Vector3(0, 0.35, 0.9), BLUE).name = "LroLabel"
-	_model_label("APOLO", TRANSPORT_PARK + Vector3(0, 0.35, 1.25), AMBER)
+	if not campaign_layout:
+		_model_label("APOLO", TRANSPORT_PARK + Vector3(0, 0.35, 1.25), AMBER)
 	field_models.hide()
 
 
@@ -220,10 +234,13 @@ func sheltered(point: Vector3) -> bool:
 func nearest(point: Vector3, tutorial: bool, supply: bool = false) -> StringName:
 	var result := &""
 	var closest := 2.1 if tutorial else 1.63
-	for key: StringName in STATIONS:
+	var stations := STATIONS
+	if campaign_layout and not tutorial:
+		stations = campaign_stations
+	for key: StringName in stations:
 		if (key == &"training") != tutorial or (key == &"supply" and not supply):
 			continue
-		var location: Vector3 = STATIONS[key]
+		var location: Vector3 = stations[key]
 		var distance := point.distance_to(location)
 		if distance < closest:
 			closest = distance
@@ -259,8 +276,9 @@ func reflect(sim: CrestSim, active_spots: Array[StringName], delta: float) -> vo
 	drill_upgrade.visible = sim.drill
 	var grow := clampf(1.0 - float(sim.jobs[&"crop"]) / float(sim.runtime.crop_seconds), 0.18, 1.0)
 	crops.scale.y = grow if sim.jobs[&"crop"] != 0 else (1.0 if sim.food > 0 else 0.28)
-	booster.visible = sim.fuel_loaded > 0
-	plume.visible = sim.phase in [&"countdown", &"success"]
+	if not campaign_layout:
+		booster.visible = sim.fuel_loaded > 0
+		plume.visible = sim.phase in [&"countdown", &"success"]
 	if plume.visible:
 		plume.scale.y = 0.9 + 0.24 * sin(_mission_clock * 42)
 		plume.position.y = -0.15 + sin(_mission_clock * 38) * 0.08
@@ -272,6 +290,9 @@ func _lighting() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("#101623")
+	if campaign_layout:
+		env.background_mode = Environment.BG_CANVAS
+		env.background_canvas_max_layer = -1
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("#afb9e1")
 	env.ambient_light_energy = 0.61
@@ -288,8 +309,11 @@ func _lighting() -> void:
 
 
 func _terrain() -> void:
-	var ground := FieldWorld.box(self, Vector3(0, -0.46, 0), Vector3(44, 0.9, 29), SOIL)
-	_floor_color = ground.material_override
+	if campaign_layout:
+		_build_ground_sheet()
+	else:
+		var slab := FieldWorld.box(self, Vector3(0, -0.46, 0), Vector3(44, 0.9, 29), SOIL)
+		_floor_color = slab.material_override
 	_solid(Vector3(0, -0.55, 0), Vector3(32, 1.1, 18))
 	for x in [-15.45, 15.45]:
 		_border(Vector3(x, 0.13, 0), Vector3(0.3, 0.26, 17.45))
@@ -313,6 +337,8 @@ func _terrain() -> void:
 	batch.instance_count = 185
 	for index in range(batch.instance_count):
 		var pos := Vector3(rng.randf_range(-22, 22), -0.018, rng.randf_range(-14.4, 14.4))
+		if campaign_layout:
+			pos.z = maxf(pos.z, _ground_back_edge(pos.x) + 0.76)
 		var width := rng.randf_range(0.14, 1.08)
 		var basis := Basis.from_scale(Vector3(width, 0.035, width))
 		batch.set_instance_transform(index, Transform3D(basis, pos))
@@ -329,6 +355,32 @@ func _terrain() -> void:
 		)
 
 
+func _ground_back_edge(x: float) -> float:
+	return -16.1 - 0.23 * x + sin((x + 54.0) / 4.5 * 1.43) * 0.63
+
+
+func _build_ground_sheet() -> void:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in range(24):
+		var x0 := -54.0 + 4.5 * index
+		var x1 := x0 + 4.5
+		var first := Vector3(x0, 0, _ground_back_edge(x0))
+		var next := Vector3(x1, 0, _ground_back_edge(x1))
+		var front := Vector3(x0, 0, 42)
+		var far_front := Vector3(x1, 0, 42)
+		for point in [first, next, front, next, far_front, front]:
+			surface.set_normal(Vector3.UP)
+			surface.add_vertex(point)
+	var ground := MeshInstance3D.new()
+	ground.mesh = surface.commit()
+	_floor_color = StandardMaterial3D.new()
+	_floor_color.albedo_color = SOIL
+	_floor_color.roughness = 1.0
+	ground.material_override = _floor_color
+	add_child(ground)
+
+
 func _build_craters(base_id: StringName) -> void:
 	if is_instance_valid(_craters):
 		remove_child(_craters)
@@ -338,12 +390,28 @@ func _build_craters(base_id: StringName) -> void:
 	add_child(_craters)
 	var height_scale := 0.8 if base_id in [&"mons_mouton_plateau", &"slater_plain"] else 1.0
 	var placements := [
-		[Vector3(-15.95, 0.015, -4.6), 2.55, 0.76],
+		[
+			Vector3(-18.75, 0.015, -4.6) if campaign_layout else Vector3(-15.95, 0.015, -4.6),
+			2.55,
+			0.76
+		],
 		[Vector3(-11.8, 0.015, -10.65), 1.72, 0.49],
-		[Vector3(14.6, 0.015, -9.25), 2.42, 0.85],
-		[Vector3(17.1, 0.015, 1.15), 1.73, 0.63],
-		[Vector3(9.9, 0.015, 10.57), 2.37, 0.80],
-		[Vector3(-13.7, 0.015, 10.2), 1.61, 0.57]
+		[
+			Vector3(14.6, 0.015, -11.55) if campaign_layout else Vector3(14.6, 0.015, -9.25),
+			2.42,
+			0.85
+		],
+		[
+			Vector3(17.72, 0.015, 1.15) if campaign_layout else Vector3(17.1, 0.015, 1.15),
+			1.73,
+			0.63
+		],
+		[Vector3(9.9, 0.015, 11.65) if campaign_layout else Vector3(9.9, 0.015, 10.57), 2.37, 0.80],
+		[
+			Vector3(-13.7, 0.015, 10.55) if campaign_layout else Vector3(-13.7, 0.015, 10.2),
+			1.61,
+			0.57
+		]
 	]
 	for index in range(placements.size()):
 		var placement: Array = placements[index]
@@ -359,16 +427,13 @@ func show_refuge_alert(show_alert: bool) -> void:
 	refuge_alert.visible = show_alert
 
 
-func animate_free_play_launch(active: bool, returned: bool, delta: float) -> void:
-	if not returned:
-		rocket.position = _rocket_home
-		rocket.show()
-	elif active:
-		plume.show()
-		rocket.position.y += delta * (3.5 + rocket.position.y * 0.8)
-	elif _last_launch or rocket.visible:
-		rocket.hide()
-	_last_launch = active
+func present_lander(flight_phase: int, progress: float, returned: bool) -> void:
+	ascent_stage.visible = not returned and flight_phase <= 0
+	ascent_stage.position.y = (
+		LANDER_PAD.y + (8.9 * progress * progress if flight_phase == 0 else 0.0)
+	)
+	plume.visible = flight_phase == 0
+	plume.scale.y = 1.05 + sin(_mission_clock * 40.0) * 0.21
 
 
 func _walkways() -> void:
@@ -411,7 +476,10 @@ func _stations() -> void:
 	_console(&"battery", AMBER)
 	_equipment.append(_console(&"fuel", AMBER))
 	_console(&"radio", PURPLE)
-	_console(&"pad", AMBER)
+	if campaign_layout:
+		_marker(&"pad", AMBER)
+	else:
+		_console(&"pad", AMBER)
 	_equipment.append(_console(&"life", BLUE))
 	_marker(&"crop", LIME)
 	_marker(&"power", AMBER)
@@ -515,6 +583,8 @@ func _quarry(key: StringName, color: Color) -> void:
 		)
 		item.rotation_degrees = Vector3(12 + offset * 9, offset * 26, -13 + offset * 7)
 		offset += 1
+	if campaign_layout:
+		_solid(point + Vector3(0, 0.41, -1.16), Vector3(2.49, 0.82, 0.68))
 	_marker(key, color)
 
 
@@ -539,6 +609,8 @@ func _console(key: StringName, accent: Color) -> Node3D:
 	FieldWorld.box(root, machine, Vector3(0.84, 0.78, 0.45), FRAME)
 	FieldWorld.box(root, machine + Vector3(0, 0.3, 0.12), Vector3(0.91, 0.25, 0.47), WHITE)
 	FieldWorld.box(root, machine + Vector3(0, 0.3, 0.365), Vector3(0.59, 0.12, 0.045), accent, true)
+	if campaign_layout and key not in [&"training", &"supply"]:
+		_solid(point + machine + Vector3(0, 0, 0.09), Vector3(0.91, 0.84, 0.67))
 	_marker(key, accent)
 	return root
 
@@ -554,7 +626,7 @@ func _marker(key: StringName, accent: Color) -> void:
 	mesh.ring_segments = 24
 	FieldWorld._mesh(root, Vector3(0, 0.08, 0), mesh, accent, true)
 	var label := Label3D.new()
-	label.text = NAMES[key]
+	label.text = "MÓDULO LUNAR" if campaign_layout and key == &"pad" else NAMES[key]
 	label.font = MONO
 	label.font_size = 30
 	label.pixel_size = 0.019
@@ -565,6 +637,30 @@ func _marker(key: StringName, accent: Color) -> void:
 	label.outline_modulate = Color("#1a2335")
 	root.add_child(label)
 	markers[key] = root
+
+
+func _build_lander() -> void:
+	var pad := LANDER_PAD
+	_disc(self, Vector3(pad.x, 0.006, pad.z), 2.67, 0.034, FRAME, 12)
+	_disc(self, Vector3(pad.x, 0.027, pad.z), 2.39, 0.025, DECK, 12)
+	for index in range(8):
+		var angle := TAU * index / 8.0
+		var corner := pad + Vector3(cos(angle) * 2.52, 0.07, sin(angle) * 2.52)
+		_disc(self, corner, 0.095, 0.14, AMBER, 8, true)
+	descent_stage = APOLLO_BASE.instantiate()
+	ascent_stage = APOLLO_ASCENT.instantiate()
+	for stage in [descent_stage, ascent_stage]:
+		add_child(stage)
+		stage.position = pad
+		stage.rotation_degrees.y = -13.0
+		stage.scale = Vector3.ONE * 0.95
+	_solid(pad + Vector3.UP * 0.73, Vector3(2.3, 1.52, 2.15))
+	# The ladder and footpads sit inside the striped service pad.
+	plume = Node3D.new()
+	ascent_stage.add_child(plume)
+	FieldWorld.ball(plume, Vector3(0, 0.94, 0), Vector3(0.67, 1.50, 0.65), AMBER, true)
+	FieldWorld.ball(plume, Vector3(0, 1.18, 0), Vector3(0.34, 0.81, 0.34), WHITE, true)
+	plume.hide()
 
 
 func _build_rocket() -> void:
@@ -603,6 +699,10 @@ func _build_rocket() -> void:
 
 
 func _deck(point: Vector3, dimensions: Vector3, accent: Color) -> void:
+	# Intersections have a tiny rendering offset so surfaces never compete at equal depth.
+	if campaign_layout:
+		point.y += deck_index * 0.00032
+		deck_index += 1
 	FieldWorld.box(self, point, dimensions, DECK)
 	var along_x := dimensions.x >= dimensions.z
 	var length := dimensions.x if along_x else dimensions.z
