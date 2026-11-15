@@ -473,15 +473,10 @@ func _build_close(root: Control) -> void:
 	_close_button = Button.new()
 	_close_button.text = "X"
 	_close_button.focus_mode = Control.FOCUS_NONE
-	_close_button.custom_minimum_size = Vector2(60.0, 60.0)
+	_close_button.custom_minimum_size = Vector2(56.0, 56.0)
 	_close_button.tooltip_text = "Cerrar"
 	LunarButtonKit.apply(_close_button, &"cancelar", 24)
 	root.add_child(_close_button)
-	_close_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_close_button.offset_left = -78.0
-	_close_button.offset_right = -18.0
-	_close_button.offset_top = 18.0
-	_close_button.offset_bottom = 78.0
 	_close_button.pressed.connect(func() -> void: selected.emit(_close_action, _close_argument))
 	_close_button.hide()
 
@@ -492,6 +487,25 @@ func _set_close(action: String, argument := "") -> void:
 	_close_argument = argument
 	_close_button.show()
 	_close_button.get_parent().move_child(_close_button, -1)
+	_place_close()
+
+
+## Dentro de la esquina del recuadro del menu; en pantallas completas, en la esquina de la pantalla.
+func _place_close() -> void:
+	if menu.visible:
+		await get_tree().process_frame
+		if not menu.visible or not has_close():
+			return
+		var rect := menu.get_global_rect()
+		_close_button.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_close_button.size = Vector2(56.0, 56.0)
+		_close_button.position = Vector2(rect.end.x - 56.0 - 14.0, rect.position.y + 14.0)
+	else:
+		_close_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		_close_button.offset_left = -76.0
+		_close_button.offset_right = -20.0
+		_close_button.offset_top = 20.0
+		_close_button.offset_bottom = 76.0
 
 
 func has_close() -> bool:
@@ -975,11 +989,24 @@ func _card_frame(picked: bool, hover: bool) -> StyleBoxFlat:
 	return frame
 
 
+## Recuadro que se ajusta a su contenido, con los textos centrados.
+func _compact_menu(width: float = 520.0) -> void:
+	menu.offset_left = -width * 0.5
+	menu.offset_right = width * 0.5
+	menu.offset_top = 0.0
+	menu.offset_bottom = 0.0
+	menu.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_place_close()
+
+
 func wait_for_guest(base_name: String, host_address: String, status: String) -> void:
 	_prepare_menu(
 		base_name, LunarLanguage.t("Comparte esta dirección con tu compañero.\n%s\n%s") % [host_address, status]
 	)
 	_button(_list, "Volver al inicio", "leave")
+	_compact_menu()
 
 
 func session_menu(mode: StringName, status: String = "") -> void:
@@ -988,6 +1015,7 @@ func session_menu(mode: StringName, status: String = "") -> void:
 	_button(_list, "Volver a la partida", "back_to_play")
 	_button(_list, "Archivo científico", "science")
 	_button(_list, "Salir de la partida" if mode == &"guest" else "Guardar y salir", "leave")
+	_compact_menu()
 
 
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
@@ -1008,6 +1036,7 @@ func confirm_reset(base_name: String, id: String) -> void:
 	)
 	_button(_list, "Cancelar", "bases")
 	_button(_list, "Reiniciar base", "reset", id)
+	_compact_menu()
 
 
 func show_balance(balance: String) -> void:
@@ -1263,6 +1292,8 @@ func _prepare_menu(title: String, status: String) -> void:
 	_heading.add_theme_font_size_override("font_size", 43)
 	_message.add_theme_font_size_override("font_size", 22)
 	_heading.modulate = BRICK
+	_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_heading.text = title
 	_message.text = status
 	for child in _list.get_children():
