@@ -210,7 +210,7 @@ func _build_play(root: Control) -> void:
 	drop.offset_bottom = 74
 	drop.grow_vertical = Control.GROW_DIRECTION_END
 	var drop_toggle := Button.new()
-	drop_toggle.text = "Objetivo  -"
+	drop_toggle.text = "Objetivo  +"
 	drop_toggle.focus_mode = Control.FOCUS_NONE
 	drop_toggle.custom_minimum_size = Vector2(190, 42)
 	drop_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -220,6 +220,7 @@ func _build_play(root: Control) -> void:
 	_drop_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_drop_body.add_theme_constant_override("separation", 6)
 	drop.add_child(_drop_body)
+	_drop_body.hide()
 	drop_toggle.pressed.connect(func() -> void:
 		_drop_body.visible = not _drop_body.visible
 		drop_toggle.text = "Objetivo  -" if _drop_body.visible else "Objetivo  +"
