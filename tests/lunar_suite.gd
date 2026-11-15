@@ -343,6 +343,10 @@ func _solo() -> void:
 		_capture_image(player, "artemis-portada.png")
 	_press_menu_button(player, "Entrar al puesto lunar")
 	_press_menu_button(player, "Jugar solo · sin conexión")
+	if _capture:
+		for frame in range(8):
+			await get_tree().process_frame
+		_capture_image(player, "artemis-bases.png")
 	_press_menu_button(player, "Mons Mouton Plateau · Fácil")
 	_check(player._loading and not player.ui.play.visible, "base selection displays loading")
 	if _capture:

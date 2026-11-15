@@ -195,7 +195,7 @@ func _choose(action: String, argument: String) -> void:
 			if profile.buy(argument, false):
 				ui.bases(profile, _base_mode)
 			else:
-				ui.lobby(profile, "Reúne más monedas para abrir esa base.")
+				ui.bases(profile, _base_mode, "No tienes suficientes monedas para abrir esa base.")
 		"buy_role":
 			if profile.buy(argument, true):
 				ui.roles(profile)
