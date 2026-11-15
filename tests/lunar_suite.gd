@@ -285,7 +285,7 @@ func _terrain() -> void:
 		var profile: Dictionary = player.sim.rules.bases[base_id]
 		player.world.set_base(profile.soil, StringName(base_id))
 		player.sky.configure(base_id, profile.horizon)
-		var dimensions := Rect2(-15.24, -8.35, 30.48, 16.70)
+		var dimensions := Rect2(-20.0, -11.0, 40.0, 22.0)
 		for crater: MeshInstance3D in player.world.get_node("CrateresLaterales").get_children():
 			var box := crater.get_aabb()
 			var point := crater.position + box.position

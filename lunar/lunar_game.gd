@@ -4,7 +4,12 @@ extends Node3D
 const PORT := 44260
 const SAMPLE_RATE := 0.10
 const CAMERA_ELEVATION := 34.0
-const SURFACE_SIZE := 19.6
+const SURFACE_SIZE := 27.0
+const PLAY_SIZE := 9.8
+const CARGO_MODELS := {
+	&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62],
+	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
+}
 const ROUTES := preload("res://lunar/lunar_routes.gd")
 const MATCOLORS := {
 	&"sample": CrestWorld.BLUE,
@@ -29,6 +34,7 @@ var guest_id := ""
 var positions_at_dawn: Array = []
 var saved_run := 0
 var play_started := false
+var _camera_home := Vector3.ZERO
 
 var _base_mode := "solo"
 var _loading := false
@@ -106,6 +112,7 @@ func _surface_camera() -> void:
 		view.x * 26.0, 26.0 * tan(deg_to_rad(CAMERA_ELEVATION)), view.y * 26.0
 	)
 	camera.look_at(Vector3.ZERO)
+	_camera_home = camera.position
 	camera.size = SURFACE_SIZE
 	camera.h_offset = 0.0
 	camera.v_offset = 2.9
@@ -117,8 +124,7 @@ func _process(delta: float) -> void:
 		_title_age += delta
 		camera.h_offset = -3.7 + sin(_title_age * 0.22) * 1.35
 		camera.v_offset = 3.45 + cos(_title_age * 0.24) * 0.48
-		camera.size = 20.9 + sin(_title_age * 0.14) * 0.58
-		world.guide_animator.speed_scale = 0.83
+		camera.size = 28.4 + sin(_title_age * 0.14) * 0.58
 
 
 func _notification(what: int) -> void:
@@ -138,6 +144,16 @@ func _physics_process(delta: float) -> void:
 		_local_frame(delta)
 	elif net == &"guest":
 		_guest_frame(delta)
+	if ui.play.visible and sim.phase != &"flight":
+		_follow_camera(delta)
+
+
+func _follow_camera(delta: float) -> void:
+	# Zoom de juego: camara cercana que sigue a los pilotos sin salir de la plataforma.
+	var focus := (pilots[0].position + pilots[1].position) * 0.5
+	var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -6.0, 6.0))
+	camera.position = camera.position.lerp(_camera_home + shift, minf(1.0, delta * 4.0))
+	camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -306,7 +322,6 @@ func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> 
 	world.show_field_models("")
 	sky.configure(id, sim.base.horizon)
 	_surface_camera()
-	world.guide_animator.speed_scale = 1.0
 	_set_positions(CrestWorld.SPAWNS)
 	positions_at_dawn = _positions()
 	_route[0].clear()
@@ -635,8 +650,17 @@ func _render(delta: float, player: int) -> void:
 		var crate: Dictionary = sim.crates[id]
 		if not _boxes.has(id):
 			var box := Node3D.new()
-			FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
-			FieldWorld.box(box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME)
+			if CARGO_MODELS.has(crate.kind):
+				var info: Array = CARGO_MODELS[crate.kind]
+				var model: Node3D = (info[0] as PackedScene).instantiate()
+				PaperMaterial.restyle(model, false)
+				model.scale = Vector3.ONE * float(info[1])
+				box.add_child(model)
+			else:
+				FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
+				FieldWorld.box(
+					box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME
+				)
 			add_child(box)
 			_boxes[id] = box
 		var mesh: Node3D = _boxes[id]

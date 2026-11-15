@@ -15,6 +15,12 @@ uniform bool flat_facets = true;
 uniform float facet_variation : hint_range(0.0, 0.3) = 0.07;
 uniform float grain_strength : hint_range(0.0, 0.3) = 0.07;
 uniform float grain_scale = 38.0;
+// Terreno: aplana el relieve cerca de la base y recorta el borde trasero del suelo.
+uniform float albedo_gain = 1.0;
+uniform vec4 relief_rect = vec4(0.0);
+uniform float relief_flat = 0.0;
+uniform float relief_ramp = 0.0;
+uniform bool back_edge_cut = false;
 
 varying vec3 w_pos;
 varying flat float face_seed;
@@ -37,12 +43,24 @@ float value_noise(vec2 p) {
 }
 
 void vertex() {
+	if (relief_ramp > 0.0) {
+		vec3 base_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+		vec2 outside = max(relief_rect.xy - base_pos.xz, base_pos.xz - relief_rect.zw);
+		float reach = length(max(outside, vec2(0.0)));
+		VERTEX.y *= smoothstep(relief_flat, relief_flat + relief_ramp, reach);
+	}
 	w_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	face_seed = hash21(VERTEX.xz * 17.3 + VERTEX.y * 5.1 + NORMAL.xy * 3.7);
 }
 
 void fragment() {
-	vec3 base = albedo_color.rgb * COLOR.rgb;
+	if (back_edge_cut) {
+		float edge = -16.1 - 0.23 * w_pos.x + sin((w_pos.x + 54.0) / 4.5 * 1.43) * 0.63;
+		if (w_pos.z < edge) {
+			discard;
+		}
+	}
+	vec3 base = albedo_color.rgb * albedo_gain * COLOR.rgb;
 	if (use_texture) {
 		base *= texture(albedo_texture, UV).rgb;
 	}

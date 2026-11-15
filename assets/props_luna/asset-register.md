@@ -22,3 +22,9 @@ Los tres modelos se importaron en Godot 4.7.2 y comparten el escenario 2.5D y la
 | Modelo | Origen | Archivo | Uso y ajuste |
 | --- | --- | --- | --- |
 | Máquina Agua-Hielo (vacío y lleno) | Carpeta `modelos` del Drive del equipo. Generados con Tripo, 10,7 mil triángulos cada uno | agua_hielo/maquina_agua_hielo_vacio.glb y agua_hielo/maquina_agua_hielo_lleno.glb | Estación REFINADO. Vacía en reposo y llena mientras la refinadora trabaja. Los originales usaban `KHR_mesh_quantization`, que Godot 4.7.2 no importa; se descuantizaron con `gltf-transform dequantize` sin cambiar la geometría. Escala 1,55 y material papel sin facetas |
+
+## Superficie lunar
+
+| Modelo | Origen | Archivo | Uso y ajuste |
+| --- | --- | --- | --- |
+| Superficie lunar | Carpeta `modelos` del Drive del equipo (`superficielunar.glb`). Generado con Tripo: 957 mil triángulos y textura de 2048 px | superficie/superficie_lunar.glb | Suelo de la campaña en `crest_world.gd`. El original usaba `KHR_mesh_quantization` y `EXT_meshopt_compression`; se descuantizó y se simplificó con `gltf-transform` a unos 29 mil triángulos. Escala 110 × 11 × 110, centro en z = 10, relieve aplanado a 6 m de la cubierta con rampa de 7 m y tinte lavanda por el shader papel |
