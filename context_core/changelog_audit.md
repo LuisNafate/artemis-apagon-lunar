@@ -176,4 +176,4 @@
 
 - Godot 4.7.2. `ChunkStreamer` genera `ChunkData` y la malla en `WorkerThreadPool` y solo toca el árbol en `update()` (máximo `chunks_per_frame` por llamada; histéresis `load_radius`/`unload_radius`; `clear()` y `_exit_tree` esperan las tareas en vuelo). `data_at` responde con cualquier chunk cargado y, para los recién descargados, con una caché LRU de 32. `ChunkView` crea malla facetada, `StaticBody3D` en capa 1 con `HeightMapShape3D`, rocas en `MultiMesh` y marcadores de depósito (`set_deposit` llena/vacío). Pared invisible a 1 m del borde. Aún no está conectado a la escena (Tarea 4).
 - La suite espera la carga con tiempo de reloj (`_pump`, 20 s) porque la generación es asíncrona y los fotogramas headless son muy rápidos.
-- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 419, Mundo abierto 6 casos y 680 comprobaciones, 0 fallos.
+- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 419, Mundo abierto 7 casos y 691 comprobaciones, 0 fallos.

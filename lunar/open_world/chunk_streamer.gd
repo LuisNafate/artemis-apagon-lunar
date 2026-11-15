@@ -95,6 +95,9 @@ func update(focus_points: Array[Vector3]) -> void:
 	for coord in needed:
 		if not (_views.has(coord) or _jobs.has(coord) or _done.has(coord)):
 			_start(coord)
+	for coord in _jobs:
+		if not needed.has(coord):
+			_jobs[coord].cancelled = true
 	_unload(_focus_coords(focus_points))
 	var budget := int(_settings.chunks_per_frame)
 	while budget > 0 and not _done.is_empty():
@@ -152,6 +155,8 @@ func _start(coord: Vector2i) -> void:
 
 ## Se ejecuta en un hilo: solo datos puros, nunca el arbol de escena.
 func _generate(job: Job) -> void:
+	if job.cancelled:
+		return
 	job.data = ChunkGenerator.generate(_world_seed, _region, _settings, job.coord)
 	job.arrays = ChunkView.mesh_arrays(job.data)
 
@@ -162,10 +167,13 @@ func _collect() -> void:
 		if WorkerThreadPool.is_task_completed(job.task):
 			WorkerThreadPool.wait_for_task_completion(job.task)
 			_jobs.erase(coord)
-			_done[coord] = job
+			if not job.cancelled:
+				_done[coord] = job
 
 
 func _wait_all() -> void:
+	for job: Job in _jobs.values():
+		job.cancelled = true
 	for job: Job in _jobs.values():
 		WorkerThreadPool.wait_for_task_completion(job.task)
 	_jobs.clear()
@@ -238,5 +246,6 @@ class Job:
 	extends RefCounted
 	var coord := Vector2i.ZERO
 	var task := -1
+	var cancelled := false
 	var data: ChunkData
 	var arrays: Array = []

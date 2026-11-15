@@ -21,6 +21,7 @@ func _run() -> void:
 	_base_exits()
 	_deposits()
 	await _streaming()
+	await _streaming_limits()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -347,6 +348,65 @@ func _streaming() -> void:
 	_check(wall.collision_layer == 1 and wall.shape_owner_get_shape_count(0) == 1, "edge wall")
 	var elsewhere: Array[Vector3] = [Vector3(300, 0, 300)]
 	streamer.update(elsewhere)
+	streamer.queue_free()
+	await get_tree().process_frame
+
+
+## `clear()` con una ventana entera en cola no debe esperar a generarla; y la colision
+## del chunk debe coincidir con las alturas del terreno.
+func _streaming_limits() -> void:
+	_cases += 1
+	var sim := LunarMission.new()
+	sim.prepare("mons_mouton_plateau", 41, true)
+	var s: Dictionary = sim.rules.open_world
+	var region: Dictionary = s.regions.mons_mouton_plateau
+	var started := Time.get_ticks_usec()
+	ChunkGenerator.generate(sim.world_seed, region, s, Vector2i(9, 9))
+	var one_chunk := Time.get_ticks_usec() - started
+	var streamer := ChunkStreamer.new()
+	add_child(streamer)
+	streamer.configure(sim, s, region, Color("#6b6678"))
+	var apart: Array[Vector3] = [Vector3(-300, 0, -300), Vector3(300, 0, 300)]
+	streamer.update(apart)
+	started = Time.get_ticks_usec()
+	streamer.clear()
+	var elapsed := Time.get_ticks_usec() - started
+	_check(elapsed < one_chunk * 8, "clear cancels queued chunks (%d us)" % elapsed)
+	_check(streamer.loaded_coords().is_empty(), "clear leaves nothing loaded")
+	var focus: Array[Vector3] = [Vector3(100, 0, 100)]
+	await _pump(streamer, focus, func() -> bool: return streamer.loaded_coords().size() == 49)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var space := streamer.get_world_3d().direct_space_state
+	var spots: Array[Vector2] = [
+		Vector2(96, 96),
+		Vector2(112, 96),
+		Vector2(96, 112),
+		Vector2(112, 112),
+		Vector2(100, 104),
+		Vector2(111, 97),
+		Vector2(97, 111),
+		Vector2(103, 100),
+	]
+	for spot in spots:
+		var top := Vector3(spot.x, 80.0, spot.y)
+		var query := PhysicsRayQueryParameters3D.create(top, top + Vector3.DOWN * 160.0, 1)
+		var hit := space.intersect_ray(query)
+		var expected := ChunkGenerator.height(sim.world_seed, region, s, spot.x, spot.y)
+		_check(
+			not hit.is_empty() and absf(hit.position.y - expected) < 0.05,
+			"collision matches terrain at %s" % spot
+		)
+	var mid := Vector3(100.5, 80.0, 104.0)
+	var mid_hit := space.intersect_ray(
+		PhysicsRayQueryParameters3D.create(mid, mid + Vector3.DOWN * 160.0, 1)
+	)
+	var west := ChunkGenerator.height(sim.world_seed, region, s, 100.0, 104.0)
+	var east := ChunkGenerator.height(sim.world_seed, region, s, 101.0, 104.0)
+	_check(
+		not mid_hit.is_empty() and absf(mid_hit.position.y - (west + east) * 0.5) < 0.05,
+		"collision matches along a cell edge"
+	)
 	streamer.queue_free()
 	await get_tree().process_frame
 
