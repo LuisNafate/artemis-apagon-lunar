@@ -9,6 +9,8 @@ const SEARCH := 3
 
 ## Cuantas veces se ha reconstruido la rejilla (las pruebas comprueban que caminar no cuesta).
 var rebuilds := 0
+## Zonas (XZ) que la ruta nunca pisa aunque el terreno sea transitable (la base y su muro).
+var blocked: Array[Rect2] = []
 var _grid := AStarGrid2D.new()
 var _cell := 0.5
 var _built := false
@@ -62,7 +64,23 @@ func rebuild(
 		for index in range(data.walkable.size()):
 			if data.walkable[index] == 1:
 				_grid.set_point_solid(base + Vector2i(index % per_chunk, index / per_chunk), false)
+	for rect in blocked:
+		_block(rect)
 	_built = true
+
+
+## Celdas cuyo centro cae en `rect`, solidas.
+func _block(rect: Rect2) -> void:
+	var low := Vector2i((rect.position / _cell).floor())
+	var high := Vector2i((rect.end / _cell).ceil())
+	for x in range(low.x, high.x):
+		for z in range(low.y, high.y):
+			var cell := Vector2i(x, z)
+			if (
+				_grid.is_in_boundsv(cell)
+				and rect.has_point((Vector2(cell) + Vector2.ONE * 0.5) * _cell)
+			):
+				_grid.set_point_solid(cell, true)
 
 
 func cell_size() -> float:
