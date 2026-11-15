@@ -11,6 +11,14 @@ const SOFT := Color("#755f52")
 const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
+const CHIP_FILL := Color("#ecd5a8")
+const CHIP_ICONS := [
+	preload("res://assets/ui/hud/aire.png"),
+	preload("res://assets/ui/hud/aire.png"),
+	preload("res://assets/ui/hud/bateria.png"),
+	preload("res://assets/ui/hud/agua.png"),
+	preload("res://assets/ui/hud/hambre.png")
+]
 const PROMPTS := [
 	["Toma la muestra", "El gato azul se acerca a la mesa y toca Acción."],
 	["Pasa la caja", "Acércate a tu compañero y toca Soltar / pasar."],
@@ -92,20 +100,32 @@ func _build_play(root: Control) -> void:
 	_resources = HBoxContainer.new()
 	content.add_child(_resources)
 	_resources.add_theme_constant_override("separation", 7)
-	var colors := [Color("#24536a"), Color("#814b32"), TEAL, Color("#36585d"), Color("#665038")]
-	for tint: Color in colors:
+	var colors := [Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")]
+	for index in range(colors.size()):
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var border := _style(tint, tint.darkened(0.32))
-		border.content_margin_top = 2
-		border.content_margin_bottom = 3
-		border.content_margin_left = 9
-		border.content_margin_right = 9
+		var border := _style(CHIP_FILL, colors[index].darkened(0.1))
+		border.content_margin_top = 1
+		border.content_margin_bottom = 2
+		border.content_margin_left = 4
+		border.content_margin_right = 12
+		border.set_corner_radius_all(12)
 		border.shadow_size = 0
 		chip.add_theme_stylebox_override("panel", border)
 		_resources.add_child(chip)
-		var reading := _label(chip, "", 19)
-		reading.add_theme_color_override("font_color", Color("#fff2d6"))
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 5)
+		chip.add_child(row)
+		var icon := TextureRect.new()
+		icon.texture = CHIP_ICONS[index]
+		icon.custom_minimum_size = Vector2(44, 44)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
+		var reading := _label(row, "", 21)
+		reading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_readouts.append(reading)
 	details = _label(content, "", 21)
 	details.hide()
@@ -448,17 +468,17 @@ func sync(
 	for person in range(2):
 		if night and not sheltered[person] and mission.connected[person]:
 			cold[person] = " ❄"
-	var air_caption := "Aire" if mission.solo else "Aire azul"
-	_readouts[0].text = "%s %d%s" % [air_caption, ceili(mission.pilots[0].air), cold[0]]
-	_readouts[1].get_parent().visible = not mission.solo
+	var air_caption := "" if mission.solo else "J1 "
+	_readouts[0].text = "%s%d%s" % [air_caption, ceili(mission.pilots[0].air), cold[0]]
+	_readouts[1].get_parent().get_parent().visible = not mission.solo
 	if not mission.solo:
 		var air := (
 			"%d%s" % [ceili(mission.pilots[1].air), cold[1]] if mission.connected[1] else "ausente"
 		)
-		_readouts[1].text = "Aire naranja " + air
-	_readouts[2].text = "Batería %.1f/%.0f" % [mission.charge, mission.battery_capacity()]
-	_readouts[3].text = "Agua %.1f" % mission.water
-	_readouts[4].text = "Hambre %d" % ceili(mission.pilots[player].hunger)
+		_readouts[1].text = "J2 " + air
+	_readouts[2].text = "%.1f/%.0f" % [mission.charge, mission.battery_capacity()]
+	_readouts[3].text = "%.1f" % mission.water
+	_readouts[4].text = "%d" % ceili(mission.pilots[player].hunger)
 	release_button.text = "Soltar / entregar" if mission.solo else "Soltar / pasar"
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
