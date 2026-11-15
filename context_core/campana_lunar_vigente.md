@@ -6,7 +6,7 @@
 
 | Códigos | Alcance vigente |
 | --- | --- |
-| RES-1 a RES-7, JUG-1 a JUG-15, CTL-1 a CTL-13 | Un astronauta sin conexión o dos personas en dispositivos propios. Controles táctiles, roles opcionales y guardado por base. En línea, la partida pertenece al anfitrión. |
+| RES-1 a RES-7, JUG-1 a JUG-15, CTL-1 a CTL-13 | El menú del MVP abre una misión individual sin conexión. Controles táctiles, roles opcionales y guardado por base. |
 | EST-1 a EST-13, BAS-1 a BAS-5 | Nueve regiones, dificultad fija, Mons Mouton Plateau inicial, desbloqueos libres por compra. La ficha de arte y geometría vive en [el catálogo de producción](catalogo_produccion_artemis.md). |
 | TIE-1 a TIE-7, RET-1 a RET-5 | Día de 420 s, noche de 480 s, checkpoint y monedas al amanecer. Aire cero devuelve a ese punto y mantiene el perfil. |
 | REC-A1 a REC-A6, REC-E1 a REC-E7, REC-W1 a REC-W5, REC-H1 a REC-H4, REC-1 a REC-5 | Consumo según dificultad, aire individual, hambre individual, blindaje independiente del soporte vital, cargas y recursos de producción. |
@@ -16,9 +16,9 @@
 
 ## Individual sin conexión · VAC-11
 
-En **Jugar solo** controlas a un astronauta. Recoges una muestra y la depositas en la mesa de práctica. La misión requiere tres lotes de propelente, dos raciones, radio y tu asiento. El menú pausa el tiempo y al amanecer recibes el 100 % de las monedas. **Crear partida en línea** y **Unirme en línea** usan el cooperativo de dos jugadores.
+En **Jugar solo** controlas a un astronauta. Recoges una muestra y la depositas en la mesa de práctica. La misión requiere tres lotes de propelente, dos raciones, radio y tu asiento. El menú pausa el tiempo y al amanecer recibes el 100 % de las monedas. **Continuar misión** abre la última base individual guardada.
 
-Cada base guarda el avance individual y cooperativo en ranuras distintas. Las monedas, los desbloqueos y el registro del bono único por base pertenecen al mismo perfil. **Continuar** indica y abre el último modo guardado.
+Cada base guarda el avance individual y cooperativo en ranuras distintas. Las monedas, los desbloqueos y el registro del bono único por base pertenecen al mismo perfil. La portada indica **Campaña completada** al acreditar los regresos de las nueve bases. Después puedes seguir jugando.
 
 ## Regreso por órbita lunar
 

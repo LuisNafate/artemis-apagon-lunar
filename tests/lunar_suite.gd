@@ -23,8 +23,11 @@ func _run() -> void:
 	_launch()
 	_profile()
 	_wallet_adversarial()
+	_item_limits()
 	await _terrain()
 	await _solo()
+	await _recovery()
+	await _item_controls()
 	await _network()
 	print("LUNAR SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
@@ -194,6 +197,7 @@ func _launch() -> void:
 	mission.set_guest(true, Vector3.ZERO)
 	mission.use_station(1, &"pad")
 	mission.tick(0.01, SAFE, AWAY)
+	mission.store_checkpoint()
 	mission.tick(30.0, SAFE, AWAY)
 	_check(mission.flight_stage().x == 0 and not mission.returned, "ascent is not Earth arrival")
 	var elapsed := mission.elapsed
@@ -209,6 +213,21 @@ func _launch() -> void:
 		mission.returned and mission.phase == &"active" and mission.elapsed > elapsed,
 		"mission allows free play"
 	)
+	_check(
+		(
+			mission.checkpoint.returned
+			and mission.checkpoint.phase == &"active"
+			and mission.checkpoint.countdown == 0.0
+			and not mission.checkpoint.pilots[0].seated
+		),
+		"return clears countdown and seats from the dawn checkpoint"
+	)
+	var legacy := mission.checkpoint.duplicate(true)
+	legacy.phase = &"countdown"
+	legacy.countdown = 12.0
+	legacy.pilots[0].seated = true
+	mission.restore(legacy)
+	_check(mission.phase == &"active" and mission.crew_seated() == 0, "old return saves recover")
 
 
 func _profile() -> void:
@@ -549,8 +568,7 @@ func _solo() -> void:
 	player.profile = LunarProfile.new(player.sim.rules, player.profile_path)
 	player.ui.lobby(player.profile, "")
 	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
-	_press_menu_button(player, "Jugar solo · sin conexión")
-	_check(player.ui.globe.enter_base(base_id), "el selector ofrece continuar la base guardada")
+	_press_menu_button(player, "Continuar misión")
 	await _until(func() -> bool: return not player._loading)
 	_check(
 		player.sim.returned and absf(player.sim.elapsed - elapsed) < 0.04,
@@ -572,6 +590,157 @@ func _solo() -> void:
 	)
 	DirAccess.remove_absolute(player.profile_path)
 	player.get_parent().queue_free()
+
+
+func _recovery() -> void:
+	_cases += 1
+	var player := _endpoint("Recovery")
+	player._start_solo("mons_mouton_plateau")
+	player.sim.finish_tutorial()
+	player.sim.water = 0.0
+	player.sim.pilots[0].air = 0.001
+	player.sim.store_checkpoint()
+	var outside := CrestWorld.STATIONS[&"training"]
+	player.positions_at_dawn = [outside, Vector3.ZERO]
+	player._set_positions([outside, Vector3.ZERO])
+	for frame in range(4):
+		await get_tree().physics_frame
+	_check(player.world.sheltered(player.pilots[0].position), "dry checkpoint rescues to shelter")
+	_check(player.sim.pilots[0].air >= 30.0, "dry checkpoint leaves usable emergency air")
+	_check(player.sim.water == 0.0 and player.profile.data.balance == 0, "rescue preserves economy")
+	_check(player.sim.phase == &"active", "solo can continue after rescue")
+	player.sim.water = 0.000001
+	player.sim.pilots[0].air = 0.001
+	player.sim.store_checkpoint()
+	player.positions_at_dawn = [CrestWorld.STATIONS[&"life"], Vector3.ZERO]
+	player._set_positions([outside, Vector3.ZERO])
+	for frame in range(4):
+		await get_tree().physics_frame
+	_check(player.sim.pilots[0].air >= 30.0, "trace water does not suppress the emergency reserve")
+	DirAccess.remove_absolute(player.profile_path)
+	player.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+func _item_controls() -> void:
+	_cases += 1
+	var game := _endpoint("ItemControls")
+	game._start_solo("mons_mouton_plateau")
+	game.sim.finish_tutorial()
+	_check(
+		not CrestWorld.campaign_stations.has(&"solar"),
+		"unfinished upgrade is outside interaction map"
+	)
+	var point := Vector3(11, 1.7, 1)
+	game._set_positions([point, Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(point))
+	game.sim._create_cargo(0, &"food")
+	await get_tree().physics_frame
+	game.ui.release_button.pressed.emit()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var id: int = game.sim.crates.keys()[0]
+	var drop: Vector3 = game.sim.crates[id].point
+	_check(drop.y < 0.25 and game.sim.crates[id].owner == -1, "airborne release settles on support")
+	game._set_positions([drop + Vector3(3, 0.1, 0), Vector3.ZERO])
+	game.ui.action_button.pressed.emit()
+	_check(game.sim.cargo_kind(0) == &"", "out-of-reach input cannot pick up a loose crate")
+	game._set_positions([drop + Vector3.UP * 0.02, Vector3.ZERO])
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(
+		game.ui._zone_panel.visible and game.ui.action_button.text == "Recoger ración",
+		"loose food has context away from stations"
+	)
+	_check(not game.ui.release_button.visible, "empty hands hide the release action")
+	game.ui.action_button.pressed.emit()
+	game.ui.action_button.pressed.emit()
+	_check(
+		game.sim.pilots[0].cargo == id and game.sim.crates.size() == 1,
+		"double pickup keeps one owner and one crate"
+	)
+	game.sim._consume_cargo(0)
+
+	var refine: Vector3 = CrestWorld.STATIONS[&"refinery"]
+	game._set_positions([refine, Vector3.ZERO])
+	game.sim._create_cargo(0, &"ice")
+	game.ui.release_button.pressed.emit()
+	game.ui.release_button.pressed.emit()
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if game.sim.refining.is_empty():
+		_check(false, "refinery begins with one job")
+	else:
+		var left: float = game.sim.refining[0]
+		_check(
+			game.ui.action_button.disabled and "0:05" in game.ui._zone_detail.text,
+			"timer reads the actual refinery job"
+		)
+		_check(game.world._water_machine_full.visible, "working refinery uses loaded model")
+		game.ui.selected.emit("menu", "")
+		for frame in range(5):
+			await get_tree().physics_frame
+		game.ui.action_button.pressed.emit()
+		_check(game.sim.refining[0] == left, "pause freezes processing")
+		_press_menu_button(game, "Guardar y salir")
+		game.profile = LunarProfile.new(game.sim.rules, game.profile_path)
+		game._start_solo("mons_mouton_plateau")
+		_check(game.sim.refining[0] == left, "resume preserves processing time")
+		var before: float = game.sim.water
+		await _until(func() -> bool: return game.sim.refining.is_empty())
+		_check(
+			game.sim.water > before + 0.8 and game.sim.crates.is_empty(),
+			"refined water credited once"
+		)
+		_check(game.world._water_machine_empty.visible, "completed refinery shows empty model")
+	DirAccess.remove_absolute(game.profile_path)
+	game.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+func _item_limits() -> void:
+	_cases += 1
+	var sim := _mission()
+	for part in range(3):
+		sim._create_cargo(0, &"fuel")
+		sim.release(0, Vector3(part, 0, 0), false)
+	var water := sim.water
+	sim.use_station(0, &"fuel")
+	_check(
+		sim.fuel_quota_met() and sim.jobs[&"fuel"] == 0.0 and sim.water == water,
+		"loose lots count toward fuel quota"
+	)
+	for part in range(sim.crates.size(), LunarMission.CARGO_LIMIT):
+		sim._create_cargo(0, &"ore")
+		sim.release(0, Vector3(part, 0, 0), false)
+	sim.food = 1
+	sim.use_station(0, &"crop")
+	_check(sim.food == 1 and sim.cargo_kind(0) == &"", "full cargo preserves a ready ration")
+	var crop := LunarItemContext.at(sim, 0, &"crop", &"")
+	_check(crop[2] and crop[0] == "Recoger ración", "ready stock reports blocked collection")
+	var key := LunarMission.deposit_key(Vector2i.ZERO, 77)
+	sim.register_deposit(key, &"ice", 2, true)
+	sim.crates.clear()
+	sim.use_station(0, key)
+	sim._tick_mining(sim.drill_seconds(), [key, &""])
+	_check(sim.deposit_left(key) == 1, "mine removes one charge")
+	sim.register_deposit(key, &"ice", 2, true)
+	_check(sim.deposit_left(key) == 1, "streaming cannot refill a partially used deposit")
+	sim.release(0, Vector3.ZERO, false)
+	sim.use_station(0, key)
+	sim._tick_mining(sim.drill_seconds(), [key, &""])
+	sim.release(0, Vector3.ZERO, false)
+	var empty := LunarItemContext.at(sim, 0, key, &"")
+	_check(
+		sim.deposit_left(key) == 0 and "4 amaneceres" in empty[1] and empty[2],
+		"depleted deposit shows true refill"
+	)
+	sim.events = [["outage", 0, 60]]
+	sim.jobs[&"fuel"] = 3.2
+	var paused := LunarItemContext.at(sim, 0, &"fuel", &"")
+	_check(
+		"En pausa" in paused[1] and "0:04" in paused[1], "outage reports pause and remaining time"
+	)
 
 
 func _press_menu_button(player: Node, caption: String) -> void:

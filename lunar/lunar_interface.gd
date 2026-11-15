@@ -12,13 +12,6 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const CHIP_FILL := Color("#ecd5a8")
-const CRATE_NAMES := {
-	&"sample": "Caja de muestra",
-	&"ice": "Caja de hielo",
-	&"ore": "Caja de mineral",
-	&"fuel": "Caja de propelente",
-	&"food": "Caja de raciones"
-}
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
 const CHIP_ICONS := [
 	AIR_ICON,
@@ -47,9 +40,11 @@ var location: Label
 var alert: Label
 var next_step: Label
 var feedback: Label
+var _objective_hint: Label
 var _title_tween: Tween
 var _zone_panel: PanelContainer
 var _zone_title: Label
+var _zone_detail: Label
 var _zone_buttons: VBoxContainer
 var _tapped_name := ""
 var _tapped_until := 0
@@ -165,6 +160,11 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
+	_objective_hint = _label(notes, "", 17)
+	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_float_text(_objective_hint)
+	_objective_hint.hide()
 	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
@@ -245,6 +245,10 @@ func _build_play(root: Control) -> void:
 	_zone_title = _label(zone_box, "", 24, TITLE)
 	_zone_title.add_theme_color_override("font_color", INK)
 	_zone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zone_detail = _label(zone_box, "", 17)
+	_zone_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_zone_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zone_detail.add_theme_color_override("font_color", INK)
 	var buttons := VBoxContainer.new()
 	_zone_buttons = buttons
 	zone_box.add_child(buttons)
@@ -376,6 +380,8 @@ func flight_status(phase: int, progress: float) -> void:
 
 func lobby(profile: LunarProfile, status: String) -> void:
 	var subtitle := "ÚLTIMA VENTANA"
+	if profile.campaign_finished():
+		subtitle += "\nCampaña completada"
 	if not status.is_empty():
 		subtitle += "\n" + status
 	_prepare_menu("ARTEMIS", subtitle)
@@ -394,20 +400,12 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_message.add_theme_font_size_override("font_size", 18)
 
 	var solo := _lobby_button(_list, "Jugar solo · sin conexión", "bases", "solo", true)
-	_lobby_button(_list, "Crear partida en línea", "bases", "host")
-
-	var join_controls := HBoxContainer.new()
-	join_controls.add_theme_constant_override("separation", 8)
-	_list.add_child(join_controls)
-	address = LineEdit.new()
-	address.custom_minimum_size.y = 48
-	address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	address.add_theme_font_size_override("font_size", 17)
-	address.max_length = 100
-	address.placeholder_text = "Dirección del anfitrión"
-	address.text_submitted.connect(func(_text: String) -> void: selected.emit("join", ""))
-	join_controls.add_child(address)
-	_lobby_button(join_controls, "Unirme", "join")
+	var recent := String(profile.data.recent)
+	if profile.data.recent_mode == "solo" and profile.saved_bases(true).has(recent):
+		_lobby_button(_list, "Continuar misión", "solo", recent)
+	address = null
+	if profile.rules.solo_mode.get("show_online", true):
+		_online_choices()
 
 	var extras := HBoxContainer.new()
 	extras.add_theme_constant_override("separation", 18)
@@ -422,6 +420,23 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	var balance := _label(_list, "%s monedas" % profile.balance_text(), 16)
 	balance.add_theme_color_override("font_color", Color("#fff0cf"))
 	solo.grab_focus()
+
+
+func _online_choices() -> void:
+	_lobby_button(_list, "Crear partida en línea", "bases", "host")
+
+	var join_controls := HBoxContainer.new()
+	join_controls.add_theme_constant_override("separation", 8)
+	_list.add_child(join_controls)
+	address = LineEdit.new()
+	address.custom_minimum_size.y = 48
+	address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	address.add_theme_font_size_override("font_size", 17)
+	address.max_length = 100
+	address.placeholder_text = "Dirección del anfitrión"
+	address.text_submitted.connect(func(_text: String) -> void: selected.emit("join", ""))
+	join_controls.add_child(address)
+	_lobby_button(join_controls, "Unirme", "join")
 
 
 func _lobby_button(
@@ -583,7 +598,7 @@ func sync(
 	spot: StringName,
 	sheltered: Array[bool],
 	message: String,
-	point: Vector3
+	pickup: StringName = &""
 ) -> void:
 	var night := mission.shadow_active()
 	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
@@ -629,41 +644,88 @@ func sync(
 				mission.required_seats()
 			]
 		)
+	_objective_hint.text = _solo_objective(mission, player)
+	_objective_hint.visible = not _objective_hint.text.is_empty()
 	_show_alert(mission)
-	var deposit := String(spot).begins_with("dep:")
-	var named: StringName = mission.deposit_kind(spot) if deposit else spot
 	feedback.text = message
 	feedback.visible = not message.is_empty() and mission.phase != &"flight"
-	var carrying: bool = mission.pilots[player].cargo != 0
+	_item_panel(mission, player, spot, pickup)
+
+
+func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: StringName) -> void:
+	var cargo := mission.cargo_kind(player)
 	var seated: bool = mission.pilots[player].seated
-	var spot_name := String(CrestWorld.NAMES.get(named, ""))
+	var named := mission.deposit_kind(spot) if String(spot).begins_with("dep:") else spot
+	var caption := String(CrestWorld.NAMES.get(named, ""))
+	var context := LunarItemContext.at(mission, player, spot, pickup)
 	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
-	var crate: int = 0 if carrying or seated else mission.closest_crate(point)
-	var actionable := not spot_name.is_empty() or carrying or seated or crate != 0
-	_zone_buttons.visible = actionable
-	_zone_panel.visible = actionable or tapped
-	if not spot_name.is_empty():
-		_zone_title.text = spot_name
-	elif carrying or seated:
-		_zone_title.text = "Llevas carga" if carrying else "A bordo"
-	elif crate != 0:
-		_zone_title.text = CRATE_NAMES.get(mission.crates[crate].kind, "Caja")
+	action_button.text = context[0]
+	action_button.visible = not action_button.text.is_empty()
+	action_button.disabled = context[2]
+	release_button.visible = cargo != &"" and not seated
+	if cargo != &"":
+		var name: String = LunarItemContext.LOAD_NAMES[cargo]
+		if LunarItemContext.delivers(mission, player, spot):
+			release_button.text = "Entregar %s" % name
+		else:
+			release_button.text = "Soltar %s" % name if mission.solo else "Soltar / pasar"
+	_zone_buttons.visible = action_button.visible or release_button.visible
+	_zone_detail.text = context[1]
+	_zone_detail.visible = not _zone_detail.text.is_empty()
+	_zone_panel.visible = (
+		mission.phase != &"flight" and (_zone_buttons.visible or _zone_detail.visible or tapped)
+	)
+	if pickup != &"":
+		_zone_title.text = "CARGA EN EL SUELO"
+	elif not caption.is_empty():
+		_zone_title.text = caption
+	elif cargo != &"":
+		_zone_title.text = "CARGA · %s" % String(LunarItemContext.LOAD_NAMES[cargo]).to_upper()
+	elif seated:
+		_zone_title.text = "A BORDO"
 	else:
 		_zone_title.text = _tapped_name
-	action_button.text = _action_caption(named)
-	if deposit and mission.deposit_left(spot) <= 0:
-		action_button.text = "Depósito vacío"
-	if seated:
-		action_button.text = "Bajar"
-	if mission.phase == &"tutorial" and spot == &"training":
-		if mission.solo:
-			action_button.text = (
-				"Tomar muestra" if mission.tutorial_step == 0 else "Entregar muestra"
+
+
+func _solo_objective(mission: LunarMission, player: int) -> String:
+	if (
+		not mission.solo
+		or mission.phase in [&"tutorial", &"flight", &"countdown"]
+		or mission.returned
+	):
+		return ""
+	var cargo := mission.cargo_kind(player)
+	if cargo == &"ice":
+		return "Lleva el hielo a Refinado y toca Soltar / entregar."
+	if cargo in [&"fuel", &"food"]:
+		return "Lleva la caja a la nave y toca Soltar / entregar."
+	if cargo != &"":
+		return "Entrega tu carga o suéltala antes de preparar la nave."
+	var requirements: Dictionary = mission.rules.mission
+	return _preparation_hint(mission, requirements)
+
+
+func _preparation_hint(mission: LunarMission, requirements: Dictionary) -> String:
+	var fuel_needed := mission.fuel_loaded < int(requirements.propellant)
+	var food_needed := mission.food_loaded < int(requirements.food)
+	if fuel_needed or food_needed:
+		var station := &"fuel" if fuel_needed else &"crop"
+		var ready := mission.fuel_ready if fuel_needed else mission.food
+		if ready > 0:
+			return (
+				"Recoge un lote en Propelente." if fuel_needed else "Recoge una ración en Cultivos."
 			)
-		elif mission.tutorial_step == 2 and player == 1:
-			action_button.text = "Entregar muestra"
-	if crate != 0:
-		action_button.text = "Recoger caja"
+		if mission.jobs[station] > 0:
+			return "Espera a que se prepare la carga y vuelve a recogerla."
+		var water := float(
+			mission.resources.fuel_water if fuel_needed else mission.resources.crop_water
+		)
+		if mission.water < water * float(mission.difficulty.consumption):
+			return "Sal por la puerta, extrae hielo y llévalo a Refinado para obtener agua."
+		return "Prepara un lote en Propelente." if fuel_needed else "Siembra en Cultivos."
+	if not mission.earth_ok:
+		return "Envía la lista de vuelo desde la radio y espera la respuesta."
+	return "Entra en la nave para iniciar la cuenta regresiva."
 
 
 func _show_alert(mission: LunarMission) -> void:
@@ -684,25 +746,6 @@ func _show_alert(mission: LunarMission) -> void:
 		alert.text = "Se aproxima un corte de radio"
 	else:
 		alert.hide()
-
-
-func _action_caption(spot: StringName) -> String:
-	return String(
-		(
-			{
-				&"ice": "Extraer hielo",
-				&"ore": "Extraer mineral",
-				&"refinery": "Usar taller",
-				&"life": "Comer / aire",
-				&"radio": "Usar radio",
-				&"pad": "Cargar / subir",
-				&"crop": "Cultivar / recoger",
-				&"fuel": "Preparar / recoger",
-				&"power": "Prioridad"
-			}
-			. get(spot, "Acción")
-		)
-	)
 
 
 func _prepare_menu(title: String, status: String) -> void:

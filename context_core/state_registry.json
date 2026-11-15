@@ -1,5 +1,5 @@
 {
-  "revision": 22,
+  "revision": 24,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -946,7 +946,7 @@
       "entry": "res://lunar/lunar.tscn",
       "network": "ENet anfitrión-invitado por dirección y UDP 44260; sin servicios externos",
       "save": "user://artemis_campaign_v1.dat · ranuras individuales y cooperativas por base; saldo y desbloqueos compartidos",
-      "input": "joystick táctil, tocar destino, acción y soltar/pasar",
+      "input": "joystick táctil, tocar destino, acción, soltar/entregar y salto",
       "world": "kit compartido de cinco zonas; suelo Y=0, seis cráteres fuera del área navegable, perfil de horizonte por región",
       "implemented_upgrades": [
         "drill",
@@ -991,11 +991,20 @@
         "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
       }
     },
+    "item_integration": {
+      "audit": "context_core/auditoria_items_mvp.md",
+      "crate_limit": 24,
+      "timers": "Los segundos y amaneceres son valores de LunarMission. El panel los muestra al alcance de cada ítem.",
+      "supplies": "Depósitos y producción en la campaña. Entrega programada solo en la escena histórica de Cresta."
+    },
     "solo_mode": {
       "source": "VAC-11 resuelto por el usuario",
       "players": 1,
       "seats": 1,
       "offline": true,
+      "show_online": false,
+      "emergency_air": 30.0,
+      "campaign_finish": "Regresar a Tierra desde las nueve bases. Después se puede explorar y repetir misiones.",
       "pause_in_menu": true,
       "day_reward_share": 1.0,
       "save_slot": "solo_bases"

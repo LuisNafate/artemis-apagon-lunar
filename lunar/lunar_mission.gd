@@ -4,6 +4,8 @@ extends CrestSim
 
 signal deposit_changed(key: StringName, left: int)
 
+const CARGO_LIMIT := 24
+
 const SAVE_FIELDS := [
 	"elapsed",
 	"days",
@@ -111,6 +113,12 @@ func restore(saved: Dictionary) -> void:
 	withdrew = false
 	if not saved.has("world_deltas"):
 		world_deltas = {}
+	if returned:
+		phase = &"active"
+		countdown = 0.0
+		launch_fx = 0.0
+		for pilot in pilots:
+			pilot.seated = false
 
 
 static func deposit_key(coord: Vector2i, id: int) -> StringName:
@@ -141,20 +149,25 @@ func _delta_key(key: StringName) -> String:
 
 ## Rellena un deposito vaciado cuando han pasado los amaneceres necesarios.
 func _refill_deposit(key: StringName) -> void:
-	var delta_key := _delta_key(key)
-	var known: Dictionary = _known_deposits.get(key, {})
-	if known.is_empty() or not world_deltas.has(delta_key):
-		return
-	var delta: Dictionary = world_deltas[delta_key]
-	if int(delta.left) > 0:
-		return
-	var open_world: Dictionary = rules.open_world
-	var wait := int(open_world.deposit_refill_dawns)
-	if known.near:
-		wait *= int(open_world.deposit_near_factor)
-	if days - int(delta.emptied_day) >= wait:
-		world_deltas.erase(delta_key)
+	if (
+		world_deltas.has(_delta_key(key))
+		and deposit_left(key) == 0
+		and deposit_refill_left(key) == 0
+	):
+		world_deltas.erase(_delta_key(key))
 		deposit_changed.emit(key, deposit_left(key))
+
+
+func deposit_refill_left(key: StringName) -> int:
+	var known: Dictionary = _known_deposits.get(key, {})
+	if known.is_empty() or deposit_left(key) > 0:
+		return 0
+	var settings: Dictionary = rules.open_world
+	var wait := int(settings.deposit_refill_dawns)
+	if known.near:
+		wait *= int(settings.deposit_near_factor)
+	var delta: Dictionary = world_deltas.get(_delta_key(key), {})
+	return maxi(0, wait - (days - int(delta.get("emptied_day", days))))
 
 
 func _refill_deposits() -> void:
@@ -163,21 +176,17 @@ func _refill_deposits() -> void:
 
 
 func _mine_deposit(player: int, key: StringName) -> String:
+	if deposit_kind(key) == &"":
+		return "Acércate a un depósito cargado"
 	if deposit_left(key) <= 0:
-		var open_world: Dictionary = rules.open_world
-		var wait := int(open_world.deposit_refill_dawns)
-		if _known_deposits.get(key, {}).get("near", false):
-			wait *= int(open_world.deposit_near_factor)
-		var delta: Dictionary = world_deltas.get(_delta_key(key), {"emptied_day": days})
-		var remaining := maxi(1, wait - (days - int(delta.emptied_day)))
-		return "Depósito vacío · vuelve en %d amaneceres" % remaining
+		return "Depósito vacío · vuelve en %d amaneceres" % deposit_refill_left(key)
 	return _start_mining(player, key)
 
 
 func _finish_deposit(player: int, key: StringName) -> StringName:
 	var pilot := pilots[player]
 	pilot.mine = &""
-	if deposit_left(key) <= 0:
+	if deposit_left(key) <= 0 or cargo_full():
 		return &""
 	var kind: StringName = _known_deposits[key].kind
 	_create_cargo(player, kind)
@@ -189,18 +198,6 @@ func _finish_deposit(player: int, key: StringName) -> StringName:
 
 
 ## Id de la caja suelta más cercana a `point` dentro del alcance de las manos (0 si no hay).
-func closest_crate(point: Vector3) -> int:
-	var closest := 1.25
-	var result := 0
-	for id: int in crates:
-		var crate: Dictionary = crates[id]
-		var distance := point.distance_to(crate.point)
-		if crate.owner == -1 and distance < closest:
-			result = id
-			closest = distance
-	return result
-
-
 func shadow_active() -> bool:
 	return elapsed >= float(rules.cycle.day)
 
@@ -342,7 +339,7 @@ func _tutorial_use(player: int, station: StringName) -> String:
 
 func _collect_extraction_bonus(player: int, kind: StringName) -> bool:
 	var pilot := pilots[player]
-	if pilot.pending_extra != kind or pilot.cargo != 0:
+	if pilot.pending_extra != kind or pilot.cargo != 0 or cargo_full():
 		return false
 	_create_cargo(player, kind)
 	pilot.pending_extra = &""
@@ -388,7 +385,7 @@ func _refine(player: int) -> String:
 		return "La refinadora está trabajando"
 	_consume_cargo(player)
 	refining = [float(resources.refine_seconds)]
-	return "Refinando hielo · 5 s"
+	return "Refinando hielo"
 
 
 func _operate_job(player: int, station: StringName) -> String:
@@ -397,20 +394,19 @@ func _operate_job(player: int, station: StringName) -> String:
 	if pilots[player].cargo != 0:
 		return "Suelta o entrega tu caja primero"
 	if supply > 0:
+		if cargo_full():
+			return "Recoge o entrega cajas del suelo antes de sacar otra"
 		if crop:
 			food -= 1
 		else:
 			fuel_ready -= 1
 		_create_cargo(player, &"food" if crop else &"fuel")
 		return "Caja recogida"
-	if not crop and (returned or fuel_loaded + fuel_ready >= int(rules.mission.propellant)):
+	if not crop and fuel_quota_met():
 		return "La nave ya tiene su propelente"
 	if jobs[station] > 0.0:
 		return "En proceso · %d s" % ceili(jobs[station])
-	var cost := (
-		float(resources.crop_water if crop else resources.fuel_water)
-		* float(difficulty.consumption)
-	)
+	var cost := job_water_cost(station)
 	if water < cost:
 		return "Busca hielo y refínalo en el taller"
 	water -= cost
@@ -424,14 +420,49 @@ func _operate_job(player: int, station: StringName) -> String:
 	return "Cultivo regado" if crop else "Preparando propelente"
 
 
+func cargo_full() -> bool:
+	return crates.size() >= CARGO_LIMIT
+
+
+func fuel_quota_met() -> bool:
+	if returned:
+		return true
+	var total := fuel_loaded + fuel_ready
+	for crate: Dictionary in crates.values():
+		total += int(crate.kind == &"fuel")
+	return total >= int(rules.mission.propellant)
+
+
+func job_water_cost(station: StringName) -> float:
+	var units := float(resources.crop_water if station == &"crop" else resources.fuel_water)
+	return units * float(difficulty.consumption)
+
+
+func job_energy_cost(station: StringName) -> float:
+	var units := float(resources.crop_energy if station == &"crop" else resources.fuel_energy)
+	return units * float(difficulty.consumption)
+
+
+func workshop_paused() -> bool:
+	return energy_cut() or not life_powered
+
+
+func upgrade_installed(station: StringName) -> bool:
+	match station:
+		&"drill":
+			return drill
+		&"battery":
+			return auxiliary
+		&"irrigation":
+			return irrigation
+	return false
+
+
 func _queue_upgrade(player: int, station: StringName) -> String:
-	var flags := {
-		&"drill": drill, &"battery": auxiliary, &"solar": solar, &"irrigation": irrigation
-	}
-	if flags[station] or installing.has(station):
-		return "Mejora instalada o en montaje"
 	if station == &"solar":
 		return "Cambio de generación solar pendiente"
+	if upgrade_installed(station) or installing.has(station):
+		return "Mejora instalada o en montaje"
 	var cost := int(rules.upgrade_costs[String(station)])
 	if ore < cost:
 		return "Necesitas %d de mineral" % cost
@@ -486,6 +517,7 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 			phase = &"active"
 			pilots[0].seated = false
 			pilots[1].seated = false
+			_seal_return()
 		return
 	elapsed += delta
 	if elapsed >= float(rules.cycle.period):
@@ -504,6 +536,18 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 		radio_left = maxf(0.0, radio_left - delta)
 		earth_ok = radio_left == 0.0
 	_tick_launch(delta)
+
+
+func _seal_return() -> void:
+	# A countdown can cross dawn, so its checkpoint may still contain occupied seats.
+	checkpoint.returned = true
+	checkpoint.phase = &"active"
+	checkpoint.countdown = 0.0
+	checkpoint.launch_fx = 0.0
+	checkpoint.earth_ok = false
+	checkpoint.radio_left = 0.0
+	for pilot: Dictionary in checkpoint.pilots:
+		pilot.seated = false
 
 
 func _tick_power(delta: float) -> void:
@@ -536,9 +580,8 @@ func _tick_power(delta: float) -> void:
 	for kind: StringName in [priority, later]:
 		if jobs[kind] <= 0.0:
 			continue
-		var cost := float(resources.crop_energy if kind == &"crop" else resources.fuel_energy)
 		if not paid_jobs[kind]:
-			if not _draw(cost * consumption):
+			if not _draw(job_energy_cost(kind)):
 				continue
 			paid_jobs[kind] = true
 		jobs[kind] = maxf(0.0, float(jobs[kind]) - delta)

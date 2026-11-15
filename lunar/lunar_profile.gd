@@ -150,6 +150,12 @@ func saved_bases(single_player: bool) -> Dictionary:
 	return data.solo_bases if single_player else data.bases
 
 
+func campaign_finished() -> bool:
+	return rules.bases.keys().all(
+		func(id: String) -> bool: return data.paid_missions.get(id, false)
+	)
+
+
 func balance_text() -> String:
 	return "%.2f" % (float(data.balance) / SCALE)
 
