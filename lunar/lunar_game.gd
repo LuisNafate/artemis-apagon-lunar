@@ -256,11 +256,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		var ray := camera.project_ray_normal(event.position)
 		var point: Variant = Plane(Vector3.UP, 0.0).intersects_ray(origin, ray)
 		if point is Vector3:
+			ui.show_zone(_zone_name_at(point))
 			if net in [&"host", &"solo"]:
 				_set_destination(0, point)
 			elif net == &"guest":
 				_guest_destination.rpc_id(1, point)
 		get_viewport().set_input_as_handled()
+
+
+func _zone_name_at(point: Vector3) -> String:
+	var found := ""
+	var closest := 2.2
+	for key: StringName in CrestWorld.campaign_stations:
+		if key in [&"training", &"supply"] or not CrestWorld.NAMES.has(key):
+			continue
+		var location: Vector3 = CrestWorld.campaign_stations[key]
+		var distance := point.distance_to(location)
+		if distance < closest:
+			closest = distance
+			found = String(CrestWorld.NAMES[key])
+	return found
 
 
 func _choose(action: String, argument: String) -> void:

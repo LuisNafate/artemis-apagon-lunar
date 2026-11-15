@@ -282,33 +282,32 @@ func _input_and_world() -> void:
 	var blue: CrestPilot = game.pilots[0]
 	var orange: CrestPilot = game.pilots[1]
 	_check(
-		(
-			blue.animator != orange.animator
-			and blue.animator.get_parent() != orange.animator.get_parent()
-		),
-		"cada gato tiene su propio modelo y su AnimationPlayer"
+		blue.skeleton != orange.skeleton and blue.skeleton.get_bone_count() == 20,
+		"cada gato tiene un esqueleto articulado independiente"
 	)
-	var clips := [&"Idle", &"Walk", &"Run"]
-	var looped := true
-	for pilot: CrestPilot in [blue, orange]:
-		for clip: StringName in clips:
-			looped = (
-				looped
-				and pilot.animator.has_animation(clip)
-				and pilot.animator.get_animation(clip).loop_mode == Animation.LOOP_LINEAR
+	var right_shoulder := orange.skeleton.find_bone("upper_arm.R")
+	var right_hip := blue.skeleton.find_bone("thigh.R")
+	var left_hip := blue.skeleton.find_bone("thigh.L")
+	_check(
+		(
+			blue.suit != orange.suit
+			and (
+				blue.suit.albedo_color
+				== Color.WHITE.lerp(CrestWorld.BLUE, CrestPilot.TINT_STRENGTH)
 			)
-	_check(looped, "los clips Idle, Walk y Run existen y se repiten")
-	_check(
-		(
-			_suit_color(blue) == Color.WHITE.lerp(CrestWorld.BLUE, CrestPilot.TINT_STRENGTH)
-			and _suit_color(orange) == Color.WHITE.lerp(CrestWorld.AMBER, CrestPilot.TINT_STRENGTH)
-			and _suit_color(blue) != _suit_color(orange)
+			and (
+				orange.suit.albedo_color
+				== Color.WHITE.lerp(CrestWorld.AMBER, CrestPilot.TINT_STRENGTH)
+			)
 		),
-		"cada gato conserva su tinte"
+		"cada gato conserva su material y su color"
 	)
 	_check(
-		blue.animator.current_animation == "Idle" and orange.animator.current_animation == "Idle",
-		"en reposo suena Idle"
+		(
+			blue.suit.albedo_texture != null
+			and (blue.suit.albedo_texture == orange.suit.albedo_texture)
+		),
+		"los dos gatos comparten la textura importada"
 	)
 	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
 		var original_transform: Transform3D = game.camera.transform
@@ -341,6 +340,13 @@ func _input_and_world() -> void:
 	)
 	for frame in range(10):
 		await get_tree().physics_frame
+	_check(
+		(
+			_pose_distance(orange.skeleton, right_shoulder) > 0.3
+			and _pose_distance(blue.skeleton, right_shoulder) < 0.01
+		),
+		"solo el gato que lleva la caja levanta el brazo"
+	)
 	_tap(KEY_ENTER)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -361,13 +367,22 @@ func _input_and_world() -> void:
 		game.pilots[0].position.x < first.x - 1.0 and game.pilots[1].position.x > second.x + 1.0,
 		"bancos simultáneos"
 	)
-	_check(blue.animator.current_animation == "Walk", "al caminar suena Walk")
+	_check(
+		(
+			absf(_pose_distance(blue.skeleton, left_hip) - _pose_distance(blue.skeleton, right_hip))
+			> 0.01
+		),
+		"los pasos articulan las caderas por separado"
+	)
 	if rendered and "--crest-capture" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("user://crest-unificado.png")
 	for frame in range(26):
 		await get_tree().physics_frame
-	_check(blue.animator.current_animation == "Idle", "al detenerse vuelve Idle")
+	_check(
+		_pose_distance(blue.skeleton, left_hip) < 0.01,
+		"las caderas recuperan el reposo al detenerse"
+	)
 	_tap(KEY_ESCAPE)
 	await get_tree().physics_frame
 	var before: float = game.sim.elapsed
@@ -401,6 +416,11 @@ func _input_and_world() -> void:
 		"en individual se pasa y entrega alternando"
 	)
 	solo.queue_free()
+
+
+func _pose_distance(skeleton: Skeleton3D, bone: int) -> float:
+	var rest := skeleton.get_bone_rest(bone).basis.get_rotation_quaternion()
+	return rest.angle_to(skeleton.get_bone_pose_rotation(bone))
 
 
 func _place_at_training(pilots: Array[CrestPilot]) -> void:
@@ -633,11 +653,6 @@ func _run(
 		var step := minf(left, 0.1)
 		sim.tick(step, sheltered, nearby)
 		left -= step
-
-
-func _suit_color(pilot: CrestPilot) -> Color:
-	var mesh := pilot.animator.get_parent().find_children("*", "MeshInstance3D", true, false)[0]
-	return (mesh.get_surface_override_material(0) as StandardMaterial3D).albedo_color
 
 
 func _tap(keycode: Key) -> void:

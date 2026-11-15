@@ -187,3 +187,7 @@ LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al
 ## Pilotos y alunizaje · revisión 20
 
 CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por piloto y poses por velocidad y carga. La cinemática suprime toda la geometría del astronauta durante el descenso y la revela al desembarcar en el fotograma 271.
+
+## Paleta de AstroCat · revisión 21
+
+CrestPilot usa las texturas originales de AstroCat y aplica solo al traje el tinte suave por jugador. Convierte la misma marcha, reposo y carga a los ejes de reposo de los huesos importados.

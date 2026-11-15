@@ -11,6 +11,15 @@ const SOFT := Color("#755f52")
 const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
+const CHIP_FILL := Color("#ecd5a8")
+const AIR_ICON := preload("res://assets/ui/hud/aire.png")
+const CHIP_ICONS := [
+	AIR_ICON,
+	AIR_ICON,
+	preload("res://assets/ui/hud/bateria.png"),
+	preload("res://assets/ui/hud/agua.png"),
+	preload("res://assets/ui/hud/hambre.png")
+]
 const PROMPTS := [
 	["Toma la muestra", "El gato azul se acerca a la mesa y toca Acción."],
 	["Pasa la caja", "Acércate a tu compañero y toca Soltar / pasar."],
@@ -30,11 +39,17 @@ var location: Label
 var alert: Label
 var next_step: Label
 var feedback: Label
+var _title_tween: Tween
+var _zone_panel: PanelContainer
+var _zone_title: Label
+var _zone_buttons: VBoxContainer
+var _tapped_name := ""
+var _tapped_until := 0
 var _lobby_backdrop: Control
 var _heading: Label
 var _message: Label
 var _list: VBoxContainer
-var _resources: HBoxContainer
+var _resources: GridContainer
 var _readouts: Array[Label] = []
 var _controls: HBoxContainer
 var _pause: Button
@@ -81,44 +96,101 @@ func _build_play(root: Control) -> void:
 	var header := PanelContainer.new()
 	play.add_child(header)
 	header.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	header.offset_left = 16
-	header.offset_right = -430
-	header.offset_top = 15
+	header.offset_left = 250
+	header.offset_right = -250
+	header.offset_top = 10
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var content := VBoxContainer.new()
 	header.add_child(content)
 	location = _label(content, "", 29, TITLE)
-	location.modulate = BRICK
-	_resources = HBoxContainer.new()
-	content.add_child(_resources)
-	_resources.add_theme_constant_override("separation", 7)
-	var colors := [Color("#24536a"), Color("#814b32"), TEAL, Color("#36585d"), Color("#665038")]
-	for tint: Color in colors:
+	_float_text(location)
+	_resources = GridContainer.new()
+	_resources.columns = 5
+	_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play.add_child(_resources)
+	_resources.position = Vector2(18, 8)
+	_resources.add_theme_constant_override("h_separation", 12)
+	_resources.add_theme_constant_override("v_separation", 0)
+	var colors := [
+		Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")
+	]
+	for index in range(colors.size()):
 		var chip := PanelContainer.new()
 		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var border := _style(tint, tint.darkened(0.32))
-		border.content_margin_top = 2
-		border.content_margin_bottom = 3
-		border.content_margin_left = 9
-		border.content_margin_right = 9
-		border.shadow_size = 0
-		chip.add_theme_stylebox_override("panel", border)
+		chip.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		_resources.add_child(chip)
-		var reading := _label(chip, "", 19)
-		reading.add_theme_color_override("font_color", Color("#fff2d6"))
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 4)
+		chip.add_child(row)
+		var icon := TextureRect.new()
+		icon.texture = CHIP_ICONS[index]
+		icon.custom_minimum_size = Vector2(56, 56)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
+		var reading := _label(row, "", 24, TITLE)
+		reading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_float_text(reading)
 		_readouts.append(reading)
-	details = _label(content, "", 21)
+	details = _label(content, "", 16)
+	_float_text(details)
 	details.hide()
-	next_step = _label(content, "", 22)
+	var notes := VBoxContainer.new()
+	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play.add_child(notes)
+	notes.anchor_top = 1.0
+	notes.anchor_bottom = 1.0
+	notes.anchor_left = 0.5
+	notes.anchor_right = 0.5
+	notes.offset_left = -300
+	notes.offset_right = 300
+	notes.offset_top = -120
+	notes.offset_bottom = -90
+	notes.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	alert = _label(content, "", 25, TITLE)
-	alert.modulate = BRICK
-	_pause = _button(play, "Menú", "menu")
+	_float_text(next_step)
+	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	next_step.custom_minimum_size.x = 580
+	next_step.add_theme_constant_override("outline_size", 6)
+	alert = _label(content, "", 19, TITLE)
+	_float_text(alert)
+	alert.add_theme_color_override("font_color", Color("#ff9a72"))
+	play.visibility_changed.connect(
+		func() -> void:
+			if play.visible:
+				show_title()
+	)
+	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_pause.offset_left = -137
-	_pause.offset_top = 15
-	_pause.offset_right = -19
-	_pause.offset_bottom = 67
+	_pause.offset_left = -90
+	_pause.offset_top = 14
+	_pause.offset_right = -18
+	_pause.offset_bottom = 76
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		_pause.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	var middle := CenterContainer.new()
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pause.add_child(middle)
+	middle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bars := VBoxContainer.new()
+	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bars.add_theme_constant_override("separation", 4)
+	middle.add_child(bars)
+	for bar_index in range(3):
+		var bar := Panel.new()
+		var bar_style := StyleBoxFlat.new()
+		bar_style.bg_color = Color("#fff2d6")
+		bar_style.border_color = Color("#1c1410")
+		bar_style.set_border_width_all(2)
+		bar_style.set_corner_radius_all(3)
+		bar.add_theme_stylebox_override("panel", bar_style)
+		bar.custom_minimum_size = Vector2(40, 11)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bars.add_child(bar)
 	var bottom := HBoxContainer.new()
 	_controls = bottom
 	play.add_child(bottom)
@@ -131,19 +203,39 @@ func _build_play(root: Control) -> void:
 	bottom.add_child(joystick)
 	feedback = _label(bottom, "", 23)
 	feedback.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	feedback.hide()
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	feedback.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
 	feedback.add_theme_color_override("font_outline_color", Color("#271e20"))
 	feedback.add_theme_constant_override("outline_size", 8)
+	_zone_panel = PanelContainer.new()
+	_zone_panel.add_theme_stylebox_override("panel", _style(FILL, EDGE))
+	play.add_child(_zone_panel)
+	_zone_panel.anchor_left = 1.0
+	_zone_panel.anchor_right = 1.0
+	_zone_panel.anchor_top = 1.0
+	_zone_panel.anchor_bottom = 1.0
+	_zone_panel.offset_left = -250
+	_zone_panel.offset_right = -16
+	_zone_panel.offset_top = -60
+	_zone_panel.offset_bottom = -16
+	_zone_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_zone_panel.hide()
+	var zone_box := VBoxContainer.new()
+	zone_box.add_theme_constant_override("separation", 6)
+	_zone_panel.add_child(zone_box)
+	_zone_title = _label(zone_box, "", 24, TITLE)
+	_zone_title.add_theme_color_override("font_color", INK)
+	_zone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var buttons := VBoxContainer.new()
-	buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom.add_child(buttons)
+	_zone_buttons = buttons
+	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
-	action_button.custom_minimum_size = Vector2(210, 55)
+	action_button.custom_minimum_size = Vector2(200, 50)
 	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
-	release_button.custom_minimum_size = Vector2(210, 55)
+	release_button.custom_minimum_size = Vector2(200, 50)
 	play.hide()
 
 
@@ -233,6 +325,8 @@ func loading(base_name: String, status: String, progress: float) -> void:
 func flight_status(phase: int, progress: float) -> void:
 	var flying := phase >= 0
 	_controls.visible = not flying
+	if flying:
+		_zone_panel.hide()
 	_pause.visible = not flying
 	_resources.visible = not flying
 	details.visible = flying
@@ -443,22 +537,22 @@ func sync(
 ) -> void:
 	var night := mission.shadow_active()
 	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
-	location.text = "%s  ·  %s" % [mission.base.name, cycle]
+	location.text = "%s\n%s" % [cycle, mission.base.name]
 	var cold := ["", ""]
 	for person in range(2):
 		if night and not sheltered[person] and mission.connected[person]:
 			cold[person] = " ❄"
-	var air_caption := "Aire" if mission.solo else "Aire azul"
-	_readouts[0].text = "%s %d%s" % [air_caption, ceili(mission.pilots[0].air), cold[0]]
-	_readouts[1].get_parent().visible = not mission.solo
+	var air_caption := "" if mission.solo else "J1 "
+	_readouts[0].text = "%s%d%s" % [air_caption, ceili(mission.pilots[0].air), cold[0]]
+	_readouts[1].get_parent().get_parent().visible = not mission.solo
 	if not mission.solo:
 		var air := (
 			"%d%s" % [ceili(mission.pilots[1].air), cold[1]] if mission.connected[1] else "ausente"
 		)
-		_readouts[1].text = "Aire naranja " + air
-	_readouts[2].text = "Batería %.1f/%.0f" % [mission.charge, mission.battery_capacity()]
-	_readouts[3].text = "Agua %.1f" % mission.water
-	_readouts[4].text = "Hambre %d" % ceili(mission.pilots[player].hunger)
+		_readouts[1].text = "J2 " + air
+	_readouts[2].text = "%.1f/%.0f" % [mission.charge, mission.battery_capacity()]
+	_readouts[3].text = "%.1f" % mission.water
+	_readouts[4].text = "%d" % ceili(mission.pilots[player].hunger)
 	release_button.text = "Soltar / entregar" if mission.solo else "Soltar / pasar"
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
@@ -487,20 +581,26 @@ func sync(
 		)
 	_show_alert(mission)
 	var deposit := String(spot).begins_with("dep:")
-	var named := mission.deposit_kind(spot) if deposit else spot
-	feedback.text = (
-		message
-		if not message.is_empty()
-		else (
-			"MÓDULO LUNAR"
-			if spot == &"pad"
-			else String(CrestWorld.NAMES.get(named, "Toca el destino o usa el joystick"))
-		)
-	)
+	var named: StringName = mission.deposit_kind(spot) if deposit else spot
+	feedback.text = message
+	feedback.visible = not message.is_empty()
+	var carrying: bool = mission.pilots[player].cargo != 0
+	var seated: bool = mission.pilots[player].seated
+	var spot_name := String(CrestWorld.NAMES.get(named, ""))
+	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
+	var actionable := not spot_name.is_empty() or carrying or seated
+	_zone_buttons.visible = actionable
+	_zone_panel.visible = actionable or tapped
+	if not spot_name.is_empty():
+		_zone_title.text = spot_name
+	elif carrying or seated:
+		_zone_title.text = "Llevas carga" if carrying else "A bordo"
+	else:
+		_zone_title.text = _tapped_name
 	action_button.text = _action_caption(named)
 	if deposit and mission.deposit_left(spot) <= 0:
 		action_button.text = "Depósito vacío"
-	if mission.pilots[player].seated:
+	if seated:
 		action_button.text = "Bajar"
 	if mission.phase == &"tutorial" and spot == &"training":
 		if mission.solo:
@@ -600,6 +700,43 @@ func _label(parent: Control, caption: String, font_size: int, font: Font = BODY)
 	label.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(label)
 	return label
+
+
+func show_zone(zone_name: String) -> void:
+	_tapped_name = zone_name
+	_tapped_until = Time.get_ticks_msec() + 3000
+
+
+func show_title() -> void:
+	if _title_tween:
+		_title_tween.kill()
+	_title_tween = create_tween()
+	_title_tween.tween_property(location, "modulate:a", 1.0, 0.25)
+	_title_tween.tween_interval(3.5)
+	_title_tween.tween_property(location, "modulate:a", 0.0, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _input(event: InputEvent) -> void:
+	if play == null or not play.visible:
+		return
+	var height := 1000.0
+	if event is InputEventMouseButton:
+		var click: InputEventMouseButton = event
+		if click.pressed:
+			height = click.position.y
+	elif event is InputEventScreenTouch:
+		var touch: InputEventScreenTouch = event
+		if touch.pressed:
+			height = touch.position.y
+	if height < 80.0:
+		show_title()
+
+
+func _float_text(label: Label) -> void:
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", Color("#fff2d6"))
+	label.add_theme_color_override("font_outline_color", Color("#1c1410"))
+	label.add_theme_constant_override("outline_size", 8)
 
 
 func _style(fill: Color, stroke: Color) -> StyleBoxFlat:

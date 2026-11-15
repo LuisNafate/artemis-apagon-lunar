@@ -1,5 +1,5 @@
 {
-  "revision": 20,
+  "revision": 21,
   "clock": "1 segundo real por minuto simulado, pasos enteros, pausa explícita",
   "order": [
     "eventos programados",
@@ -452,6 +452,7 @@
       "VAC-17",
       "VAC-18"
     ],
+    "pilot_pose": "La marcha y la carga modifican los huesos de cada piloto. Solo se tiñe el material del traje.",
     "opening": {
       "rule": "Saltar o completar ambos clips abre el menú de modos. Repetir intro vuelve a mostrar el viaje sin avanzar la misión.",
       "fallback": "Si falta un clip se omite. El menú de modos usa el póster lunar.",
