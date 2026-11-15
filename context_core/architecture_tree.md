@@ -198,7 +198,7 @@ LunarMission calcula las recompensas existentes. LunarGame confirma conjuntament
 
 ## MVP individual · revisión 23
 
-El menú público muestra la campaña sin conexión y Continuar misión. LunarInterface vincula el objetivo inmediato a la carga, el agua y la radio. LunarMission normaliza el punto de control al completar el regreso. LunarGame conserva la retirada al amanecer y habilita una reserva de emergencia para rescatar una partida individual sin agua y con poco aire. LunarProfile identifica el final de la campaña a partir de los regresos ya acreditados.
+En el menú público, **Jugar** abre el selector de bases de la campaña individual y **Continuar misión** carga la última base guardada. LunarInterface vincula el objetivo inmediato a la carga, el agua y la radio. LunarMission normaliza el punto de control al completar el regreso. LunarGame conserva la retirada al amanecer y habilita una reserva de emergencia para rescatar una partida individual sin agua y con poco aire. LunarProfile identifica el final de la campaña a partir de los regresos ya acreditados.
 
 ## Ítems de campaña · revisión 24
 

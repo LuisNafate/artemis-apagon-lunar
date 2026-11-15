@@ -61,6 +61,8 @@ var roles := ["", ""]
 var checkpoint: Dictionary
 var dawn := false
 var withdrew := false
+## Astronautas que el dosímetro lleno manda al refugio en este cuadro.
+var evacuated := [false, false]
 var returned := false
 var launch_fx := 0.0
 var irrigation := false
@@ -271,15 +273,20 @@ func flare_lead(record: Dictionary) -> String:
 
 
 func science_text(record: Dictionary) -> String:
-	if String(record.id) != "donki_sep_20240510" or flares.is_empty():
-		return super(record)
-	return (
-		"NASA CCMC registró un aviso de partículas el 10 de mayo de 2024. Cada alerta de esta "
-		+ "campaña repite una llamarada real de DONKI: su clase y si soltó partículas son reales, "
-		+ "y el aviso es corto, medio o largo según cuánto tardaron en llegar. "
-		+ "No toda llamarada es peligrosa: de 243 llamaradas entre mayo y junio de 2024, "
-		+ "solo 16 soltaron partículas. Los 45 s de la alerta son del juego."
-	)
+	var text := LunarScienceCards.text(record, not flares.is_empty())
+	return text if not text.is_empty() else super(record)
+
+
+## Clave del aviso solar que se está mostrando: cambia cuando empieza una llamarada nueva.
+func solar_key() -> String:
+	for event: Array in events:
+		var left := float(event[1]) - elapsed
+		var span := float(event[3]) if event.size() > 3 else float(difficulty.warning)
+		var warned: bool = event[0] == "sep" and left > 0.0 and left <= span
+		var shown: bool = event[0] in ["sep", "flare"] and _in_range(event[1], event[2])
+		if warned or shown:
+			return "%s@%s" % [event[0], event[1]]
+	return ""
 
 
 func outage_warning() -> float:
@@ -306,7 +313,37 @@ func required_seats() -> int:
 
 
 func speed_factor(player: int) -> float:
-	return float(resources.hunger_speed) if pilots[player].hunger <= 0.0 else 1.0
+	if checkup_left(player) > 0.0:
+		return 0.0
+	var factor := float(resources.hunger_speed) if pilots[player].hunger <= 0.0 else 1.0
+	return factor * (float(rules.radiation.tired_speed) if is_tired(player) else 1.0)
+
+
+## Dosis de radiación de 0 a 1. Se acumula afuera durante la parte roja y no baja en la
+## misión: solo vuelve a cero al empezar una misión nueva.
+func dose_level(player: int) -> float:
+	return clampf(
+		float(pilots[player].get("exposure", 0.0)) / float(rules.radiation.limit), 0.0, 1.0
+	)
+
+
+## Cansado: el dosímetro pasó la mitad y sigue recibiendo radiación. Descansar en el
+## refugio lo quita, aunque la dosis no baje.
+func is_tired(player: int) -> bool:
+	return bool(pilots[player].get("tired", false))
+
+
+func checkup_left(player: int) -> float:
+	return float(pilots[player].get("checkup", 0.0))
+
+
+## Dosis de la tripulación para el informe final: la mayor de los astronautas conectados.
+func crew_dose() -> float:
+	var dose := 0.0
+	for player in range(2):
+		if connected[player]:
+			dose = maxf(dose, float(pilots[player].get("exposure", 0.0)))
+	return dose
 
 
 func set_guest(present: bool, point: Vector3) -> void:
@@ -337,6 +374,8 @@ func finish_tutorial() -> void:
 func use_station(player: int, station: StringName) -> String:
 	if not connected[player] or phase == &"flight":
 		return ""
+	if checkup_left(player) > 0.0:
+		return "Revisión médica · espera %d s" % ceili(checkup_left(player))
 	if phase == &"tutorial":
 		if station != &"training":
 			return "Acércate a la mesa de práctica"
@@ -426,6 +465,9 @@ func _collect_extraction_bonus(player: int, kind: StringName) -> bool:
 
 
 func _tick_mining(delta: float, nearby: Array[StringName]) -> void:
+	for player in range(2):
+		if is_tired(player) and pilots[player].mine != &"":
+			pilots[player].mine_left += delta * (1.0 - float(rules.radiation.tired_speed))
 	var before := [pilots[0].mine, pilots[1].mine]
 	var finished := [&"", &""]
 	for player in range(2):
@@ -610,6 +652,7 @@ func tick(delta: float, sheltered: Array[bool], nearby: Array[StringName]) -> vo
 	_tick_mining(delta, nearby)
 	_tick_power(delta)
 	_tick_crew(delta, sheltered)
+	_tick_radiation(delta, sheltered)
 	if withdrew:
 		return
 	if radio_left > 0.0:
@@ -714,6 +757,31 @@ func _tick_crew(delta: float, sheltered: Array[bool]) -> void:
 			_cancel_launch()
 			withdrew = true
 			return
+
+
+func _tick_radiation(delta: float, sheltered: Array[bool]) -> void:
+	evacuated = [false, false]
+	var radiation: Dictionary = rules.radiation
+	var limit := float(radiation.limit)
+	for player in range(2):
+		if not connected[player]:
+			continue
+		var pilot := pilots[player]
+		pilot.checkup = maxf(0.0, checkup_left(player) - delta)
+		if sheltered[player]:
+			pilot.tired = false
+			continue
+		if not storm_active():
+			continue
+		var rate := float(radiation.rate) * float(difficulty.consumption)
+		pilot.exposure = minf(limit, float(pilot.get("exposure", 0.0)) + rate * delta)
+		if float(pilot.exposure) >= float(radiation.tired_at):
+			pilot.tired = true
+		if float(pilot.exposure) >= limit:
+			evacuated[player] = true
+			pilot.checkup = float(radiation.checkup_seconds)
+			pilot.mine = &""
+			pilot.seated = false
 
 
 func flight_stage() -> Vector2:

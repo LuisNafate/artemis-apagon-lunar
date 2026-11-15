@@ -13,6 +13,9 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
+const LOGO := preload("res://assets/ui/titulo_artemis_gato.png")
+const JUMP_ICON := preload("res://assets/ui/hud/saltar.png")
+const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
 const ROLE_CARDS := {
 	"engineer": preload("res://assets/ui/roles/engineer.png"),
@@ -25,13 +28,15 @@ const ROLE_PERKS := {
 	"geologist": "Una caja extra cada 10 extracciones"
 }
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
+const STRENGTH := {"X": "muy fuerte", "M": "fuerte", "C": "mediana"}
 const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const CHIP_ICONS := [
 	AIR_ICON,
 	AIR_ICON,
 	preload("res://assets/ui/hud/bateria.png"),
 	preload("res://assets/ui/hud/agua.png"),
-	preload("res://assets/ui/hud/hambre.png")
+	preload("res://assets/ui/hud/hambre.png"),
+	preload("res://assets/ui/hud/radiacion.png")
 ]
 const PROMPTS := [
 	["Toma la muestra", "El gato azul se acerca a la mesa y toca Acción."],
@@ -55,6 +60,7 @@ var alert: Label
 var next_step: Label
 var feedback: Label
 var _objective_hint: Label
+var _drop_body: VBoxContainer
 var _objective_marker: Button
 var _title_tween: Tween
 var _zone_panel: PanelContainer
@@ -73,10 +79,14 @@ var _controls: HBoxContainer
 var _pause: Button
 var _wallet_balance: Label
 var _wallet_icon: TextureRect
-var _logo: RichTextLabel
+var _logo: TextureRect
 var _poster: TextureRect
 var _sparks: CPUParticles2D
 var _lobby_tweens: Array[Tween] = []
+var _paper: Control
+var _storm_edges: TextureRect
+var _flash: ColorRect
+var _flash_tween: Tween
 
 
 func build() -> void:
@@ -117,17 +127,12 @@ func _build_play(root: Control) -> void:
 	root.add_child(play)
 	play.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	play.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_build_storm_layers()
 	_objective_marker = _button(play, "", "objective_route")
 	_objective_marker.focus_mode = Control.FOCUS_NONE
 	_objective_marker.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	_objective_marker.custom_minimum_size = Vector2(196, 46)
-	_objective_marker.add_theme_font_size_override("font_size", 18)
-	_objective_marker.add_theme_stylebox_override(
-		"normal", _style(Color("#124741"), Color("#ffe3a0"))
-	)
-	_objective_marker.add_theme_stylebox_override(
-		"hover", _style(Color("#25665f"), Color("#ffe3a0"))
-	)
+	LunarButtonKit.apply(_objective_marker, &"seguimiento", 18)
 	_objective_marker.tooltip_text = "Toca para caminar hasta el objetivo."
 	_objective_marker.hide()
 	var header := PanelContainer.new()
@@ -143,14 +148,19 @@ func _build_play(root: Control) -> void:
 	location = _label(content, "", 29, TITLE)
 	_float_text(location)
 	_resources = GridContainer.new()
-	_resources.columns = 5
+	_resources.columns = 6
 	_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	play.add_child(_resources)
 	_resources.position = Vector2(18, 8)
 	_resources.add_theme_constant_override("h_separation", 12)
 	_resources.add_theme_constant_override("v_separation", 0)
 	var colors := [
-		Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")
+		Color("#4d7fc4"),
+		Color("#e0883a"),
+		Color("#e0883a"),
+		Color("#3f6fc0"),
+		Color("#d8602f"),
+		Color("#f4ad2e")
 	]
 	for index in range(colors.size()):
 		var chip := PanelContainer.new()
@@ -193,17 +203,50 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	_objective_hint = _label(notes, "", 17)
+	# El objetivo y el siguiente paso van en un desplegable bajo los recursos para no
+	# taparse con el panel de la zona ni con los botones de abajo.
+	var drop := VBoxContainer.new()
+	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drop.add_theme_constant_override("separation", 6)
+	play.add_child(drop)
+	drop.anchor_left = 0.0
+	drop.anchor_right = 0.0
+	drop.offset_left = 18
+	drop.offset_right = 428
+	drop.offset_top = 74
+	drop.offset_bottom = 74
+	drop.grow_vertical = Control.GROW_DIRECTION_END
+	var drop_toggle := Button.new()
+	drop_toggle.text = "Objetivo  +"
+	drop_toggle.focus_mode = Control.FOCUS_NONE
+	drop_toggle.custom_minimum_size = Vector2(190, 42)
+	drop_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	LunarButtonKit.apply(drop_toggle, &"seguimiento", 16)
+	drop.add_child(drop_toggle)
+	_drop_body = VBoxContainer.new()
+	_drop_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drop_body.add_theme_constant_override("separation", 6)
+	drop.add_child(_drop_body)
+	_drop_body.hide()
+	drop_toggle.pressed.connect(
+		func() -> void:
+			_drop_body.visible = not _drop_body.visible
+			drop_toggle.text = "Objetivo  -" if _drop_body.visible else "Objetivo  +"
+	)
+	_objective_hint = _label(_drop_body, "", 17)
 	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(_objective_hint)
+	_objective_hint.add_theme_constant_override("outline_size", 2)
+	_objective_hint.add_theme_stylebox_override("normal", _tag_style(Color("#e8821c")))
 	_objective_hint.hide()
-	next_step = _label(notes, "", 16)
+	next_step = _label(_drop_body, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
 	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	next_step.custom_minimum_size.x = 580
-	next_step.add_theme_constant_override("outline_size", 6)
+	next_step.custom_minimum_size.x = 410
+	next_step.add_theme_constant_override("outline_size", 2)
+	next_step.add_theme_stylebox_override("normal", _tag_style(Color("#47c9c4")))
 	alert = _label(content, "", 19, TITLE)
 	_float_text(alert)
 	alert.add_theme_color_override("font_color", Color("#ff9a72"))
@@ -277,8 +320,9 @@ func _build_play(root: Control) -> void:
 	_zone_panel.anchor_right = 1.0
 	_zone_panel.anchor_top = 1.0
 	_zone_panel.anchor_bottom = 1.0
-	_zone_panel.offset_left = -250
-	_zone_panel.offset_right = -16
+	_zone_panel.offset_left = -456
+	_zone_panel.offset_right = -124
+	_zone_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_zone_panel.offset_top = -60
 	_zone_panel.offset_bottom = -16
 	_zone_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -297,19 +341,27 @@ func _build_play(root: Control) -> void:
 	_zone_buttons = buttons
 	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
-	action_button.custom_minimum_size = Vector2(200, 50)
-	_emphasize(action_button)
+	action_button.custom_minimum_size = Vector2(240, 50)
 	release_button = _button(buttons, "Soltar / pasar", "release")
-	release_button.custom_minimum_size = Vector2(200, 50)
+	release_button.custom_minimum_size = Vector2(240, 50)
 	radio_button = _button(buttons, "Enviar lista de vuelo", "radio")
-	radio_button.custom_minimum_size = Vector2(200, 50)
-	jump_button = _button(play, "Saltar", "jump")
-	jump_button.custom_minimum_size = Vector2(110, 56)
-	_emphasize(jump_button)
+	radio_button.custom_minimum_size = Vector2(240, 50)
+	for zone_button: Button in [action_button, release_button, radio_button]:
+		zone_button.add_theme_font_size_override("font_size", 16)
+		zone_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	jump_button = _button(play, "", "jump")
+	jump_button.custom_minimum_size = Vector2(88, 88)
+	LunarButtonKit.apply(jump_button, &"mejorar")
+	jump_button.icon = JUMP_ICON
+	jump_button.expand_icon = true
+	jump_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	jump_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	jump_button.add_theme_constant_override("icon_max_width", 44)
+	jump_button.tooltip_text = "Saltar"
 	jump_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	jump_button.offset_left = -382
-	jump_button.offset_right = -266
-	jump_button.offset_top = -78
+	jump_button.offset_left = -108
+	jump_button.offset_right = -16
+	jump_button.offset_top = -104
 	jump_button.offset_bottom = -16
 	play.move_child(_objective_marker, -1)
 	play.hide()
@@ -327,21 +379,15 @@ func _build_menu(root: Control) -> void:
 	content.add_theme_constant_override("separation", 8)
 	menu.add_child(content)
 	_heading = _label(content, "", 43, TITLE)
-	_logo = RichTextLabel.new()
-	_logo.bbcode_enabled = true
-	_logo.fit_content = true
-	_logo.scroll_active = false
-	_logo.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_logo = TextureRect.new()
+	_logo.texture = LOGO
+	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_logo.add_theme_font_override("normal_font", TITLE)
-	_logo.add_theme_font_size_override("normal_font_size", 128)
-	_logo.add_theme_color_override("default_color", Color("#ffe9b0"))
-	_logo.add_theme_color_override("font_outline_color", Color("#6b2f17"))
-	_logo.add_theme_constant_override("outline_size", 14)
-	_logo.add_theme_color_override("font_shadow_color", Color("#00000099"))
-	_logo.add_theme_constant_override("shadow_offset_x", 0)
-	_logo.add_theme_constant_override("shadow_offset_y", 8)
-	_logo.text = "[wave amp=14.0 freq=2.6]ARTEMIS[/wave]"
+	_logo.custom_minimum_size = Vector2(520.0, 230.0)
+	var waves := ShaderMaterial.new()
+	waves.shader = LOGO_WAVES
+	_logo.material = waves
 	content.add_child(_logo)
 	content.move_child(_logo, 1)
 	_logo.hide()
@@ -421,8 +467,25 @@ func _build_lobby_backdrop(root: Control) -> void:
 
 
 func hide_lobby() -> void:
+	_close_dossier()
 	_lobby_backdrop.hide()
 	menu.hide()
+
+
+func dossier(profile: LunarProfile) -> void:
+	_prepare_menu("", "")
+	menu.hide()
+	var sheet := LunarDossier.new()
+	menu.get_parent().add_child(sheet)
+	sheet.build(profile)
+	sheet.closed.connect(func() -> void: selected.emit("close_dossier", ""))
+	_paper = sheet
+
+
+func _close_dossier() -> void:
+	if _paper != null:
+		_paper.queue_free()
+		_paper = null
 
 
 func loading(base_name: String, status: String, progress: float) -> void:
@@ -489,7 +552,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_message.add_theme_color_override("font_color", Color("#fff0cf"))
 	_message.add_theme_font_size_override("font_size", 18)
 
-	var solo := _lobby_button(_list, "Jugar solo · sin conexión", "bases", "solo", true)
+	var solo := _lobby_button(_list, "Jugar", "bases", "solo", true)
 	var recent := String(profile.data.recent)
 	if profile.data.recent_mode == "solo" and profile.saved_bases(true).has(recent):
 		_lobby_button(_list, "Continuar misión", "solo", recent)
@@ -503,7 +566,8 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	var roles := LunarOpening.corner_button("Roles")
 	var archive := LunarOpening.corner_button("Archivo científico")
 	for link in [roles, archive]:
-		link.custom_minimum_size = Vector2(110, 48)
+		link.custom_minimum_size = Vector2(150, 50)
+		LunarButtonKit.apply(link, &"soltar", 20)
 		extras.add_child(link)
 		_animate_button(link, _list.get_child_count() + 1, false)
 	roles.pressed.connect(func() -> void: selected.emit("roles", ""))
@@ -553,31 +617,7 @@ func _lobby_button(
 	button.custom_minimum_size.y = 48
 	button.focus_mode = Control.FOCUS_ALL
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.add_theme_font_override("font", TITLE)
-	button.add_theme_font_size_override("font_size", 24)
-	for state in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, Color("#251911"))
-	var paper := Color("#ffd05b") if primary else Color("#e6c9a0")
-	for state in ["normal", "hover", "pressed", "focus"]:
-		var fill := paper
-		if state == "hover":
-			fill = paper.lightened(0.26)
-		elif state == "pressed":
-			fill = paper.darkened(0.13)
-		var sign := _style(fill, Color("#4e3624"))
-		sign.set_corner_radius_all(2)
-		sign.skew = Vector2(-0.12, 0.0)
-		sign.border_width_bottom = 3 if state == "pressed" else 7
-		sign.shadow_color = Color("#00000066")
-		sign.shadow_size = 8
-		sign.shadow_offset = Vector2(0.0, 5.0)
-		if state == "focus":
-			sign.bg_color = Color.TRANSPARENT
-			sign.border_color = Color("#fff0cf")
-			sign.shadow_size = 0
-			sign.set_border_width_all(2)
-		button.add_theme_stylebox_override(state, sign)
+	LunarButtonKit.apply(button, &"mejorar" if primary else &"accion", 26)
 	_animate_button(button, _list.get_child_count(), primary)
 	return button
 
@@ -644,7 +684,7 @@ func _start_backdrop() -> void:
 
 
 func _animate_lobby() -> void:
-	_logo.pivot_offset = Vector2(0.0, 90.0)
+	_logo.pivot_offset = Vector2(0.0, 115.0)
 	_logo.scale = Vector2(0.3, 0.3)
 	_logo.rotation = -0.2
 	_logo.modulate.a = 0.0
@@ -829,13 +869,14 @@ func _role_card(
 	button.custom_minimum_size = Vector2(240.0, 50.0)
 	button.focus_mode = Control.FOCUS_ALL
 	if picked:
-		_emphasize(button)
-	elif not owned:
+		LunarButtonKit.apply(button, &"construir")
+	elif owned:
+		LunarButtonKit.apply(button, &"accion")
+	else:
+		LunarButtonKit.apply(button, &"mejorar" if can_afford else &"bloqueado")
 		button.icon = COIN_ICON
 		button.expand_icon = true
 		button.add_theme_constant_override("icon_max_width", 26)
-		if not can_afford:
-			button.modulate = Color(1.0, 0.78, 0.74)
 
 	art.mouse_entered.connect(func() -> void: _pop(card, Vector2(1.04, 1.04), 0.18))
 	art.mouse_exited.connect(func() -> void: _pop(card, Vector2.ONE, 0.18))
@@ -887,13 +928,13 @@ func session_menu(mode: StringName, status: String = "") -> void:
 
 
 func show_science(record_title: String, description: String, index: int, count: int) -> void:
-	_prepare_menu("ARCHIVO CIENTÍFICO", "%02d/%02d · %s" % [index + 1, count, record_title])
-	_button(_list, "Volver", "close_science")
-	var card := _label(_list, "", 22)
-	card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	card.text = description
-	_button(_list, "Ficha anterior", "previous_science")
-	_button(_list, "Ficha siguiente", "next_science")
+	_prepare_menu("", "")
+	menu.hide()
+	var archive := LunarArchive.new()
+	menu.get_parent().add_child(archive)
+	archive.build(record_title, description, index, count)
+	archive.chosen.connect(func(action: String) -> void: selected.emit(action, ""))
+	_paper = archive
 
 
 func confirm_reset(base_name: String, id: String) -> void:
@@ -942,6 +983,7 @@ func sync(
 	_readouts[2].text = "%.1f/%.0f" % [mission.charge, mission.battery_capacity()]
 	_readouts[3].text = "%.1f" % mission.water
 	_readouts[4].text = "%d" % ceili(mission.pilots[player].hunger)
+	_show_dose(mission.dose_level(player))
 	var flight: Dictionary = mission.rules.mission
 	if mission.phase == &"tutorial":
 		next_step.text = "" if mission.solo else PROMPTS[mission.tutorial_step][1]
@@ -1036,31 +1078,91 @@ func show_objective(instruction: String, title: String = "", projected := Vector
 	_objective_marker.size = marker_size
 
 
-## "Llamarada X8.2 · 10 sep 2017" a partir de un registro del catálogo DONKI.
+## "Llamarada real del 10 sep 2017 · muy fuerte (X8.2)" a partir del catálogo DONKI.
 static func flare_label(record: Dictionary) -> String:
 	var date := String(record.begin)
 	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
+	var kind := String(record.class_type)
 	return (
-		"Llamarada %s · %d %s %s" % [record.class_type, int(date.substr(8, 2)), month, date.left(4)]
+		"Llamarada real del %d %s %s · %s (%s)"
+		% [int(date.substr(8, 2)), month, date.left(4), STRENGTH.get(kind.left(1), "pequeña"), kind]
 	)
+
+
+## Capas de la tormenta: bordes rojos mientras caen las partículas y un destello corto
+## cuando el Sol lanza una llamarada. Quedan debajo del HUD y no reciben toques.
+func _build_storm_layers() -> void:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.86, 0.13, 0.10, 0.0))
+	gradient.set_color(1, Color(0.86, 0.13, 0.10, 0.62))
+	gradient.add_point(0.6, Color(0.86, 0.13, 0.10, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(0.5, 0.0)
+	_storm_edges = TextureRect.new()
+	_storm_edges.texture = texture
+	_storm_edges.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_storm_edges.stretch_mode = TextureRect.STRETCH_SCALE
+	_storm_edges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_storm_edges.modulate.a = 0.0
+	play.add_child(_storm_edges)
+	_storm_edges.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_flash = ColorRect.new()
+	_flash.color = Color(1.0, 0.95, 0.82)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.modulate.a = 0.0
+	play.add_child(_flash)
+	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## Un solo destello suave, sin parpadeos, cuando aparece una llamarada nueva.
+func flash() -> void:
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_flash.modulate.a = 0.45
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash, "modulate:a", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
+
+
+## Intensidad de los bordes rojos: 0 sin tormenta, 1 con partículas cayendo.
+func storm_edges(level: float) -> void:
+	_storm_edges.modulate.a = clampf(level, 0.0, 1.0)
+
+
+## Dosímetro en el HUD: verde, amarillo desde la mitad y rojo al llenarse.
+func _show_dose(level: float) -> void:
+	var reading := _readouts[5]
+	reading.text = "%d%%" % roundi(level * 100.0)
+	var color := Color("#a6e389")
+	if level >= 1.0:
+		color = Color("#ff6f5c")
+	elif level >= 0.5:
+		color = Color("#ffd36b")
+	reading.add_theme_color_override("font_color", color)
 
 
 func _show_alert(mission: LunarMission, safe: bool) -> void:
 	alert.show()
+	alert.add_theme_color_override("font_color", Color("#ff9a72"))
 	var flare := mission.storm_flare()
 	var quiet := mission.flare_notice()
+	var real := "" if flare.is_empty() else "\n" + flare_label(flare)
 	if mission.storm_active():
-		var source := "llamarada %s" % flare.class_type if not flare.is_empty() else "solares"
-		alert.text = "⚠ Partículas %s · %s" % [source, "A cubierto" if safe else "Ve al refugio"]
+		alert.text = (
+			"⚠ Lluvia de partículas del Sol · "
+			+ ("Estás a salvo aquí" if safe else "¡Entra al refugio!")
+			+ real
+		)
 	elif mission.storm_warning() > 0:
 		var seconds := ceili(mission.storm_warning())
-		alert.text = (
-			"⚠ %s · Al refugio en %d s" % [flare_label(flare), seconds]
-			if not flare.is_empty()
-			else "⚠ Al refugio en %d s" % seconds
-		)
+		alert.text = "☀ ¡Explosión en el Sol! Corre al refugio: %d s%s" % [seconds, real]
 	elif not quiet.is_empty():
-		alert.text = "☀ %s · Sin partículas, sigue trabajando" % flare_label(quiet)
+		alert.add_theme_color_override("font_color", Color("#ffd36b"))
+		alert.text = (
+			"☀ Explosión en el Sol, pero sin partículas · ¡Sigue trabajando!\n" + flare_label(quiet)
+		)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
 	elif mission.outage_warning() > 0:
@@ -1076,6 +1178,7 @@ func _show_alert(mission: LunarMission, safe: bool) -> void:
 
 
 func _prepare_menu(title: String, status: String) -> void:
+	_close_dossier()
 	for tween in _lobby_tweens:
 		tween.kill()
 	_lobby_tweens.clear()
@@ -1117,15 +1220,10 @@ func _button(parent: Control, caption: String, action: String, argument: String 
 	button.text = caption
 	button.custom_minimum_size = Vector2(54, 50)
 	button.focus_mode = Control.FOCUS_NONE
+	LunarButtonKit.apply(button, LunarButtonKit.kind_for(caption))
 	parent.add_child(button)
 	button.pressed.connect(func() -> void: selected.emit(action, argument))
 	return button
-
-
-func _emphasize(button: Button) -> void:
-	button.add_theme_stylebox_override("normal", _style(TEAL, Color("#163c38")))
-	button.add_theme_stylebox_override("hover", _style(Color("#286f63"), TEAL))
-	button.add_theme_stylebox_override("pressed", _style(Color("#183e39"), TEAL))
 
 
 func _label(parent: Control, caption: String, font_size: int, font: Font = BODY) -> Label:
@@ -1172,6 +1270,30 @@ func _input(event: InputEvent) -> void:
 			height = touch.position.y
 	if height < 80.0:
 		show_title()
+
+
+func _process(_delta: float) -> void:
+	# La etiqueta de seguimiento solo se dibuja cuando tiene texto.
+	if next_step != null:
+		next_step.visible = not next_step.text.is_empty()
+
+
+func _tag_style(accent: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#14262cdd")
+	style.border_color = accent
+	style.set_border_width_all(2)
+	style.border_width_left = 7
+	style.set_corner_radius_all(9)
+	style.corner_detail = 1
+	style.shadow_color = Color("#00000077")
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0.0, 3.0)
+	style.content_margin_left = 20.0
+	style.content_margin_right = 16.0
+	style.content_margin_top = 6.0
+	style.content_margin_bottom = 7.0
+	return style
 
 
 func _float_text(label: Label) -> void:

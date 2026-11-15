@@ -13,14 +13,16 @@ const WATER_MACHINE_EMPTY := preload(
 const WATER_MACHINE_FULL := preload(
 	"res://assets/props_luna/agua_hielo/maquina_agua_hielo_lleno.glb"
 )
-const WATER_MACHINE_SCALE := 2.3
+const WATER_MACHINE_SCALE := 3.2
 const MODEL_BATTERY := preload("res://assets/props_luna/estaciones/bateria.glb")
-const MODEL_DRILL := preload("res://assets/props_luna/estaciones/pico.glb")
+const MODEL_DRILL := preload("res://assets/props_luna/estaciones/taladro.glb")
 const MODEL_ICE_DEPOT := preload("res://assets/props_luna/estaciones/deposito_hielo.glb")
 const MODEL_GREENHOUSE := preload("res://assets/props_luna/estaciones/invernadero.glb")
 const MODEL_SOLAR := preload("res://assets/props_luna/estaciones/paneles.glb")
 const MODEL_ROVER_ANTENNA := preload("res://assets/props_luna/estaciones/antena_rover.glb")
 const MODEL_WATER_TANK := preload("res://assets/props_luna/estaciones/tanque_agua.glb")
+const MODEL_WATER_TANK_EMPTY := preload("res://assets/props_luna/estaciones/tanque_agua_vacio.glb")
+const WATER_TANK_SCALE := 2.4
 const MODEL_TRAINING_TABLE := preload("res://assets/props_luna/estaciones/mesa_azul.glb")
 const MODEL_WOOD_TABLE := preload("res://assets/props_luna/estaciones/mesa_madera.glb")
 const MODEL_FUEL_TANK := preload("res://assets/props_luna/estaciones/deposito_propelente.glb")
@@ -110,6 +112,10 @@ var shelter_shell: Node3D
 var refuge_alert: MeshInstance3D
 var _water_machine_empty: Node3D
 var _water_machine_full: Node3D
+var _water_tank_empty: Node3D
+var _water_tank_full: Node3D
+var _water_ready := false
+var _was_refining := false
 var _craters: Node3D
 var _detail: Node3D
 var _floor_color: PaperMaterial
@@ -281,11 +287,23 @@ func reflect(
 	var power := 0.22 if sim.shadow_active() else 1.3
 	sun.light_energy = lerpf(sun.light_energy, power, minf(1.0, delta * 2.0))
 	var light_color := Color("#93b9f5") if sim.shadow_active() else Color("#fff4dc")
+	if storm:
+		light_color = light_color.lerp(Color("#ff6f5c"), 0.6)
 	sun.light_color = sun.light_color.lerp(light_color, minf(1.0, delta * 2.0))
 	var refining: Variant = sim.get("refining")
-	var machine_full := refining is Array and not (refining as Array).is_empty()
-	_water_machine_empty.visible = not machine_full
-	_water_machine_full.visible = machine_full
+	# Ambos tanques empiezan vacios; se llenan al terminar de rellenar y se vacian al
+	# volver a refinar o cuando el agua se acaba.
+	var refining_now := refining is Array and not (refining as Array).is_empty()
+	if _was_refining and not refining_now:
+		_water_ready = true
+	_was_refining = refining_now
+	var stored: Variant = sim.get("water")
+	if refining_now or (stored != null and float(stored) <= 0.0):
+		_water_ready = false
+	_water_machine_empty.visible = not _water_ready
+	_water_machine_full.visible = _water_ready
+	_water_tank_empty.visible = not _water_ready
+	_water_tank_full.visible = _water_ready
 	for lamp in night_lights:
 		lamp.visible = sim.shadow_active()
 	_floor_color.albedo_color = _floor_color.albedo_color.lerp(
@@ -552,8 +570,25 @@ static func station_prop(
 	return root
 
 
+func _water_tank(point: Vector3) -> Node3D:
+	# Tanque de agua junto a la refinadora: vacio por defecto, lleno con el agua refinada.
+	var root := Node3D.new()
+	root.position = point
+	root.rotation_degrees.y = 90.0
+	add_child(root)
+	_water_tank_empty = MODEL_WATER_TANK_EMPTY.instantiate()
+	_water_tank_full = MODEL_WATER_TANK.instantiate()
+	for model: Node3D in [_water_tank_empty, _water_tank_full]:
+		PaperMaterial.restyle(model, false)
+		model.scale = Vector3.ONE * WATER_TANK_SCALE
+		model.position.y = 0.5 * WATER_TANK_SCALE
+		root.add_child(model)
+	_water_tank_full.hide()
+	return root
+
+
 func _water_machine(point: Vector3) -> Node3D:
-	# Maquina agua-hielo: vacia en reposo, llena mientras la refinadora trabaja.
+	# Maquina agua-hielo: vacia mientras la refinadora rellena, llena al terminar.
 	var root := Node3D.new()
 	root.position = point
 	add_child(root)
@@ -562,7 +597,7 @@ func _water_machine(point: Vector3) -> Node3D:
 	for model: Node3D in [_water_machine_empty, _water_machine_full]:
 		PaperMaterial.restyle(model, false)
 		model.scale = Vector3.ONE * WATER_MACHINE_SCALE
-		model.position.y = 0.73
+		model.position.y = 0.73 * WATER_MACHINE_SCALE / 2.3
 		root.add_child(model)
 	_water_machine_full.hide()
 	return root
@@ -610,7 +645,9 @@ func _stations() -> void:
 		FieldWorld.box(training_desk, Vector3(0.22, 0.90, -0.46), Vector3(0.18, 0.15, 0.18), BLUE)
 	_equipment.append(_console(&"refinery", BLUE, false))
 	var drill_root := _console(&"drill", AMBER, false)
-	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 1.6), 1.5, 0.5))
+	# El taladro propio sustituye al pico: apoyado en sus patas, detras de la consola.
+	_equipment.append(station_prop(drill_root, MODEL_DRILL, Vector3(0, 0, 2.1), 2.0, 0.49))
+	_solid(STATIONS[&"drill"] + Vector3(0, 1.0, 2.1), Vector3(1.6, 2.0, 1.5))
 	_solid(STATIONS[&"drill"] + Vector3(0, 0.55, 1.6), Vector3(0.8, 1.1, 1.3))
 	var battery_root := _console(&"battery", AMBER, false)
 	_equipment.append(
@@ -641,8 +678,10 @@ func _stations() -> void:
 		)
 		_solid(radio + Vector3(0, 0.45, -1.6), Vector3(2.6, 0.9, 1.5))
 	var refine: Vector3 = STATIONS[&"refinery"]
-	_equipment.append(_water_machine(refine + Vector3(0, 0, 2.0)))
-	_solid(refine + Vector3(0, 0.75, 2.0), Vector3(2.5, 1.5, 2.5))
+	_equipment.append(_water_machine(refine + Vector3(0, 0, 2.5)))
+	_solid(refine + Vector3(0, 1.05, 2.5), Vector3(3.5, 2.1, 3.5))
+	_equipment.append(_water_tank(refine + Vector3(3.1, 0, 2.5)))
+	_solid(refine + Vector3(3.1, 1.2, 2.5), Vector3(2.35, 2.4, 1.75))
 	aux_module = Node3D.new()
 	add_child(aux_module)
 	aux_module.position = STATIONS[&"battery"] + Vector3(2.4, 0, -1.2)
@@ -657,11 +696,11 @@ func _stations() -> void:
 
 
 func _build_fuel_cabinet(root: Node3D) -> void:
-	# El deposito de propelente es un modelo propio (tumbado a lo largo);
-	# sustituye al armario de cubos.
+	# El deposito de propelente es un modelo propio (tumbado a lo largo)
+	# y sustituye al armario de cubos.
 	var point := Vector3(0, 0.0, -1.42)
-	station_prop(root, MODEL_FUEL_TANK, point, 1.7, 0.364, -90.0)
-	_solid(root.position + point + Vector3(0, 0.62, 0), Vector3(1.7, 1.24, 1.27))
+	station_prop(root, MODEL_FUEL_TANK, point, 2.4, 0.364, -90.0)
+	_solid(root.position + point + Vector3(0, 0.875, 0), Vector3(2.4, 1.75, 1.8))
 
 
 func _shelter() -> void:

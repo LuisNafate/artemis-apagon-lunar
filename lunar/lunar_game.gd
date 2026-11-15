@@ -9,6 +9,12 @@ const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
 const CAMERA_DISTANCE := 26.0
 const PLAY_V_OFFSET := 2.9
+const STORM_BEEPS := 5.0
+const SHAKE_SECONDS := 0.6
+const SHAKE_SIZE := 0.22
+const REPORT_SECONDS := 9.0
+const FLARE_SOUND := "res://assets/props_luna/nasa/sol_sonificacion_soho.ogg"
+const SUN_LOOP := "res://assets/props_luna/nasa/sol_sonificacion_soho_bucle.ogg"
 const FOLLOW_FOV := 45.0
 const FOLLOW_HEIGHT := 0.8
 const BASE_HYSTERESIS := 1.0
@@ -68,6 +74,17 @@ var _replica_positions: Array = []
 var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
+var _beep_audio := AudioStreamPlayer.new()
+var _flare_audio := AudioStreamPlayer.new()
+var _sun_loop := AudioStreamPlayer.new()
+var _sun_fade: Tween
+var _sun_fading := false
+var _solar_key := ""
+var _beep_second := 0
+var _storm_was_active := false
+var _storm_glow := 0.0
+var _dose_seen := 0.0
+var _shake := 0.0
 var _reward_audio := AudioStreamPlayer.new()
 
 
@@ -167,6 +184,7 @@ func _process(delta: float) -> void:
 		if _award_retry <= 0.0:
 			_send_awards()
 	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
+	_sun_loop_update()
 
 
 func _notification(what: int) -> void:
@@ -421,6 +439,10 @@ func _choose(action: String, argument: String) -> void:
 				_guest_action.rpc_id(1, action == "release")
 		"science":
 			_science_from_session = net in [&"host", &"guest", &"solo"]
+			_show_science(0)
+		"dossier":
+			ui.dossier(profile)
+		"close_dossier":
 			_show_science(0)
 		"previous_science":
 			_show_science(-1)
@@ -746,6 +768,9 @@ func _local_frame(delta: float) -> void:
 	var day_rate := sim.wallet_rate(not sim.solo)
 	var had_returned := sim.returned
 	sim.tick(delta, _sheltered(), _spots)
+	for index in range(2):
+		if sim.evacuated[index]:
+			_evacuate(index)
 	if sim.withdrew:
 		_recover_crew()
 		if not sim.dawn:
@@ -779,6 +804,39 @@ func _recover_crew() -> void:
 	_notice(message)
 
 
+## El dosímetro se llenó: la carga se queda donde estaba, el astronauta vuelve al refugio
+## y espera la revisión médica. Nunca deja la partida sin salida.
+func _evacuate(index: int) -> void:
+	var pilot := pilots[index]
+	if sim.pilots[index].cargo != 0:
+		sim.release(index, pilot.position, false)
+	pilot.position = CrestWorld.STATIONS[&"life"] + Vector3.UP * 0.1
+	pilot.velocity = Vector3.ZERO
+	_chunk_ready[index] = false
+	_route[index].clear()
+	var who := "Tu dosímetro" if sim.solo else "El dosímetro del astronauta %d" % (index + 1)
+	_notice("☢ %s se llenó. Control de Misión te trajo al refugio para una revisión médica." % who)
+
+
+## Informe al volver a la Tierra: la dosis de la tripulación en puntos del juego y una
+## medición real de Orion, para que se vea que en la vida real se mide en grays.
+func _mission_report(clean: bool) -> String:
+	var report := (
+		"☢ Dosis de radiación: %d de %d puntos."
+		% [roundi(sim.crew_dose()), int(sim.rules.radiation.limit)]
+	)
+	for record: Dictionary in sim.records:
+		if record.id == sim.rules.radiation.reference:
+			var sample: Dictionary = record.observation.samples[0]
+			report += (
+				"\nEn la vida real se mide en grays: un detector de la nave Orion midió %.1f µGy/h."
+				% sample.absorbed_dose_rate
+			)
+	if clean:
+		report += "\n¡Astronauta precavido! Bono por no recibir radiación."
+	return report
+
+
 func _needs_emergency_air(point: Vector3, reserve: float) -> bool:
 	if not world.sheltered(point):
 		return true
@@ -805,6 +863,8 @@ func _commit_reward() -> bool:
 		)
 	else:
 		profile.pay_mission(sim.base_id, _pending_reward.difficulty, _pending_reward.guest)
+		if sim.crew_dose() <= 0.0:
+			profile.pay_clean(sim.base_id, _pending_reward.difficulty)
 	if not _save_base(false):
 		_reward_retry = 1.0
 		_notice("No se guardaron las monedas. Se está reintentando…", false)
@@ -814,7 +874,10 @@ func _commit_reward() -> bool:
 	var message := "Amanecer. Progreso asegurado." if daily else "¡Misión de regreso completada!"
 	if not daily and sim.solo and profile.campaign_finished():
 		message = "¡Campaña completada! Regresaste desde las nueve bases."
-	_show_reward(int(profile.data.balance) - before, message)
+	var detail := "" if daily else _mission_report(sim.crew_dose() <= 0.0)
+	_show_reward(int(profile.data.balance) - before, message, detail)
+	if not daily:
+		_feedback_time = REPORT_SECONDS
 	return true
 
 
@@ -1049,6 +1112,7 @@ func _render(delta: float, player: int) -> void:
 		ui.show_objective("")
 		_objective_destination = Vector3.INF
 	_alert_if_changed()
+	_storm_effects(delta, player)
 
 
 func _alert_if_changed() -> void:
@@ -1064,11 +1128,78 @@ func _alert_if_changed() -> void:
 	_alert_kind = kind
 
 
+## Destello y sonido del Sol cuando aparece una llamarada, pitidos en los últimos 5 s del aviso, una
+## sacudida corta cuando llegan las partículas y bordes rojos mientras duran.
+func _storm_effects(delta: float, player: int) -> void:
+	var key := sim.solar_key()
+	if key != _solar_key and not key.is_empty():
+		ui.flash()
+		if key.begins_with("flare@") and _flare_audio.stream != null:
+			_flare_audio.play()
+	_solar_key = key
+	var left := sim.storm_warning()
+	var second := ceili(left) if left > 0.0 and left <= STORM_BEEPS else 0
+	if second != _beep_second and second > 0 and _beep_audio.stream != null:
+		_beep_audio.play()
+	_beep_second = second
+	var active := sim.storm_active()
+	if active and not _storm_was_active:
+		_shake = SHAKE_SECONDS
+	_storm_was_active = active
+	_storm_glow = move_toward(_storm_glow, float(active), delta * 1.5)
+	ui.storm_edges(_storm_glow * (0.85 + 0.15 * sin(Time.get_ticks_msec() * 0.004)))
+	var dose := sim.dose_level(player)
+	var half := float(sim.rules.radiation.tired_at) / float(sim.rules.radiation.limit)
+	if active and dose >= half and _dose_seen < half and dose < 1.0:
+		_notice("☢ ¡Tu dosímetro está a la mitad! Entra al refugio.", false)
+		if _alert_audio.stream != null:
+			_alert_audio.play()
+	_dose_seen = dose
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - delta)
+		camera.h_offset = randf_range(-1.0, 1.0) * SHAKE_SIZE * _shake / SHAKE_SECONDS
+
+
+## El sonido del Sol empieza con la llamarada de una tormenta y sigue durante el aviso y
+## la parte roja. Se apaga suave al terminar o al abrir un menú. Las falsas alarmas usan
+## el sonido corto de una sola vez.
+func _sun_loop_update() -> void:
+	if _sun_loop.stream == null or ui == null or ui.play == null:
+		return
+	var storm: bool = ui.play.visible and (sim.storm_warning() > 0.0 or sim.storm_active())
+	if storm and (not _sun_loop.playing or _sun_fading):
+		_fade_sun(0.0, 0.8, false)
+	elif not storm and _sun_loop.playing and not _sun_fading:
+		_fade_sun(-40.0, 1.5, true)
+
+
+func _fade_sun(volume: float, seconds: float, stop_after: bool) -> void:
+	if _sun_fade != null:
+		_sun_fade.kill()
+	if not _sun_loop.playing:
+		_sun_loop.volume_db = -24.0
+		_sun_loop.play()
+	_sun_fading = stop_after
+	_sun_fade = create_tween()
+	_sun_fade.tween_property(_sun_loop, "volume_db", volume, seconds)
+	if stop_after:
+		_sun_fade.tween_callback(_sun_loop.stop)
+		_sun_fade.tween_callback(func() -> void: _sun_fading = false)
+
+
 func _build_alert_audio() -> void:
 	add_child(_alert_audio)
 	add_child(_reward_audio)
+	add_child(_beep_audio)
+	add_child(_flare_audio)
+	add_child(_sun_loop)
 	if DisplayServer.get_name() == "headless":
 		return
+	# Sonificación real del Sol con datos de SOHO; créditos en assets/props_luna/nasa/procedencia.md.
+	_flare_audio.stream = load(FLARE_SOUND)
+	var loop := load(SUN_LOOP) as AudioStreamOggVorbis
+	loop.loop = true
+	_sun_loop.stream = loop
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)
@@ -1081,6 +1212,8 @@ func _build_alert_audio() -> void:
 	_alert_audio.stream = stream
 	_reward_audio.stream = stream
 	_reward_audio.pitch_scale = 1.5
+	_beep_audio.stream = stream
+	_beep_audio.pitch_scale = 2.0
 
 
 func _send_snapshot() -> void:
@@ -1140,11 +1273,13 @@ func _remote_notice(message: String) -> void:
 		_notice(message)
 
 
-func _show_reward(amount: int, message: String) -> void:
+func _show_reward(amount: int, message: String, detail := "") -> void:
 	if amount > 0:
 		if _reward_audio.stream != null:
 			_reward_audio.play()
 		message += " +%.2f monedas" % (float(amount) / LunarProfile.SCALE)
+	if not detail.is_empty():
+		message += "\n" + detail
 	ui.show_balance(profile.balance_text())
 	_notice(message, false)
 
