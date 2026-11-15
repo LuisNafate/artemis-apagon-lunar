@@ -1,6 +1,7 @@
 extends Node
 
 const REGISTRY := "res://context_core/state_registry.json"
+const GAME := preload("res://lunar/lunar.tscn")
 const SAFE: Array[bool] = [true, true]
 const AWAY: Array[StringName] = [&"", &""]
 
@@ -22,6 +23,7 @@ func _run() -> void:
 	_deposits()
 	await _streaming()
 	await _streaming_limits()
+	await _campaign()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -409,6 +411,129 @@ func _streaming_limits() -> void:
 	)
 	streamer.queue_free()
 	await get_tree().process_frame
+
+
+## La campaña real: base en el centro, hielo y mineral fuera, pilotos que nunca caen.
+func _campaign() -> void:
+	_cases += 1
+	var game := await _game_solo("mons_mouton_plateau")
+	_check(not CrestWorld.campaign_stations.has(&"ice"), "no fixed ice station")
+	_check(not CrestWorld.campaign_stations.has(&"ore"), "no fixed ore station")
+	_check(not game.world.has_node("CrateresLaterales"), "chunks replace the side craters")
+	var starters := ChunkGenerator.starter_deposits(game.sim.world_seed, game.sim.rules.open_world)
+	var ice: Vector3 = starters[0].point
+	game._set_positions([ice + Vector3(0.8, 0.3, 0), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(ice))
+	await _frames(30)
+	_check(game._spots[0].begins_with("dep:"), "starter deposit in reach")
+	_check(game.ui.action_button.text == "Extraer hielo", "action names the ice deposit")
+	game._interact(0, false)
+	await _frames(int(game.sim.drill_seconds() * 60) + 10)
+	_check(game.sim.cargo_kind(0) == &"ice", "mined starter ice")
+	game._interact(0, true)
+	await _frames(2)
+	_check(game.ui.action_button.text == "Depósito vacío", "emptied starter deposit")
+	var crate_id: int = game.sim.crates.keys()[0]
+	var far := Vector3(300, 2, 300)
+	game._set_positions([far, Vector3.ZERO])
+	await _frames(1)
+	_check(game.pilots[0].position == far, "pilot waits while its chunk loads")
+	await _until(func() -> bool: return game.streamer.is_ready_at(far))
+	await _frames(240)
+	_check(_on_ground(game), "pilot never falls into unloaded chunk")
+	_check(
+		not game.crate_visible(crate_id) and game.sim.crates.has(crate_id),
+		"far crate hidden not lost"
+	)
+	var start: Vector3 = game.pilots[0].position
+	game.ui.joystick.axis = Vector2(1, 0)
+	await _frames(120)
+	game.ui.joystick.axis = Vector2.ZERO
+	var walked: float = start.distance_to(game.pilots[0].position)
+	_check(
+		walked > 3.0 and _on_ground(game),
+		"dash toward new chunks stays on ground (%.1f m)" % walked
+	)
+	game._save_base(true)
+	var again := await _game_continue(game)
+	_check(
+		again.streamer.is_ready_at(again.pilots[0].position) and _on_ground(again),
+		"continue far from base without falling"
+	)
+	again.sim.pilots[0].air = 0.0
+	await _frames(5)
+	_check(
+		(
+			again.world.sheltered(again.pilots[0].position)
+			or again.pilots[0].position.distance_to(CrestWorld.SPAWNS[0]) < 1.0
+		),
+		"air-out returns to dawn spot"
+	)
+	DirAccess.remove_absolute(again.profile_path)
+	again.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## El piloto 0 no está por debajo del relieve (el terreno lejano puede estar bajo Y = 0).
+func _on_ground(game: Node) -> bool:
+	var point: Vector3 = game.pilots[0].position
+	var s: Dictionary = game.sim.rules.open_world
+	var region: Dictionary = s.regions[game.sim.base_id]
+	var ground := ChunkGenerator.height(game.sim.world_seed, region, s, point.x, point.z)
+	return point.y > ground - 0.5
+
+
+func _frames(n: int) -> void:
+	for _i in range(n):
+		await get_tree().physics_frame
+
+
+## Espera fotogramas de física hasta que `done` sea cierto o pasen 20 s de reloj.
+func _until(done: Callable) -> void:
+	var deadline := Time.get_ticks_msec() + 20000
+	while not done.call() and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+
+
+## `lunar.tscn` en su propio mundo y con un perfil temporal, como `_endpoint` en lunar_suite.
+func _new_game(profile_path: String) -> Node:
+	var scope := SubViewport.new()
+	scope.size = Vector2i(1152, 648)
+	scope.own_world_3d = true
+	scope.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(scope)
+	get_tree().set_multiplayer(SceneMultiplayer.new(), scope.get_path())
+	var game := GAME.instantiate()
+	game.profile_path = profile_path
+	scope.add_child(game)
+	return game
+
+
+func _game_solo(base_id: String) -> Node:
+	var game := _new_game("user://artemis-open-world-%d.dat" % randi())
+	await _frames(2)
+	game._start_solo(base_id)
+	game.sim.finish_tutorial()
+	await _until(func() -> bool: return game.streamer.is_ready_at(CrestWorld.SPAWNS[0]))
+	return game
+
+
+## Libera `game` y abre otro con el mismo perfil pulsando Continuar en el menú.
+func _game_continue(game: Node) -> Node:
+	var path: String = game.profile_path
+	game.get_parent().queue_free()
+	await get_tree().process_frame
+	var again := _new_game(path)
+	await _frames(2)
+	again._choose("title_enter", "")
+	var pressed := false
+	for item: Control in again.ui._list.get_children():
+		if item is Button and item.text == "Continuar solo":
+			item.pressed.emit()
+			pressed = true
+	_check(pressed, "menu offers Continuar solo")
+	await _until(func() -> bool: return not again._loading)
+	return again
 
 
 ## Llama a `update` cada frame hasta que `done` sea cierto o pasen 20 s de reloj.

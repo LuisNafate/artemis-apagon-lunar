@@ -6,6 +6,10 @@ const SAMPLE_RATE := 0.10
 const CAMERA_ELEVATION := 34.0
 const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
+const DEPOSIT_REACH := 1.63
+const LOOKAHEAD_FRAMES := 4.0
+const SINK_TOLERANCE := 0.25
+const TERRAIN_WAIT_MSEC := 8000
 const CARGO_MODELS := {
 	&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62],
 	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
@@ -27,6 +31,7 @@ var camera := Camera3D.new()
 var ui := LunarInterface.new()
 var sky := LunarBackdrop.new()
 var flight := LunarFlightView.new()
+var streamer := ChunkStreamer.new()
 var pilots: Array[CrestPilot] = []
 var net := &"lobby"
 var guest_peer := 0
@@ -46,6 +51,7 @@ var _routes := ROUTES.new()
 var _routes_ready := false
 var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
+var _cargo_templates: Dictionary = {}
 var _coins_by_guest: Dictionary = {}
 var _science_index := 0
 var _science_from_session := false
@@ -82,6 +88,8 @@ func _ready() -> void:
 	world.show_field_models("")
 	for station: Node3D in world.markers.values():
 		station.hide()
+	add_child(streamer)
+	_configure_streamer(starting_id)
 	sky.configure(starting_id, initial.horizon)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	add_child(camera)
@@ -138,6 +146,7 @@ func _physics_process(delta: float) -> void:
 	if not _routes_ready:
 		_routes.build(get_world_3d().direct_space_state)
 		_routes_ready = true
+	streamer.update(_focus_points())
 	if net == &"host" and play_started:
 		_local_frame(delta)
 	elif net == &"solo" and ui.play.visible:
@@ -255,7 +264,32 @@ func _load_base(id: String, single_player: bool) -> void:
 		_start_solo(id)
 	else:
 		host(id)
+	if net in [&"solo", &"host"]:
+		await _await_terrain(base_name)
 	_loading = false
+
+
+## Mantiene la pantalla de carga hasta que haya suelo bajo las posiciones restauradas.
+func _await_terrain(base_name: String) -> void:
+	if _terrain_ready():
+		return
+	ui.loading(base_name, "Generando el terreno", 0.86)
+	var deadline := Time.get_ticks_msec() + TERRAIN_WAIT_MSEC
+	while not _terrain_ready() and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	if net in [&"solo", &"host"]:
+		_show_session()
+
+
+func _terrain_ready() -> bool:
+	return _focus_points().all(streamer.is_ready_at)
+
+
+func _show_session() -> void:
+	if net == &"host" and not play_started:
+		ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+	else:
+		ui.playing()
 
 
 func host(id: String, port: int = PORT) -> void:
@@ -270,7 +304,7 @@ func host(id: String, port: int = PORT) -> void:
 	play_started = false
 	_open_base(id)
 	_address = _lan_address(port)
-	ui.wait_for_guest(sim.base.name, _address, "Esperando al segundo astronauta…")
+	_show_session()
 
 
 func _start_solo(id: String) -> void:
@@ -278,7 +312,7 @@ func _start_solo(id: String) -> void:
 		return
 	net = &"solo"
 	_open_base(id)
-	ui.playing()
+	_show_session()
 
 
 func _open_base(id: String) -> void:
@@ -320,6 +354,7 @@ func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> 
 	sim.roles[0] = String(profile.data.active_role)
 	world.set_base(sim.base.soil, StringName(id))
 	world.show_field_models("")
+	_configure_streamer(id)
 	sky.configure(id, sim.base.horizon)
 	_surface_camera()
 	_set_positions(CrestWorld.SPAWNS)
@@ -330,8 +365,36 @@ func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> 
 	_alert_kind = ""
 
 
+func _configure_streamer(id: String) -> void:
+	var settings: Dictionary = sim.rules.open_world
+	streamer.configure(sim, settings, settings.regions[id], world.soil_color())
+	streamer.ground_material = world.ground_material()
+
+
 func _positions() -> Array:
 	return [pilots[0].position, pilots[1].position]
+
+
+## Puntos alrededor de los que se carga el mundo: los pilotos conectados.
+func _focus_points() -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for index in range(2):
+		if sim.connected[index]:
+			points.append(pilots[index].position)
+	return points
+
+
+## Estación de la base al alcance o, si no hay, el depósito del mundo más cercano.
+func _spot_at(point: Vector3) -> StringName:
+	var tutorial := sim.phase == &"tutorial"
+	var spot := world.nearest(point, tutorial)
+	if spot == &"" and not tutorial:
+		spot = streamer.nearest_deposit(point, DEPOSIT_REACH)
+	return spot
+
+
+func crate_visible(id: int) -> bool:
+	return _boxes.has(id) and (_boxes[id] as Node3D).visible
 
 
 func _set_positions(points: Array) -> void:
@@ -477,7 +540,7 @@ func _local_frame(delta: float) -> void:
 		_vectors[1] = Vector2.ZERO
 	for index in range(2):
 		_move_pilot(index, delta)
-		_spots[index] = world.nearest(pilots[index].position, sim.phase == &"tutorial")
+		_spots[index] = _spot_at(pilots[index].position)
 
 	if guest_peer != 0 and sim.phase not in [&"tutorial", &"flight"]:
 		var period := float(sim.rules.cycle.period)
@@ -539,7 +602,7 @@ func _guest_frame(delta: float) -> void:
 			sim.pilots[index].cargo != 0,
 			sim.pilots[index].seated
 		)
-		_spots[index] = world.nearest(pilot.position, sim.phase == &"tutorial")
+		_spots[index] = _spot_at(pilot.position)
 	_render(delta, 1)
 
 
@@ -605,6 +668,14 @@ func _move_pilot(index: int, delta: float) -> void:
 	if sim.phase == &"flight" or not sim.connected[index] or sim.pilots[index].seated:
 		pilot.velocity = Vector3.ZERO
 		return
+	# Sin colision bajo los pies el piloto espera quieto a que llegue su chunk.
+	if not streamer.is_ready_at(pilot.position):
+		pilot.velocity = Vector3.ZERO
+		return
+	var ground := streamer.height_at(pilot.position)
+	if pilot.position.y < ground - SINK_TOLERANCE:
+		pilot.position.y = ground + 0.1
+		pilot.velocity.y = 0.0
 	var input: Vector2 = _vectors[index]
 	var direction := Vector2.ZERO
 	if input.length_squared() > 0.012:
@@ -614,6 +685,12 @@ func _move_pilot(index: int, delta: float) -> void:
 		direction = (right * input.x + back * input.y).limit_length(input.length())
 	else:
 		direction = _follow_path(index, pilot.position)
+	var heading := Vector3(direction.x, 0.0, direction.y) * FieldPilot.WALK_SPEED
+	for motion: Vector3 in [pilot.velocity, heading]:
+		if not streamer.is_ready_at(pilot.position + motion * delta * LOOKAHEAD_FRAMES):
+			direction = Vector2.ZERO
+			pilot.velocity.x = 0.0
+			pilot.velocity.z = 0.0
 	pilot.drive(delta, direction * sim.speed_factor(index), false, false)
 	pilot.animate_gait(delta, sim.pilots[index].cargo != 0, false)
 
@@ -651,11 +728,7 @@ func _render(delta: float, player: int) -> void:
 		if not _boxes.has(id):
 			var box := Node3D.new()
 			if CARGO_MODELS.has(crate.kind):
-				var info: Array = CARGO_MODELS[crate.kind]
-				var model: Node3D = (info[0] as PackedScene).instantiate()
-				PaperMaterial.restyle(model, false)
-				model.scale = Vector3.ONE * float(info[1])
-				box.add_child(model)
+				box.add_child(_cargo_model(crate.kind))
 			else:
 				FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
 				FieldWorld.box(
@@ -669,6 +742,8 @@ func _render(delta: float, player: int) -> void:
 			if crate.owner == -1
 			else pilots[crate.owner].carrying.global_position
 		)
+		# Las cajas sueltas siguen en `sim.crates`; solo se ocultan si su chunk no esta cargado.
+		mesh.visible = crate.owner != -1 or streamer.is_ready_at(crate.point)
 	world.reflect(sim, _spots, delta)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
 	var view := sim.flight_stage()
@@ -679,6 +754,22 @@ func _render(delta: float, player: int) -> void:
 	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
 	ui.flight_status(flight_phase, view.y)
 	_alert_if_changed()
+
+
+## Copia del modelo de carga. Las copias comparten los materiales de una plantilla oculta:
+## liberar una caja con materiales propios deja errores del servidor de render (headless).
+func _cargo_model(kind: StringName) -> Node3D:
+	if not _cargo_templates.has(kind):
+		var info: Array = CARGO_MODELS[kind]
+		var template: Node3D = (info[0] as PackedScene).instantiate()
+		PaperMaterial.restyle(template, false)
+		template.scale = Vector3.ONE * float(info[1])
+		template.hide()
+		add_child(template)
+		_cargo_templates[kind] = template
+	var model: Node3D = (_cargo_templates[kind] as Node3D).duplicate()
+	model.show()
+	return model
 
 
 func _alert_if_changed() -> void:

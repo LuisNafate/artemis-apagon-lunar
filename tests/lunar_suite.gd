@@ -239,8 +239,9 @@ func _terrain() -> void:
 	await get_tree().physics_frame
 	player.net = &"lobby"
 	player._surface_camera()
-	var stations := CrestWorld.STATIONS.merged(CrestWorld.WORKSHOP)
+	var stations := CrestWorld.campaign_stations.duplicate()
 	stations.erase(&"supply")
+	_check(not stations.has(&"ice") and not stations.has(&"ore"), "ice and ore left the base")
 	var coordinates: Array[Vector3] = [CrestWorld.SPAWNS[0], CrestWorld.SPAWNS[1]]
 	for key: StringName in stations:
 		coordinates.append(stations[key])
@@ -285,14 +286,10 @@ func _terrain() -> void:
 		var profile: Dictionary = player.sim.rules.bases[base_id]
 		player.world.set_base(profile.soil, StringName(base_id))
 		player.sky.configure(base_id, profile.horizon)
-		var dimensions := Rect2(-20.0, -11.0, 40.0, 22.0)
-		for crater: MeshInstance3D in player.world.get_node("CrateresLaterales").get_children():
-			var box := crater.get_aabb()
-			var point := crater.position + box.position
-			_check(
-				not dimensions.intersects(Rect2(point.x, point.z, box.size.x, box.size.z)),
-				"%s crater clears the walkable area" % base_id
-			)
+		_check(
+			not player.world.has_node("CrateresLaterales"),
+			"%s leaves the craters to the open world" % base_id
+		)
 		player.sky.update_sky(2.0, true)
 		_check(
 			player.sky.earth_level == float(profile.horizon.earth == "visible"),
@@ -301,15 +298,22 @@ func _terrain() -> void:
 
 	player._start_solo("mons_mouton_plateau")
 	player.sim.finish_tutorial()
-	player._set_positions([CrestWorld.STATIONS[&"ice"], Vector3.ZERO])
+	var settings: Dictionary = player.sim.rules.open_world
+	var quarry: Vector3 = ChunkGenerator.starter_deposits(player.sim.world_seed, settings)[0].point
+	player._set_positions([quarry, Vector3.ZERO])
 	player._set_destination(0, CrestWorld.STATIONS[&"life"])
+	await _until(func() -> bool: return player.streamer.is_ready_at(quarry))
 	var frames := 0
-	while not player.world.sheltered(player.pilots[0].position) and frames < 420:
+	var longest_step := 0.0
+	while not player.world.sheltered(player.pilots[0].position) and frames < 1200:
 		frames += 1
+		var before: Vector3 = player.pilots[0].position
 		await get_tree().physics_frame
+		var step: Vector3 = (player.pilots[0].position - before) * Vector3(1, 0, 1)
+		longest_step = maxf(longest_step, step.length())
 	_check(
-		player.world.sheltered(player.pilots[0].position),
-		"pilot follows a real route from the quarry into cover"
+		player.world.sheltered(player.pilots[0].position) and longest_step < 0.5,
+		"pilot follows a real route from the starter ice deposit into cover"
 	)
 	print("TERRAIN: tested quarry-to-cover motion %.2f simulated seconds" % (frames / 60.0))
 	DirAccess.remove_absolute(player.profile_path)
@@ -349,8 +353,7 @@ func _solo() -> void:
 		for frame in range(8):
 			await get_tree().process_frame
 		_capture_image(player, "artemis-carga.png")
-	for index in range(36):
-		await get_tree().process_frame
+	await _until(func() -> bool: return not player._loading)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	_check(player.net == &"solo" and player.ui.play.visible, "main menu opens solo directly")
@@ -445,10 +448,7 @@ func _solo() -> void:
 	player.ui.lobby(player.profile, "")
 	_check(player.profile.data.bases[base_id].run == 12345, "coop slot survives solo writes")
 	_press_menu_button(player, "Continuar solo")
-	for index in range(36):
-		await get_tree().process_frame
-		if not player._loading:
-			break
+	await _until(func() -> bool: return not player._loading)
 	_check(
 		player.sim.returned and absf(player.sim.elapsed - elapsed) < 0.04,
 		"continue restores exact solo state"
@@ -498,6 +498,7 @@ func _network() -> void:
 		return
 	for index in range(15):
 		await get_tree().physics_frame
+	await _until(func() -> bool: return host.streamer.is_ready_at(host.pilots[0].position))
 	var frame_position: Vector3 = host.pilots[0].position
 	_touch_joystick(host)
 	for index in range(33):
@@ -573,6 +574,13 @@ func _network() -> void:
 	)
 	DirAccess.remove_absolute(host.profile_path)
 	DirAccess.remove_absolute(guest.profile_path)
+
+
+## La carga del terreno es asíncrona: espera con reloj real (20 s como máximo).
+func _until(done: Callable) -> void:
+	var deadline := Time.get_ticks_msec() + 20000
+	while not done.call() and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
 
 
 func _endpoint(label: String) -> Node:

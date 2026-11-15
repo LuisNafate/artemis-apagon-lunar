@@ -8,6 +8,8 @@ const CACHE_LIMIT := 32
 const WALL_THICKNESS := 2.0
 const WALL_HEIGHT := 80.0
 
+## Material compartido del suelo (lo tiñe el mundo, p. ej. en tormenta); sin él, uno por chunk.
+var ground_material: Material
 var _sim: LunarMission
 var _settings: Dictionary = {}
 var _region: Dictionary = {}
@@ -79,6 +81,15 @@ func nearest_deposit(point: Vector3, reach: float) -> StringName:
 	return best
 
 
+## Altura del relieve bajo `point`, o -INF si su chunk no tiene datos.
+func height_at(point: Vector3) -> float:
+	var coord := ChunkGenerator.coord_of(point, _chunk_size)
+	var source := data_at(coord)
+	if source == null:
+		return -INF
+	return source.height_at(Vector2(point.x, point.z) - Vector2(coord) * _chunk_size)
+
+
 ## Datos de cualquier chunk cargado; para los recien descargados, la cache LRU.
 func data_at(coord: Vector2i) -> ChunkData:
 	var view: ChunkView = _views.get(coord)
@@ -99,11 +110,17 @@ func update(focus_points: Array[Vector3]) -> void:
 		if not needed.has(coord):
 			_jobs[coord].cancelled = true
 	_unload(_focus_coords(focus_points))
+	for coord in _done.keys():
+		if _views.has(coord) or not needed.has(coord):
+			_done.erase(coord)
+	# Se montan primero los terminados mas cercanos a los focos: el suelo bajo los pilotos.
 	var budget := int(_settings.chunks_per_frame)
-	while budget > 0 and not _done.is_empty():
-		var job: Job = _done[_done.keys()[0]]
-		_done.erase(job.coord)
-		if needed.has(job.coord) and not _views.has(job.coord):
+	for coord in needed:
+		if budget <= 0:
+			break
+		var job: Job = _done.get(coord)
+		if job != null:
+			_done.erase(coord)
 			_attach(job)
 			budget -= 1
 
@@ -184,6 +201,8 @@ func _attach(job: Job) -> void:
 	view.name = "Chunk_%d_%d" % [job.coord.x, job.coord.y]
 	view.rock_radius = float(_settings.rock_radius)
 	view.build(job.data, _soil, job.arrays)
+	if ground_material != null:
+		(view.get_node("Terreno") as MeshInstance3D).material_override = ground_material
 	add_child(view)
 	_views[job.coord] = view
 	for deposit in job.data.deposits:

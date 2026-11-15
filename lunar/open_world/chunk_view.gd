@@ -17,7 +17,6 @@ var rock_radius := 0.6
 var data: ChunkData
 var body: StaticBody3D
 var _markers: Dictionary = {}
-var _empty_material := PaperMaterial.solid(EMPTY_COLOR)
 
 
 ## Vertices y normales planas de la malla del terreno, en coordenadas locales del chunk.
@@ -86,11 +85,12 @@ func set_deposit(id: int, left: int) -> void:
 	var shape: Node3D = marker.shape
 	var empty := left <= 0
 	shape.position.y = float(marker.base_y) - (EMPTY_SINK if empty else 0.0)
-	var items: Array[Node] = shape.find_children("*", "MeshInstance3D", true, false)
-	if shape is MeshInstance3D:
-		items.append(shape)
-	for item: MeshInstance3D in items:
-		item.material_override = _empty_material if empty else marker.material
+	# Se tiñen los materiales propios del marcador: cambiar el material de un modelo
+	# importado deja errores del servidor de render al liberarlo (visto en headless).
+	for paint: Array in marker.paints:
+		var material: PaperMaterial = paint[0]
+		material.albedo_color = EMPTY_COLOR if empty else paint[1]
+		material.emission_energy_multiplier = 0.0 if empty else paint[2]
 
 
 func _add_collision(source: ChunkData) -> void:
@@ -140,7 +140,6 @@ func _add_marker(deposit: Dictionary) -> void:
 	add_child(pivot)
 	var shape: Node3D
 	var base_y := 0.0
-	var material: Material
 	if deposit.kind == &"ice":
 		shape = MODEL_ICE.instantiate()
 		PaperMaterial.restyle(shape, false)
@@ -150,10 +149,21 @@ func _add_marker(deposit: Dictionary) -> void:
 		var piece := MeshInstance3D.new()
 		piece.mesh = LunarCrater.rock_mesh(int(deposit.id))
 		piece.scale = Vector3.ONE * ORE_SIZE
-		material = PaperMaterial.solid(ORE_COLOR, true)
-		piece.material_override = material
+		piece.material_override = PaperMaterial.solid(ORE_COLOR, true)
 		shape = piece
 		base_y = ORE_SIZE * 0.3
 	shape.position.y = base_y
 	pivot.add_child(shape)
-	_markers[int(deposit.id)] = {"shape": shape, "base_y": base_y, "material": material}
+	var paints: Array = []
+	var items: Array[Node] = shape.find_children("*", "MeshInstance3D", true, false)
+	if shape is MeshInstance3D:
+		items.append(shape)
+	for item: MeshInstance3D in items:
+		var materials: Array[Material] = [item.material_override]
+		for surface in range(item.get_surface_override_material_count()):
+			materials.append(item.get_surface_override_material(surface))
+		for material in materials:
+			var paper := material as PaperMaterial
+			if paper != null:
+				paints.append([paper, paper.albedo_color, paper.emission_energy_multiplier])
+	_markers[int(deposit.id)] = {"shape": shape, "base_y": base_y, "paints": paints}

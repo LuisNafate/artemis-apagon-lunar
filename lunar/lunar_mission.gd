@@ -130,6 +130,11 @@ func deposit_left(key: StringName) -> int:
 	return int(delta.get("left", known.capacity))
 
 
+## Tipo de un depósito registrado (`ice` u `ore`), o vacío si no se conoce.
+func deposit_kind(key: StringName) -> StringName:
+	return _known_deposits.get(key, {}).get("kind", &"")
+
+
 func _delta_key(key: StringName) -> String:
 	return String(key).trim_prefix("dep:")
 

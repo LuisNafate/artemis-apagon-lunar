@@ -361,16 +361,22 @@ func sync(
 			]
 		)
 	_show_alert(mission)
+	var deposit := String(spot).begins_with("dep:")
+	var named := mission.deposit_kind(spot) if deposit else spot
 	feedback.text = (
 		message
 		if not message.is_empty()
 		else (
 			"MÓDULO LUNAR"
 			if spot == &"pad"
-			else String(CrestWorld.NAMES.get(spot, "Toca el destino o usa el joystick"))
+			else String(CrestWorld.NAMES.get(named, "Toca el destino o usa el joystick"))
 		)
 	)
-	action_button.text = "Bajar" if mission.pilots[player].seated else _action_caption(spot)
+	action_button.text = _action_caption(named)
+	if deposit and mission.deposit_left(spot) <= 0:
+		action_button.text = "Depósito vacío"
+	if mission.pilots[player].seated:
+		action_button.text = "Bajar"
 	if mission.phase == &"tutorial" and spot == &"training":
 		if mission.solo:
 			action_button.text = (
