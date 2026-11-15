@@ -143,3 +143,8 @@
 
 - Godot 4.7.2. Se añadieron `maquina_agua_hielo_vacio.glb` y `maquina_agua_hielo_lleno.glb` en `assets/props_luna/agua_hielo/`, descuantizados porque el motor no admite `KHR_mesh_quantization`. `crest/crest_world.gd` los coloca en la estación REFINADO en lugar del bloque blanco; la colisión no cambió. `reflect()` muestra el modelo lleno mientras `refining` tiene un temporizador activo. `PaperMaterial.restyle` admite `faceted = false` para conservar las normales de modelos texturizados.
 - Comprobado: importación sin errores, Academia 16 casos y 3890 comprobaciones sin fallos, Apagón lunar con los mismos 17 fallos del modo solo en Linux que antes del cambio, y el cambio vacío/lleno en una prueba headless. Verificado a ojo en Windows con Forward+ (Vulkan, Intel Iris Xe).
+
+## Mundo abierto: generador de chunks
+
+- Godot 4.7.2. Se añadieron `lunar/open_world/chunk_data.gd` y `chunk_generator.gd` (generador determinista, sin escena) y `campaign_2026.open_world` en `state_registry.json` con las nueve regiones, `max_walk_slope` y `deposit_distance_curve`. Suite nueva `tests/open_world_suite.tscn` y paso `Regresión mundo abierto` en `verify.ps1`.
+- Comprobado: `tests/verify.ps1` pasó formato y lint, importación, arranque y seis suites. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 285, Campaña 8 y 419, Mundo abierto 1 caso y 49 comprobaciones, 0 fallos.
