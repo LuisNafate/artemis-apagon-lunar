@@ -1020,8 +1020,9 @@
       }
     },
     "audio_effects": {
-      "source": "efectos sintetizados originales, sin archivos externos",
+      "source": "pasos derivados de una grabación facilitada por el usuario; otros efectos sintetizados",
       "events": ["botón", "pasos", "proximidad a estaciones y depósitos", "extracción", "alerta", "recompensa"],
+      "footsteps": "tres fragmentos de dragon-studio-creepy-distant-footsteps-482883.mp3, alternados",
       "local_player_only": true,
       "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
       "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",

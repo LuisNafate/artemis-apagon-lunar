@@ -308,3 +308,13 @@
 
 - Integrado `origin/main` hasta `1e046cc` conservando música, SFX y sus controles. Se incorporan objetivos táctiles, presentación de ítems y tormentas basadas en registros DONKI. Los efectos de proximidad y extracción siguen usando los puntos de estación y depósito de la misión; la configuración del escenario y el registro de audio conservan sus entradas.
 - Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y todas las regresiones: Academia 16/3953, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 12/542, mundo abierto 12/878, MVP 9/535, navegación visible 1/15 y DONKI 1/698; cero fallos. Comprobaciones adicionales verificaron intro, selector, volumen SFX persistente, recompensa y selección de música nocturna. Pendiente escucha y mezcla en dispositivos.
+
+## 2026-11-15 · Pasos amortiguados
+
+- El efecto de pasos usa un golpe de 85 Hz y ruido filtrado, con duración de 0,18 s, para sugerir la escucha desde el casco. Conserva el control SFX y la cadencia por distancia. Pendiente escucha y ajuste en dispositivos.
+- Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y las nueve ejecuciones de regresión: Academia 16/3953, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 12/542, mundo abierto 12/878, MVP 9/535, navegación visible 1/15 y DONKI 1/698. Una prueba específica comprobó la generación del golpe filtrado y el control de volumen.
+
+## 2026-11-15 · Muestras de pasos facilitadas por el usuario
+
+- Tres fragmentos de `dragon-studio-creepy-distant-footsteps-482883.mp3` reemplazan los pasos sintetizados. Se alternan al recorrer distancia, con separación mínima de 0,35 s y ajuste de nivel para evitar saturación. La procedencia y los puntos de corte se registran en `assets/sfx/pasos/procedencia.md`.
+- Godot 4.7.2 (Linux). Una prueba verificó tres muestras, ganancia, cadencia y reposo. `tests/verify.ps1` pasó formato, lint, importación, arranque y las nueve regresiones: Academia 16/3956, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 12/542, mundo abierto 12/878, MVP 9/535, navegación visible 1/15 y DONKI 1/698. En el primer intento falló una comprobación de ruta lejana; pasó al repetir la suite y en la ejecución completa posterior. Pendiente escuchar la mezcla en dispositivos.

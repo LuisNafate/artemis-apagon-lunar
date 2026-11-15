@@ -979,7 +979,13 @@
     {
       "id": "lunar_audio",
       "kind": "script",
-      "path": "lunar/lunar_audio.gd"
+      "path": "lunar/lunar_audio.gd",
+      "footsteps": "tres muestras alternadas facilitadas por el usuario"
+    },
+    {
+      "id": "lunar_footstep_samples",
+      "kind": "asset",
+      "path": "assets/sfx/pasos/"
     },
     {
       "id": "lunar_music",
@@ -1207,6 +1213,11 @@
       "lunar_game",
       "uses",
       "lunar_audio"
+    ],
+    [
+      "lunar_audio",
+      "uses",
+      "lunar_footstep_samples"
     ],
     [
       "lunar_audio",
