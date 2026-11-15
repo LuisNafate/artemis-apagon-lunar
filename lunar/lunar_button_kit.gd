@@ -1,16 +1,16 @@
 class_name LunarButtonKit
 extends RefCounted
 
-# Estilo de botones del juego (guia de botones): placas con esquinas cortadas,
-# borde oscuro, brillo diagonal y labio inferior. Se dibujan una vez por tipo y
-# estado y se reutilizan en todos los menus.
+# Estilo de botones del juego: pixel art. Placas con esquinas escalonadas,
+# contorno casi negro, filo claro arriba y a los lados, banda oscura abajo y
+# letras pixeladas con sombra. Se dibujan una vez por tipo y estado.
 
-const FONT := preload("res://assets/ui/fonts/Barlow-SemiBold.ttf")
-const CREAM := Color("#fff2d6")
-const SIZE := 64
-const CHAMFER := 12.0
-const OUTLINE := 3.0
-const MARGIN := 20
+const FONT := preload("res://assets/ui/fonts/Silkscreen-Bold.ttf")
+const CREAM := Color("#fffbea")
+const GRID := 16
+const PX := 4
+const SIZE := GRID * PX
+const MARGIN := 5 * PX
 # base, borde oscuro, brillo
 const PALETTE := {
 	&"accion": [Color("#1d8486"), Color("#0b3a3c"), Color("#47c9c4")],
@@ -43,9 +43,12 @@ static func apply(button: Button, kind: StringName = &"accion", font_size := 22)
 	var edge: Color = colors[1]
 	button.flat = false
 	button.add_theme_font_override("font", FONT)
-	button.add_theme_font_size_override("font_size", font_size)
-	button.add_theme_color_override("font_outline_color", edge.darkened(0.35))
-	button.add_theme_constant_override("outline_size", 4)
+	button.add_theme_font_size_override("font_size", maxi(16, roundi(font_size / 8.0) * 8))
+	button.add_theme_color_override("font_shadow_color", edge.darkened(0.1))
+	button.add_theme_constant_override("shadow_offset_x", 0)
+	button.add_theme_constant_override("shadow_offset_y", 3)
+	button.add_theme_constant_override("outline_size", 0)
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	for state in ["font_color", "font_hover_color", "font_focus_color"]:
 		button.add_theme_color_override(state, CREAM)
 	button.add_theme_color_override("font_pressed_color", CREAM.darkened(0.14))
@@ -67,8 +70,8 @@ static func _box(kind: StringName, state: StringName) -> StyleBoxTexture:
 	box.texture = _paint(colors[0], colors[1], colors[2], state)
 	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
 		box.set_texture_margin(side, MARGIN)
-	box.set_content_margin(SIDE_LEFT, 16.0)
-	box.set_content_margin(SIDE_RIGHT, 16.0)
+	box.set_content_margin(SIDE_LEFT, 18.0)
+	box.set_content_margin(SIDE_RIGHT, 18.0)
 	box.set_content_margin(SIDE_TOP, 10.0 if state == &"pressed" else 6.0)
 	box.set_content_margin(SIDE_BOTTOM, 6.0 if state == &"pressed" else 10.0)
 	_cache[key] = box
@@ -77,42 +80,41 @@ static func _box(kind: StringName, state: StringName) -> StyleBoxTexture:
 
 static func _paint(base: Color, edge: Color, glow: Color, state: StringName) -> ImageTexture:
 	var pressed := state == &"pressed"
-	var hover := state == &"hover"
 	var body := base
-	var rim := edge
-	if hover:
-		body = base.lerp(glow, 0.38)
-		rim = edge.lerp(glow, 0.55)
+	if state == &"hover":
+		body = base.lerp(glow, 0.3)
 	elif pressed:
-		body = base.darkened(0.16)
-	var lip := 0.0 if pressed else 5.0
-	var size := float(SIZE)
+		body = base.darkened(0.14)
+	var outline := edge.darkened(0.55)
+	var band := body.darkened(0.3)
+	var shine := body.lerp(glow, 0.7)
+	var side := body.lerp(glow, 0.35)
+	var last := GRID - 1
 	var image := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
-	for y in SIZE:
-		for x in SIZE:
-			var px := x + 0.5
-			var py := y + 0.5
-			var depth := minf(minf(px, py), minf(size - px, size - py))
-			depth = minf(depth, (px + py - CHAMFER) * 0.7071)
-			depth = minf(depth, ((size - px) + py - CHAMFER) * 0.7071)
-			depth = minf(depth, (px + (size - py) - CHAMFER) * 0.7071)
-			depth = minf(depth, ((size - px) + (size - py) - CHAMFER) * 0.7071)
-			var alpha := clampf(depth + 0.5, 0.0, 1.0)
-			if alpha <= 0.0:
+	for ly in GRID:
+		for lx in GRID:
+			var sums := [lx + ly, last - lx + ly, lx + last - ly, 2 * last - lx - ly]
+			var cut := false
+			var rim := minf(minf(lx, ly), minf(last - lx, last - ly)) == 0.0
+			for corner: int in sums:
+				if corner < 2:
+					cut = true
+				elif corner == 2:
+					rim = true
+			if cut:
 				continue
 			var color := body
-			if not pressed:
-				color = body.lerp(glow, clampf(1.0 - py / size * 2.4, 0.0, 1.0) * 0.5)
-			if py > size - 3.0 - lip:
-				color = body.lerp(rim, 0.38)
-			var corner := px + py
-			if not pressed and corner > CHAMFER + 3.0 and corner < CHAMFER + 13.0:
-				color = color.lerp(glow, 0.45)
-			var back := (size - px) + (size - py)
-			if back > CHAMFER + 3.0 and back < CHAMFER + 12.0:
-				color = color.darkened(0.18)
-			var inside := clampf(depth - OUTLINE + 0.5, 0.0, 1.0)
-			color = rim.lerp(color, inside)
-			color.a = alpha
-			image.set_pixel(x, y, color)
+			if rim:
+				color = outline
+			elif ly >= last - (1 if pressed else 2):
+				color = band
+			elif ly == 1 and not pressed:
+				color = shine
+			elif lx == 1 and not pressed:
+				color = side
+			elif lx == last - 1:
+				color = band.lerp(body, 0.45)
+			for dy in PX:
+				for dx in PX:
+					image.set_pixel(lx * PX + dx, ly * PX + dy, color)
 	return ImageTexture.create_from_image(image)
