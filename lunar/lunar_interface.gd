@@ -28,6 +28,7 @@ const PROMPTS := [
 
 var joystick := LunarTouch.new()
 var play: Control
+var _title_tween: Tween
 var globe: LunarGlobe
 var menu: PanelContainer
 var address: LineEdit
@@ -99,11 +100,11 @@ func _build_play(root: Control) -> void:
 	location = _label(content, "", 23, TITLE)
 	_float_text(location)
 	_resources = GridContainer.new()
-	_resources.columns = 2
+	_resources.columns = 5
 	_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	play.add_child(_resources)
 	_resources.position = Vector2(18, 8)
-	_resources.add_theme_constant_override("h_separation", 10)
+	_resources.add_theme_constant_override("h_separation", 12)
 	_resources.add_theme_constant_override("v_separation", 0)
 	var colors := [Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")]
 	for index in range(colors.size()):
@@ -117,12 +118,12 @@ func _build_play(root: Control) -> void:
 		chip.add_child(row)
 		var icon := TextureRect.new()
 		icon.texture = CHIP_ICONS[index]
-		icon.custom_minimum_size = Vector2(38, 38)
+		icon.custom_minimum_size = Vector2(46, 46)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
-		var reading := _label(row, "", 19, TITLE)
+		var reading := _label(row, "", 21, TITLE)
 		reading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_float_text(reading)
 		_readouts.append(reading)
@@ -148,6 +149,10 @@ func _build_play(root: Control) -> void:
 	alert = _label(content, "", 19, TITLE)
 	_float_text(alert)
 	alert.add_theme_color_override("font_color", Color("#ff9a72"))
+	play.visibility_changed.connect(func() -> void:
+		if play.visible:
+			show_title()
+	)
 	_pause = _button(play, "Menú", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_pause.offset_left = -137
@@ -629,6 +634,31 @@ func _label(parent: Control, caption: String, font_size: int, font: Font = BODY)
 	label.add_theme_font_size_override("font_size", font_size)
 	parent.add_child(label)
 	return label
+
+
+func show_title() -> void:
+	if _title_tween:
+		_title_tween.kill()
+	_title_tween = create_tween()
+	_title_tween.tween_property(location, "modulate:a", 1.0, 0.25)
+	_title_tween.tween_interval(3.5)
+	_title_tween.tween_property(location, "modulate:a", 0.0, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _input(event: InputEvent) -> void:
+	if play == null or not play.visible:
+		return
+	var height := 1000.0
+	if event is InputEventMouseButton:
+		var click: InputEventMouseButton = event
+		if click.pressed:
+			height = click.position.y
+	elif event is InputEventScreenTouch:
+		var touch: InputEventScreenTouch = event
+		if touch.pressed:
+			height = touch.position.y
+	if height < 80.0:
+		show_title()
 
 
 func _float_text(label: Label) -> void:
