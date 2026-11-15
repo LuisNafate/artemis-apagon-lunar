@@ -59,6 +59,10 @@ var _controls: HBoxContainer
 var _pause: Button
 var _wallet_balance: Label
 var _wallet_icon: TextureRect
+var _logo: RichTextLabel
+var _poster: TextureRect
+var _sparks: CPUParticles2D
+var _lobby_tweens: Array[Tween] = []
 
 
 func build() -> void:
@@ -293,6 +297,24 @@ func _build_menu(root: Control) -> void:
 	content.add_theme_constant_override("separation", 8)
 	menu.add_child(content)
 	_heading = _label(content, "", 43, TITLE)
+	_logo = RichTextLabel.new()
+	_logo.bbcode_enabled = true
+	_logo.fit_content = true
+	_logo.scroll_active = false
+	_logo.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_logo.add_theme_font_override("normal_font", TITLE)
+	_logo.add_theme_font_size_override("normal_font_size", 128)
+	_logo.add_theme_color_override("default_color", Color("#ffe9b0"))
+	_logo.add_theme_color_override("font_outline_color", Color("#6b2f17"))
+	_logo.add_theme_constant_override("outline_size", 14)
+	_logo.add_theme_color_override("font_shadow_color", Color("#00000099"))
+	_logo.add_theme_constant_override("shadow_offset_x", 0)
+	_logo.add_theme_constant_override("shadow_offset_y", 8)
+	_logo.text = "[wave amp=14.0 freq=2.6]ARTEMIS[/wave]"
+	content.add_child(_logo)
+	content.move_child(_logo, 1)
+	_logo.hide()
 	_message = _label(content, "", 22)
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var scroll := ScrollContainer.new()
@@ -315,6 +337,7 @@ func _build_lobby_backdrop(root: Control) -> void:
 	poster.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	poster.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	poster.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_poster = poster
 	_lobby_backdrop.add_child(poster)
 	poster.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -334,8 +357,30 @@ func _build_lobby_backdrop(root: Control) -> void:
 	_lobby_backdrop.add_child(shade)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	var fade := Gradient.new()
+	fade.offsets = PackedFloat32Array([0.0, 0.25, 0.75, 1.0])
+	fade.colors = PackedColorArray(
+		[Color("#ffe9b000"), Color("#ffe9b0d0"), Color("#ffe9b0d0"), Color("#ffe9b000")]
+	)
+	_sparks = CPUParticles2D.new()
+	_sparks.amount = 60
+	_sparks.lifetime = 16.0
+	_sparks.preprocess = 16.0
+	_sparks.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	_sparks.emission_rect_extents = Vector2(640.0, 8.0)
+	_sparks.direction = Vector2(0.18, -1.0)
+	_sparks.spread = 14.0
+	_sparks.gravity = Vector2.ZERO
+	_sparks.initial_velocity_min = 16.0
+	_sparks.initial_velocity_max = 44.0
+	_sparks.scale_amount_min = 1.5
+	_sparks.scale_amount_max = 4.5
+	_sparks.color_ramp = fade
+	_lobby_backdrop.add_child(_sparks)
+
 	var replay := LunarOpening.corner_button("Repetir intro")
 	_lobby_backdrop.add_child(replay)
+	_pop_on_hover(replay)
 	replay.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	replay.offset_left = -176
 	replay.offset_right = -24
@@ -400,6 +445,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 		subtitle += "\n" + status
 	_prepare_menu("ARTEMIS", subtitle)
 	_lobby_backdrop.show()
+	_start_backdrop()
 	menu.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	menu.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
 	menu.offset_left = 58
@@ -408,8 +454,8 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	menu.offset_bottom = -28
 	_heading.modulate = Color.WHITE
 	_heading.add_theme_color_override("font_color", Color("#fff0cf"))
-	_heading.rotation = -0.037
-	_heading.add_theme_font_size_override("font_size", 120)
+	_heading.hide()
+	_logo.show()
 	_message.add_theme_color_override("font_color", Color("#fff0cf"))
 	_message.add_theme_font_size_override("font_size", 18)
 
@@ -429,10 +475,27 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	for link in [roles, archive]:
 		link.custom_minimum_size = Vector2(110, 48)
 		extras.add_child(link)
+		_animate_button(link, _list.get_child_count() + 1, false)
 	roles.pressed.connect(func() -> void: selected.emit("roles", ""))
 	archive.pressed.connect(func() -> void: selected.emit("science", ""))
-	var balance := _label(_list, "%s monedas" % profile.balance_text(), 16)
-	balance.add_theme_color_override("font_color", Color("#fff0cf"))
+	var wallet := HBoxContainer.new()
+	wallet.add_theme_constant_override("separation", 8)
+	_list.add_child(wallet)
+	var coin := TextureRect.new()
+	coin.texture = COIN_ICON
+	coin.custom_minimum_size = Vector2(38.0, 38.0)
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin.pivot_offset = Vector2(19.0, 19.0)
+	wallet.add_child(coin)
+	var balance := _label(wallet, "%s monedas" % profile.balance_text(), 22, TITLE)
+	_float_text(balance)
+	balance.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var spin := coin.create_tween().set_loops()
+	spin.tween_interval(1.8)
+	spin.tween_property(coin, "scale:x", 0.12, 0.28).set_trans(Tween.TRANS_SINE)
+	spin.tween_property(coin, "scale:x", 1.0, 0.28).set_trans(Tween.TRANS_SINE)
+	_animate_lobby()
 	solo.grab_focus()
 
 
@@ -475,13 +538,106 @@ func _lobby_button(
 		var sign := _style(fill, Color("#4e3624"))
 		sign.set_corner_radius_all(2)
 		sign.skew = Vector2(-0.12, 0.0)
+		sign.border_width_bottom = 3 if state == "pressed" else 7
+		sign.shadow_color = Color("#00000066")
+		sign.shadow_size = 8
+		sign.shadow_offset = Vector2(0.0, 5.0)
 		if state == "focus":
 			sign.bg_color = Color.TRANSPARENT
 			sign.border_color = Color("#fff0cf")
 			sign.shadow_size = 0
 			sign.set_border_width_all(2)
 		button.add_theme_stylebox_override(state, sign)
+	_animate_button(button, _list.get_child_count(), primary)
 	return button
+
+
+func _animate_button(button: Button, index: int, primary: bool) -> void:
+	button.pivot_offset = Vector2(0.0, 24.0)
+	button.scale = Vector2(0.5, 1.0)
+	button.modulate.a = 0.0
+	var wait := 0.55 + index * 0.11
+	var intro := button.create_tween().set_parallel(true)
+	intro.tween_property(button, "scale", Vector2.ONE, 0.55).set_delay(wait).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	intro.tween_property(button, "modulate:a", 1.0, 0.3).set_delay(wait)
+	_pop_on_hover(button)
+	if primary:
+		var glow := button.create_tween().set_loops()
+		glow.tween_property(button, "self_modulate", Color(1.2, 1.12, 0.8), 0.8).set_trans(
+			Tween.TRANS_SINE
+		)
+		glow.tween_property(button, "self_modulate", Color.WHITE, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _pop_on_hover(button: Control) -> void:
+	var grow := Vector2(1.07, 1.07)
+	button.mouse_entered.connect(func() -> void: _pop(button, grow, 0.18))
+	button.mouse_exited.connect(func() -> void: _pop(button, Vector2.ONE, 0.18))
+	button.focus_entered.connect(func() -> void: _pop(button, grow, 0.18))
+	button.focus_exited.connect(func() -> void: _pop(button, Vector2.ONE, 0.18))
+	var press := button as BaseButton
+	if press != null:
+		press.button_down.connect(func() -> void: _pop(button, Vector2(0.94, 0.94), 0.07))
+		press.button_up.connect(func() -> void: _pop(button, grow, 0.12))
+
+
+func _pop(button: Control, target: Vector2, time: float) -> void:
+	if button.has_meta("pop"):
+		var old: Tween = button.get_meta("pop")
+		if old.is_valid():
+			old.kill()
+	var tween := button.create_tween()
+	tween.tween_property(button, "scale", target, time).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	button.set_meta("pop", tween)
+
+
+func _start_backdrop() -> void:
+	var size := get_viewport().get_visible_rect().size
+	_poster.pivot_offset = size * 0.5
+	_poster.scale = Vector2.ONE
+	var drift := create_tween().set_loops()
+	drift.tween_property(_poster, "scale", Vector2(1.07, 1.07), 16.0).set_trans(Tween.TRANS_SINE)
+	drift.tween_property(_poster, "scale", Vector2.ONE, 16.0).set_trans(Tween.TRANS_SINE)
+	_lobby_tweens.append(drift)
+	_sparks.position = Vector2(size.x * 0.5, size.y + 10.0)
+	_sparks.emission_rect_extents = Vector2(size.x * 0.5, 8.0)
+	_sparks.restart()
+	_sparks.emitting = true
+
+
+func _animate_lobby() -> void:
+	_logo.pivot_offset = Vector2(0.0, 90.0)
+	_logo.scale = Vector2(0.3, 0.3)
+	_logo.rotation = -0.2
+	_logo.modulate.a = 0.0
+	var intro := create_tween().set_parallel(true)
+	intro.tween_property(_logo, "scale", Vector2.ONE, 1.1).set_trans(Tween.TRANS_ELASTIC).set_ease(
+		Tween.EASE_OUT
+	)
+	intro.tween_property(_logo, "rotation", -0.037, 0.9).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	intro.tween_property(_logo, "modulate:a", 1.0, 0.35)
+	_lobby_tweens.append(intro)
+	var sway := create_tween().set_loops()
+	sway.tween_interval(1.2)
+	sway.tween_property(_logo, "rotation", -0.055, 2.2).set_trans(Tween.TRANS_SINE)
+	sway.tween_property(_logo, "rotation", -0.02, 2.2).set_trans(Tween.TRANS_SINE)
+	_lobby_tweens.append(sway)
+	_message.modulate.a = 0.0
+	var reveal := create_tween()
+	reveal.tween_property(_message, "modulate:a", 1.0, 0.6).set_delay(0.5)
+	_lobby_tweens.append(reveal)
+	var tagline := create_tween().set_loops()
+	tagline.tween_property(_message, "self_modulate", Color(1, 1, 1, 0.6), 1.2).set_trans(
+		Tween.TRANS_SINE
+	)
+	tagline.tween_property(_message, "self_modulate", Color.WHITE, 1.2).set_trans(Tween.TRANS_SINE)
+	_lobby_tweens.append(tagline)
 
 
 func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
@@ -763,6 +919,17 @@ func _show_alert(mission: LunarMission) -> void:
 
 
 func _prepare_menu(title: String, status: String) -> void:
+	for tween in _lobby_tweens:
+		tween.kill()
+	_lobby_tweens.clear()
+	_logo.hide()
+	_logo.scale = Vector2.ONE
+	_logo.rotation = 0.0
+	_logo.modulate.a = 1.0
+	_heading.show()
+	_message.modulate.a = 1.0
+	_message.self_modulate = Color.WHITE
+	_sparks.emitting = false
 	joystick.clear()
 	play.hide()
 	if globe != null:
