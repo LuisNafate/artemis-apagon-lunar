@@ -58,6 +58,7 @@ var alert: Label
 var next_step: Label
 var feedback: Label
 var _objective_hint: Label
+var _drop_body: VBoxContainer
 var _objective_marker: Button
 var _title_tween: Tween
 var _zone_panel: PanelContainer
@@ -195,14 +196,42 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	_objective_hint = _label(notes, "", 17)
+	# Objetivo y siguiente paso viven en un desplegable arriba, para no
+	# taparse con el panel de la zona ni con los botones de abajo.
+	var drop := VBoxContainer.new()
+	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drop.add_theme_constant_override("separation", 6)
+	play.add_child(drop)
+	drop.anchor_left = 0.5
+	drop.anchor_right = 0.5
+	drop.offset_left = -300
+	drop.offset_right = 300
+	drop.offset_top = 80
+	drop.offset_bottom = 80
+	drop.grow_vertical = Control.GROW_DIRECTION_END
+	var drop_toggle := Button.new()
+	drop_toggle.text = "Objetivo  -"
+	drop_toggle.focus_mode = Control.FOCUS_NONE
+	drop_toggle.custom_minimum_size = Vector2(190, 42)
+	drop_toggle.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	LunarButtonKit.apply(drop_toggle, &"seguimiento", 16)
+	drop.add_child(drop_toggle)
+	_drop_body = VBoxContainer.new()
+	_drop_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drop_body.add_theme_constant_override("separation", 6)
+	drop.add_child(_drop_body)
+	drop_toggle.pressed.connect(func() -> void:
+		_drop_body.visible = not _drop_body.visible
+		drop_toggle.text = "Objetivo  -" if _drop_body.visible else "Objetivo  +"
+	)
+	_objective_hint = _label(_drop_body, "", 17)
 	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(_objective_hint)
 	_objective_hint.add_theme_constant_override("outline_size", 2)
 	_objective_hint.add_theme_stylebox_override("normal", _tag_style(Color("#e8821c")))
 	_objective_hint.hide()
-	next_step = _label(notes, "", 16)
+	next_step = _label(_drop_body, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
 	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
