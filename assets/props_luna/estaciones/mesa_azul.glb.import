@@ -3,12 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cws3ye5aj0lba"
-valid=false
+uid="uid://8c3c47adrwf6"
+path="res://.godot/imported/mesa_azul.glb-aaeebb2f409cbf19f619bb5bf40cd4a4.scn"
 
 [deps]
 
 source_file="res://assets/props_luna/estaciones/mesa_azul.glb"
+dest_files=["res://.godot/imported/mesa_azul.glb-aaeebb2f409cbf19f619bb5bf40cd4a4.scn"]
 
 [params]
 
