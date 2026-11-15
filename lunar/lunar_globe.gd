@@ -11,6 +11,7 @@ const DESK := preload("res://assets/props_luna/kenney/consola.glb")
 const TRUCK := preload("res://assets/props_luna/kenney/transporte.glb")
 const TITLE := preload("res://assets/ui/fonts/BarlowCondensed-Bold.ttf")
 const MONO := preload("res://assets/ui/fonts/IBMPlexMono-Medium.ttf")
+const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
 const SPACE := Color("#040408")
 const CARD := Color("#131317")
 const RIM := Color("#d4cdbd")
@@ -378,18 +379,13 @@ func _badge(number: int, owned: bool, focus: bool) -> Control:
 
 
 func _coin(span: float) -> Control:
-	var coin := Control.new()
+	var coin := TextureRect.new()
+	coin.texture = COIN_ICON
 	coin.custom_minimum_size = Vector2(span, span)
+	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	coin.draw.connect(
-		func() -> void:
-			var middle := Vector2(span, span) * 0.5
-			coin.draw_circle(middle, span * 0.5, Color("#8a5a16"), true, -1.0, true)
-			coin.draw_circle(middle, span * 0.42, COIN, true, -1.0, true)
-			coin.draw_arc(middle, span * 0.26, 0.0, TAU, 20, Color("#b98422"), 1.3, true)
-			coin.draw_arc(middle, span * 0.36, PI * 1.05, PI * 1.6, 10, Color("#fbe3a0"), 1.4, true)
-	)
 	return coin
 
 

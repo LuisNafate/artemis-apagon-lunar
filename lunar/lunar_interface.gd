@@ -11,6 +11,7 @@ const SOFT := Color("#755f52")
 const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
+const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
 const CHIP_FILL := Color("#ecd5a8")
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
 const CHIP_ICONS := [
@@ -57,6 +58,7 @@ var _readouts: Array[Label] = []
 var _controls: HBoxContainer
 var _pause: Button
 var _wallet_balance: Label
+var _wallet_icon: TextureRect
 
 
 func build() -> void:
@@ -181,13 +183,24 @@ func _build_play(root: Control) -> void:
 	)
 	_wallet_balance = _label(play, "", 20, TITLE)
 	_wallet_balance.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_wallet_balance.offset_left = -320
-	_wallet_balance.offset_right = -106
+	_wallet_balance.offset_left = -330
+	_wallet_balance.offset_right = -150
 	_wallet_balance.offset_top = 26
 	_wallet_balance.offset_bottom = 67
 	_wallet_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_wallet_balance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_float_text(_wallet_balance)
+	_wallet_icon = TextureRect.new()
+	_wallet_icon.texture = COIN_ICON
+	_wallet_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_wallet_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_wallet_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play.add_child(_wallet_icon)
+	_wallet_icon.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_wallet_icon.offset_left = -144
+	_wallet_icon.offset_right = -98
+	_wallet_icon.offset_top = 20
+	_wallet_icon.offset_bottom = 66
 	_wallet_balance.add_theme_color_override("font_color", Color("#ffda7a"))
 	_pause = _button(play, "", "menu")
 	_pause.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -358,6 +371,7 @@ func flight_status(phase: int, progress: float) -> void:
 		_zone_panel.hide()
 	_pause.visible = not flying
 	_wallet_balance.visible = not flying
+	_wallet_icon.visible = not flying
 	_resources.visible = not flying
 	details.visible = flying
 	if not flying:
@@ -582,7 +596,7 @@ func confirm_reset(base_name: String, id: String) -> void:
 
 
 func show_balance(balance: String) -> void:
-	_wallet_balance.text = "%s monedas" % balance
+	_wallet_balance.text = balance
 
 
 func playing() -> void:
