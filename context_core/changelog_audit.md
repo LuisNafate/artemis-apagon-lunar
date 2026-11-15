@@ -143,3 +143,14 @@
 
 - Godot 4.7.2. Se añadieron `maquina_agua_hielo_vacio.glb` y `maquina_agua_hielo_lleno.glb` en `assets/props_luna/agua_hielo/`, descuantizados porque el motor no admite `KHR_mesh_quantization`. `crest/crest_world.gd` los coloca en la estación REFINADO en lugar del bloque blanco; la colisión no cambió. `reflect()` muestra el modelo lleno mientras `refining` tiene un temporizador activo. `PaperMaterial.restyle` admite `faceted = false` para conservar las normales de modelos texturizados.
 - Comprobado: importación sin errores, Academia 16 casos y 3890 comprobaciones sin fallos, Apagón lunar con los mismos 17 fallos del modo solo en Linux que antes del cambio, y el cambio vacío/lleno en una prueba headless. Verificado a ojo en Windows con Forward+ (Vulkan, Intel Iris Xe).
+
+## Superficie lunar del Drive
+
+- Godot 4.7.2. `superficie/superficie_lunar.glb` sustituye la lámina plana del suelo en la campaña. `src/render/papel.gdshader` aplana el relieve bajo la base (`relief_rect`, `relief_flat`, `relief_ramp`), recorta el borde trasero con la misma curva del suelo anterior (`back_edge_cut`) y aplica una ganancia al albedo (`albedo_gain`). Los cráteres menores y las rocas dispersas solo se generan fuera de la campaña, porque el terreno ya trae los suyos. Los seis cráteres de borde se mantienen sobre la zona plana.
+- Comprobado: importación sin errores, Academia 16 casos y 3890 comprobaciones sin fallos y Apagón lunar con los mismos 17 fallos del modo solo en Linux que antes. Portada verificada con render en Linux (Compatibility). Falta revisar el modo solo completo en Windows con Forward+.
+
+## 2026-11-15 - Nuevo plano de estacion (croquis del equipo)
+- Plataforma ampliada de 30,5x16,7 a 40x22 m (HALF_X/HALF_Z en crest_world.gd); rutas LunarRoutes y borde/colliders ajustados.
+- Estaciones reubicadas segun croquis: paneles x4 y bateria al norte, invernadero grande (6 m) al oeste, refinado y tanque de riego al sur, refugio al este, hielo x2 y rover/radio al noreste. Quitados consolas, tanques blancos, mineral, LRO y pasillos previos.
+- AstroCat guia eliminado del mapa; su diseno (astrocat_guia.glb, animaciones Idle/Walk) se aplica a los pilotos en crest_pilot.gd.
+- Camara de juego PLAY_SIZE 9.8 con seguimiento (lunar_game.gd). Godot 4.7.2 Forward+: verificado a ojo en laptop; tests crest_suite/lunar_suite pendientes de actualizar (guide_animator, huesos del gato anterior).
