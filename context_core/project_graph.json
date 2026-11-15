@@ -1,5 +1,5 @@
 {
-  "revision": 23,
+  "revision": 24,
   "nodes": [
     {
       "id": "config",
@@ -980,6 +980,16 @@
       "id": "lunar_mission",
       "kind": "script",
       "path": "lunar/lunar_mission.gd"
+    },
+    {
+      "id": "lunar_item_context",
+      "kind": "script",
+      "path": "lunar/lunar_item_context.gd"
+    },
+    {
+      "id": "solo_item_audit",
+      "kind": "artifact",
+      "path": "context_core/auditoria_items_mvp.md"
     },
     {
       "id": "lunar_profile",
@@ -2652,6 +2662,31 @@
       "lunar_interface",
       "displays_balance_from",
       "lunar_profile"
+    ],
+    [
+      "lunar_interface",
+      "presents",
+      "lunar_item_context"
+    ],
+    [
+      "lunar_game",
+      "routes_deliveries_with",
+      "lunar_item_context"
+    ],
+    [
+      "lunar_item_context",
+      "reads",
+      "lunar_mission"
+    ],
+    [
+      "solo_item_audit",
+      "documents",
+      "lunar_item_context"
+    ],
+    [
+      "lunar_suite_script",
+      "verifies",
+      "lunar_item_context"
     ],
     [
       "lunar_suite_script",

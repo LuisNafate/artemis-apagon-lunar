@@ -44,6 +44,7 @@ var _objective_hint: Label
 var _title_tween: Tween
 var _zone_panel: PanelContainer
 var _zone_title: Label
+var _zone_detail: Label
 var _zone_buttons: VBoxContainer
 var _tapped_name := ""
 var _tapped_until := 0
@@ -244,6 +245,10 @@ func _build_play(root: Control) -> void:
 	_zone_title = _label(zone_box, "", 24, TITLE)
 	_zone_title.add_theme_color_override("font_color", INK)
 	_zone_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zone_detail = _label(zone_box, "", 17)
+	_zone_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_zone_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_zone_detail.add_theme_color_override("font_color", INK)
 	var buttons := VBoxContainer.new()
 	_zone_buttons = buttons
 	zone_box.add_child(buttons)
@@ -588,7 +593,12 @@ func playing() -> void:
 
 
 func sync(
-	mission: LunarMission, player: int, spot: StringName, sheltered: Array[bool], message: String
+	mission: LunarMission,
+	player: int,
+	spot: StringName,
+	sheltered: Array[bool],
+	message: String,
+	pickup: StringName = &""
 ) -> void:
 	var night := mission.shadow_active()
 	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
@@ -637,38 +647,44 @@ func sync(
 	_objective_hint.text = _solo_objective(mission, player)
 	_objective_hint.visible = not _objective_hint.text.is_empty()
 	_show_alert(mission)
-	var deposit := String(spot).begins_with("dep:")
-	var named: StringName = mission.deposit_kind(spot) if deposit else spot
 	feedback.text = message
 	feedback.visible = not message.is_empty() and mission.phase != &"flight"
-	var carrying: bool = mission.pilots[player].cargo != 0
+	_item_panel(mission, player, spot, pickup)
+
+
+func _item_panel(mission: LunarMission, player: int, spot: StringName, pickup: StringName) -> void:
+	var cargo := mission.cargo_kind(player)
 	var seated: bool = mission.pilots[player].seated
-	var spot_name := String(CrestWorld.NAMES.get(named, ""))
+	var named := mission.deposit_kind(spot) if String(spot).begins_with("dep:") else spot
+	var caption := String(CrestWorld.NAMES.get(named, ""))
+	var context := LunarItemContext.at(mission, player, spot, pickup)
 	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
-	var actionable := not spot_name.is_empty() or carrying or seated
-	_zone_buttons.visible = actionable
-	_zone_panel.visible = actionable or tapped
-	if not spot_name.is_empty():
-		_zone_title.text = spot_name
-	elif carrying or seated:
-		_zone_title.text = "Llevas carga" if carrying else "A bordo"
+	action_button.text = context[0]
+	action_button.visible = not action_button.text.is_empty()
+	action_button.disabled = context[2]
+	release_button.visible = cargo != &"" and not seated
+	if cargo != &"":
+		var name: String = LunarItemContext.LOAD_NAMES[cargo]
+		if LunarItemContext.delivers(mission, player, spot):
+			release_button.text = "Entregar %s" % name
+		else:
+			release_button.text = "Soltar %s" % name if mission.solo else "Soltar / pasar"
+	_zone_buttons.visible = action_button.visible or release_button.visible
+	_zone_detail.text = context[1]
+	_zone_detail.visible = not _zone_detail.text.is_empty()
+	_zone_panel.visible = (
+		mission.phase != &"flight" and (_zone_buttons.visible or _zone_detail.visible or tapped)
+	)
+	if pickup != &"":
+		_zone_title.text = "CARGA EN EL SUELO"
+	elif not caption.is_empty():
+		_zone_title.text = caption
+	elif cargo != &"":
+		_zone_title.text = "CARGA · %s" % String(LunarItemContext.LOAD_NAMES[cargo]).to_upper()
+	elif seated:
+		_zone_title.text = "A BORDO"
 	else:
 		_zone_title.text = _tapped_name
-	action_button.text = _action_caption(named)
-	action_button.disabled = mission.returned and spot == &"pad"
-	if action_button.disabled:
-		action_button.text = "Misión completada"
-	if deposit and mission.deposit_left(spot) <= 0:
-		action_button.text = "Depósito vacío"
-	if seated:
-		action_button.text = "Bajar"
-	if mission.phase == &"tutorial" and spot == &"training":
-		if mission.solo:
-			action_button.text = (
-				"Tomar muestra" if mission.tutorial_step == 0 else "Entregar muestra"
-			)
-		elif mission.tutorial_step == 2 and player == 1:
-			action_button.text = "Entregar muestra"
 
 
 func _solo_objective(mission: LunarMission, player: int) -> String:
@@ -730,25 +746,6 @@ func _show_alert(mission: LunarMission) -> void:
 		alert.text = "Se aproxima un corte de radio"
 	else:
 		alert.hide()
-
-
-func _action_caption(spot: StringName) -> String:
-	return String(
-		(
-			{
-				&"ice": "Extraer hielo",
-				&"ore": "Extraer mineral",
-				&"refinery": "Usar taller",
-				&"life": "Comer / aire",
-				&"radio": "Usar radio",
-				&"pad": "Cargar / subir",
-				&"crop": "Cultivar / recoger",
-				&"fuel": "Preparar / recoger",
-				&"power": "Prioridad"
-			}
-			. get(spot, "Acción")
-		)
-	)
 
 
 func _prepare_menu(title: String, status: String) -> void:

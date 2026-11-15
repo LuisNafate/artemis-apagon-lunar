@@ -1,5 +1,5 @@
 {
-  "revision": 23,
+  "revision": 24,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -990,6 +990,12 @@
         },
         "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
       }
+    },
+    "item_integration": {
+      "audit": "context_core/auditoria_items_mvp.md",
+      "crate_limit": 24,
+      "timers": "Los segundos y amaneceres son valores de LunarMission. El panel los muestra al alcance de cada ítem.",
+      "supplies": "Depósitos y producción en la campaña. Entrega programada solo en la escena histórica de Cresta."
     },
     "solo_mode": {
       "source": "VAC-11 resuelto por el usuario",

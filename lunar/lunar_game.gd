@@ -17,10 +17,7 @@ const DEPOSIT_REACH := 1.63
 const LOOKAHEAD_FRAMES := 4.0
 const SINK_TOLERANCE := 0.25
 const TERRAIN_WAIT_MSEC := 8000
-const CARGO_MODELS := {
-	&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62],
-	&"food": [preload("res://assets/props_luna/estaciones/cantimplora.glb"), 0.58]
-}
+const CARGO_MODELS := {&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62]}
 const ROUTES := preload("res://lunar/lunar_routes.gd")
 const MATCOLORS := {
 	&"sample": CrestWorld.BLUE,
@@ -281,17 +278,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _zone_name_at(point: Vector3) -> String:
-	var found := ""
-	var closest := 2.2
-	for key: StringName in CrestWorld.campaign_stations:
-		if key in [&"training", &"supply"] or not CrestWorld.NAMES.has(key):
-			continue
-		var location: Vector3 = CrestWorld.campaign_stations[key]
-		var distance := point.distance_to(location)
-		if distance < closest:
-			closest = distance
-			found = String(CrestWorld.NAMES[key])
-	return found
+	var tutorial := sim.phase == &"tutorial"
+	var station := world.nearest(point, tutorial)
+	if station == &"" and not tutorial:
+		station = sim.deposit_kind(streamer.nearest_deposit(point, 2.2))
+	return String(CrestWorld.NAMES.get(station, ""))
 
 
 func _choose(action: String, argument: String) -> void:
@@ -777,35 +768,35 @@ func _guest_frame(delta: float) -> void:
 
 
 func _interact(player: int, release: bool) -> void:
-	if not _pending_reward.is_empty():
+	if sim.solo and not ui.play.visible:
+		return
+	if not sim.connected[player] or not _pending_reward.is_empty():
 		return
 	if sim.phase == &"flight":
 		return
 	var pilot := pilots[player]
-	var spot := _spots[player]
+	var spot := _spot_at(pilot.position)
 	var message := ""
 	var was_tutorial := sim.phase == &"tutorial"
 	if release:
-		var cargo := sim.cargo_kind(player)
-		var station_deposit := (
-			spot == &"training" and (sim.solo or player == 1) and cargo == &"sample"
-		)
-		station_deposit = station_deposit or (spot == &"refinery" and cargo in [&"ice", &"ore"])
-		station_deposit = station_deposit or (spot == &"pad" and cargo in [&"fuel", &"food"])
-		if station_deposit:
+		if LunarItemContext.delivers(sim, player, spot):
 			message = sim.use_station(player, spot)
 		else:
 			var other := 1 - player
 			var near: bool = (
 				sim.connected[other] and pilot.position.distance_to(pilots[other].position) <= 2.35
 			)
-			message = sim.release(player, pilot.position, near)
+			var ground: Variant = _cargo_ground(pilot.position)
+			if ground != null:
+				message = sim.release(player, ground, near)
+			elif sim.cargo_kind(player) != &"":
+				message = "Espera a estar sobre terreno cargado."
 	else:
 		if sim.pilots[player].seated:
 			spot = &"pad"
-		var crate := _closest_box(pilot.position) if sim.cargo_kind(player) == &"" else 0
+		var crate := _pickup_at(player)
 		if crate != 0 and sim.pickup(player, crate):
-			_notice("Caja recogida")
+			_notice("Recogiste %s." % LunarItemContext.LOAD_NAMES[sim.cargo_kind(player)])
 			return
 		message = sim.use_station(player, spot)
 		if sim.pilots[player].seated:
@@ -818,13 +809,29 @@ func _interact(player: int, release: bool) -> void:
 	_notice(message)
 
 
+func _cargo_ground(point: Vector3) -> Variant:
+	if not streamer.is_ready_at(point):
+		return null
+	var ray := PhysicsRayQueryParameters3D.create(
+		point + Vector3.UP * 0.2, point - Vector3.UP * 128.0, 1
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	return hit.get("position")
+
+
+func _pickup_at(player: int) -> int:
+	if sim.cargo_kind(player) != &"" or sim.pilots[player].seated:
+		return 0
+	return _closest_box(pilots[player].position)
+
+
 func _closest_box(point: Vector3) -> int:
 	var closest := 1.25
 	var result := 0
 	for id: int in sim.crates:
 		var crate: Dictionary = sim.crates[id]
 		var distance := point.distance_to(crate.point)
-		if crate.owner == -1 and distance < closest:
+		if crate.owner == -1 and distance < closest and streamer.is_ready_at(crate.point):
 			result = id
 			closest = distance
 	return result
@@ -910,23 +917,25 @@ func _render(delta: float, player: int) -> void:
 		var crate: Dictionary = sim.crates[id]
 		if not _boxes.has(id):
 			var box := Node3D.new()
-			if CARGO_MODELS.has(crate.kind):
-				box.add_child(_cargo_model(crate.kind))
-			else:
-				FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[crate.kind])
-				FieldWorld.box(
-					box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME
-				)
+			_build_cargo_visual(box, crate.kind)
 			add_child(box)
 			_boxes[id] = box
 		var mesh: Node3D = _boxes[id]
+		var available := streamer.is_ready_at(crate.point) if crate.owner == -1 else true
+		if crate.owner == -1 and available and not mesh.has_meta(&"settled"):
+			var ground: Variant = _cargo_ground(crate.point)
+			if ground != null:
+				crate.point = ground
+				mesh.set_meta(&"settled", true)
+		elif crate.owner != -1 and mesh.has_meta(&"settled"):
+			mesh.remove_meta(&"settled")
 		mesh.global_position = (
 			crate.point + Vector3.UP * 0.29
 			if crate.owner == -1
 			else pilots[crate.owner].carrying.global_position
 		)
 		# Las cajas sueltas siguen en `sim.crates`; solo se ocultan si su chunk no esta cargado.
-		mesh.visible = crate.owner != -1 or streamer.is_ready_at(crate.point)
+		mesh.visible = available and sim.phase != &"flight"
 	world.reflect(sim, _spots, delta, _focus_points(), pilots[player].position)
 	world.show_refuge_alert(sim.storm_warning() > 0.0 or sim.storm_active())
 	var view := sim.flight_stage()
@@ -934,9 +943,34 @@ func _render(delta: float, player: int) -> void:
 	world.present_lander(flight_phase, view.y, sim.returned)
 	flight.present(flight_phase, view.y)
 	_feedback_time = maxf(0.0, _feedback_time - delta)
-	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
+	var pickup := _pickup_at(player)
+	var kind: StringName = sim.crates[pickup].kind if pickup != 0 else &""
+	ui.sync(
+		sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "", kind
+	)
 	ui.flight_status(flight_phase, view.y)
 	_alert_if_changed()
+
+
+func _build_cargo_visual(box: Node3D, kind: StringName) -> void:
+	match kind:
+		&"ice":
+			box.add_child(_cargo_model(kind))
+		&"food":
+			FieldWorld.box(box, Vector3(0, -0.08, 0), Vector3(0.52, 0.29, 0.40), Color("#e8d9b5"))
+			FieldWorld.box(box, Vector3(0, 0.077, 0), Vector3(0.24, 0.026, 0.34), CrestWorld.LIME)
+			FieldWorld.box(box, Vector3(0, 0.094, 0), Vector3(0.16, 0.013, 0.05), CrestWorld.FRAME)
+		&"fuel":
+			FieldWorld.box(box, Vector3.ZERO, Vector3(0.45, 0.47, 0.37), CrestWorld.AMBER)
+			FieldWorld.box(
+				box, Vector3(0.11, 0.261, 0), Vector3(0.14, 0.052, 0.18), CrestWorld.FRAME
+			)
+			FieldWorld.box(
+				box, Vector3(0, -0.12, 0.188), Vector3(0.32, 0.08, 0.015), CrestWorld.FRAME
+			)
+		_:
+			FieldWorld.box(box, Vector3.ZERO, Vector3(0.53, 0.48, 0.49), MATCOLORS[kind])
+			FieldWorld.box(box, Vector3.UP * 0.245, Vector3(0.25, 0.038, 0.44), CrestWorld.FRAME)
 
 
 ## Copia del modelo de carga. Las copias comparten los materiales de una plantilla oculta:

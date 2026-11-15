@@ -28,3 +28,12 @@ Los tres modelos se importaron en Godot 4.7.2 y comparten el escenario 2.5D y la
 | Modelo | Origen | Archivo | Uso y ajuste |
 | --- | --- | --- | --- |
 | Superficie lunar | Carpeta `modelos` del Drive del equipo (`superficielunar.glb`). Generado con Tripo: 957 mil triángulos y textura de 2048 px | superficie/superficie_lunar.glb | Suelo de la campaña en `crest_world.gd`. El original usaba `KHR_mesh_quantization` y `EXT_meshopt_compression`; se descuantizó y se simplificó con `gltf-transform` a unos 29 mil triángulos. Escala 110 × 11 × 110, centro en z = 10, relieve aplanado a 6 m de la cubierta con rampa de 7 m y tinte lavanda por el shader papel |
+
+## Carga y gabinete de propelente de la campaña
+
+| Modelo | Autoría | Uso |
+| --- | --- | --- |
+| Paquete de ración | Geometría original del proyecto, generada con las primitivas existentes | Silueta baja rectangular, envoltura crema y sello verde. Sustituye la cantimplora como representación de la ración |
+| Bidón de propelente | Geometría original del proyecto, generada con las primitivas existentes | Forma vertical ámbar con tapa lateral oscura. Distingue los lotes de las cajas de práctica y mineral |
+| Gabinete de propelente | Geometría original del proyecto, generada con las primitivas existentes | Dos puertas ámbar y colisión detrás de la placa de interacción |
+| Caja de hielo | Modelo del equipo en `estaciones/caja_hielo.glb` | Se reutiliza para la carga extraída |

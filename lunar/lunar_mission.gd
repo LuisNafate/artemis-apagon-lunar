@@ -4,6 +4,8 @@ extends CrestSim
 
 signal deposit_changed(key: StringName, left: int)
 
+const CARGO_LIMIT := 24
+
 const SAVE_FIELDS := [
 	"elapsed",
 	"days",
@@ -147,20 +149,25 @@ func _delta_key(key: StringName) -> String:
 
 ## Rellena un deposito vaciado cuando han pasado los amaneceres necesarios.
 func _refill_deposit(key: StringName) -> void:
-	var delta_key := _delta_key(key)
-	var known: Dictionary = _known_deposits.get(key, {})
-	if known.is_empty() or not world_deltas.has(delta_key):
-		return
-	var delta: Dictionary = world_deltas[delta_key]
-	if int(delta.left) > 0:
-		return
-	var open_world: Dictionary = rules.open_world
-	var wait := int(open_world.deposit_refill_dawns)
-	if known.near:
-		wait *= int(open_world.deposit_near_factor)
-	if days - int(delta.emptied_day) >= wait:
-		world_deltas.erase(delta_key)
+	if (
+		world_deltas.has(_delta_key(key))
+		and deposit_left(key) == 0
+		and deposit_refill_left(key) == 0
+	):
+		world_deltas.erase(_delta_key(key))
 		deposit_changed.emit(key, deposit_left(key))
+
+
+func deposit_refill_left(key: StringName) -> int:
+	var known: Dictionary = _known_deposits.get(key, {})
+	if known.is_empty() or deposit_left(key) > 0:
+		return 0
+	var settings: Dictionary = rules.open_world
+	var wait := int(settings.deposit_refill_dawns)
+	if known.near:
+		wait *= int(settings.deposit_near_factor)
+	var delta: Dictionary = world_deltas.get(_delta_key(key), {})
+	return maxi(0, wait - (days - int(delta.get("emptied_day", days))))
 
 
 func _refill_deposits() -> void:
@@ -169,21 +176,17 @@ func _refill_deposits() -> void:
 
 
 func _mine_deposit(player: int, key: StringName) -> String:
+	if deposit_kind(key) == &"":
+		return "Acércate a un depósito cargado"
 	if deposit_left(key) <= 0:
-		var open_world: Dictionary = rules.open_world
-		var wait := int(open_world.deposit_refill_dawns)
-		if _known_deposits.get(key, {}).get("near", false):
-			wait *= int(open_world.deposit_near_factor)
-		var delta: Dictionary = world_deltas.get(_delta_key(key), {"emptied_day": days})
-		var remaining := maxi(1, wait - (days - int(delta.emptied_day)))
-		return "Depósito vacío · vuelve en %d amaneceres" % remaining
+		return "Depósito vacío · vuelve en %d amaneceres" % deposit_refill_left(key)
 	return _start_mining(player, key)
 
 
 func _finish_deposit(player: int, key: StringName) -> StringName:
 	var pilot := pilots[player]
 	pilot.mine = &""
-	if deposit_left(key) <= 0:
+	if deposit_left(key) <= 0 or cargo_full():
 		return &""
 	var kind: StringName = _known_deposits[key].kind
 	_create_cargo(player, kind)
@@ -335,7 +338,7 @@ func _tutorial_use(player: int, station: StringName) -> String:
 
 func _collect_extraction_bonus(player: int, kind: StringName) -> bool:
 	var pilot := pilots[player]
-	if pilot.pending_extra != kind or pilot.cargo != 0:
+	if pilot.pending_extra != kind or pilot.cargo != 0 or cargo_full():
 		return false
 	_create_cargo(player, kind)
 	pilot.pending_extra = &""
@@ -381,7 +384,7 @@ func _refine(player: int) -> String:
 		return "La refinadora está trabajando"
 	_consume_cargo(player)
 	refining = [float(resources.refine_seconds)]
-	return "Refinando hielo · 5 s"
+	return "Refinando hielo"
 
 
 func _operate_job(player: int, station: StringName) -> String:
@@ -390,20 +393,19 @@ func _operate_job(player: int, station: StringName) -> String:
 	if pilots[player].cargo != 0:
 		return "Suelta o entrega tu caja primero"
 	if supply > 0:
+		if cargo_full():
+			return "Recoge o entrega cajas del suelo antes de sacar otra"
 		if crop:
 			food -= 1
 		else:
 			fuel_ready -= 1
 		_create_cargo(player, &"food" if crop else &"fuel")
 		return "Caja recogida"
-	if not crop and (returned or fuel_loaded + fuel_ready >= int(rules.mission.propellant)):
+	if not crop and fuel_quota_met():
 		return "La nave ya tiene su propelente"
 	if jobs[station] > 0.0:
 		return "En proceso · %d s" % ceili(jobs[station])
-	var cost := (
-		float(resources.crop_water if crop else resources.fuel_water)
-		* float(difficulty.consumption)
-	)
+	var cost := job_water_cost(station)
 	if water < cost:
 		return "Busca hielo y refínalo en el taller"
 	water -= cost
@@ -417,14 +419,49 @@ func _operate_job(player: int, station: StringName) -> String:
 	return "Cultivo regado" if crop else "Preparando propelente"
 
 
+func cargo_full() -> bool:
+	return crates.size() >= CARGO_LIMIT
+
+
+func fuel_quota_met() -> bool:
+	if returned:
+		return true
+	var total := fuel_loaded + fuel_ready
+	for crate: Dictionary in crates.values():
+		total += int(crate.kind == &"fuel")
+	return total >= int(rules.mission.propellant)
+
+
+func job_water_cost(station: StringName) -> float:
+	var units := float(resources.crop_water if station == &"crop" else resources.fuel_water)
+	return units * float(difficulty.consumption)
+
+
+func job_energy_cost(station: StringName) -> float:
+	var units := float(resources.crop_energy if station == &"crop" else resources.fuel_energy)
+	return units * float(difficulty.consumption)
+
+
+func workshop_paused() -> bool:
+	return energy_cut() or not life_powered
+
+
+func upgrade_installed(station: StringName) -> bool:
+	match station:
+		&"drill":
+			return drill
+		&"battery":
+			return auxiliary
+		&"irrigation":
+			return irrigation
+	return false
+
+
 func _queue_upgrade(player: int, station: StringName) -> String:
-	var flags := {
-		&"drill": drill, &"battery": auxiliary, &"solar": solar, &"irrigation": irrigation
-	}
-	if flags[station] or installing.has(station):
-		return "Mejora instalada o en montaje"
 	if station == &"solar":
 		return "Cambio de generación solar pendiente"
+	if upgrade_installed(station) or installing.has(station):
+		return "Mejora instalada o en montaje"
 	var cost := int(rules.upgrade_costs[String(station)])
 	if ore < cost:
 		return "Necesitas %d de mineral" % cost
@@ -542,9 +579,8 @@ func _tick_power(delta: float) -> void:
 	for kind: StringName in [priority, later]:
 		if jobs[kind] <= 0.0:
 			continue
-		var cost := float(resources.crop_energy if kind == &"crop" else resources.fuel_energy)
 		if not paid_jobs[kind]:
-			if not _draw(cost * consumption):
+			if not _draw(job_energy_cost(kind)):
 				continue
 			paid_jobs[kind] = true
 		jobs[kind] = maxf(0.0, float(jobs[kind]) - delta)
