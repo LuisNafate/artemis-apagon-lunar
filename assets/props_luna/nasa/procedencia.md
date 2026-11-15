@@ -11,6 +11,7 @@ Uso educativo. Las adaptaciones se acreditan a sus autores y a NASA. Los materia
 
 | `apollo_base_lunar.glb` y `apollo_etapa_ascenso.glb` | Derivados del Apollo Lunar Module citado arriba | 3 438 y 5 240 triángulos. Corte vertical de presentación por el plano horizontal Y = 1,56 en Godot, con origen común. La base permanece en el área de descenso. |
 | `tierra_apolo17.jpg` | [NASA JSC · AS17-148-22727](https://science.nasa.gov/resource/the-blue-marble/) | Copia de 540 × 540 de NASA EOL. La fotografía de Apolo 17 se compone por mezcla aditiva sobre el cielo de la campaña. |
+| `assets/cinematica/modelos/luna_lro.glb` | [Moon 3D Models for Web, AR, and Animation](https://svs.gsfc.nasa.gov/14959/) · NASA's Goddard Space Flight Center (producción: Dan Gallagher; datos: Ernie Wright; análisis: Tuomas Kankola y Josh Klint) | Variante con cuadrícula `Moon_NASA_LRO_15k_Grid_Small.glb`. Se borraron las líneas de latitud y longitud de la textura por interpolación y se redujo de 15 000×7 500 a 6 144×3 072 px. Solo se usa en la película de inicio (Blender). |
 
 La nave orbital de la cinemática usa geometría creada en Godot. Simplifica la silueta del módulo de mando y servicio. [NASA · Programa Apolo](https://www.nasa.gov/the-apollo-program/)
 

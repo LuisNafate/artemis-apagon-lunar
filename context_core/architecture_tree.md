@@ -218,3 +218,5 @@ LunarGame valida alcance y superficie de las cajas sueltas. LunarItemContext des
 LunarObjective elige el texto y la clave del paso activo. LunarGame resuelve la estación, la puerta, la caja o el depósito en sus datos existentes. LunarInterface proyecta un marcador táctil sobre la cámara y lo reemplaza por el panel de proximidad al llegar. El marcador llama al planificador normal al pulsarlo. La [matriz de objetivos](auditoria_objetivos_mvp.md) documenta los textos, la identidad visual y el conductor automatizado de controles visibles.
 
 Godot importa los modelos GLB y las imágenes antes de ejecutar: se conservan sus archivos `.import`, UID y texturas extraídas. En un clon nuevo se debe abrir el proyecto en el editor o ejecutar la importación headless antes del primer arranque.
+
+La interfaz de campaña usa el título con gato, botones de píxel, fuente Silkscreen y objetivos desplegables de main; conserva el acceso al control de SFX. Los nuevos recursos mantienen sus importaciones de Godot.

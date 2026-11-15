@@ -14,14 +14,16 @@ static func spawn(parent: Node, index: int, settings: Dictionary) -> CrestPilot:
 	pilot.position = CrestWorld.SPAWNS[index]
 	parent.add_child(pilot)
 	pilot.build()
-	var marker := Label3D.new()
-	marker.text = "● J1" if index == 0 else "◆ J2"
-	marker.font = CrestWorld.MONO
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	marker.modulate = pilot.tint
-	marker.position = Vector3.UP * 1.92
-	marker.no_depth_test = true
-	marker.pixel_size = 0.019
-	marker.outline_size = 12
-	pilot.add_child(marker)
+	# Solo el segundo jugador lleva etiqueta; el primero va sin rotulo.
+	if index > 0:
+		var marker := Label3D.new()
+		marker.text = "◆ J2"
+		marker.font = CrestWorld.MONO
+		marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		marker.modulate = pilot.tint
+		marker.position = Vector3.UP * 1.92
+		marker.no_depth_test = true
+		marker.pixel_size = 0.019
+		marker.outline_size = 12
+		pilot.add_child(marker)
 	return pilot

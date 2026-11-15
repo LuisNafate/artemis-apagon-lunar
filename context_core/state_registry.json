@@ -1029,7 +1029,7 @@
     },
     "audio_effects": {
       "source": "pasos facilitados por el usuario, alerta solar basada en datos NASA, otros efectos sintetizados",
-      "startup": "recursos de main reimportados con Godot 4.7.2; conservar metadatos y texturas extraídas",
+      "startup": "recursos de main hasta 8a22ae6 importados con Godot 4.7.2; conservar metadatos y texturas extraídas",
       "events": ["botón", "pasos", "proximidad a estaciones y depósitos", "extracción", "alerta", "recompensa"],
       "footsteps": "tres fragmentos de dragon-studio-creepy-distant-footsteps-482883.mp3, alternados",
       "solar_alert": "tormentas: adaptación de Solar CME Growl, Parker Solar Probe, Robert Alexander, CC BY 4.0; llamaradas sin partículas: sonificación SOHO, ver assets/props_luna/nasa/procedencia.md; pitidos finales y efectos visuales",

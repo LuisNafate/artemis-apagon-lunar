@@ -14,7 +14,8 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
-const LOGO := preload("res://assets/ui/titulo_artemis.png")
+const LOGO := preload("res://assets/ui/titulo_artemis_gato.png")
+const JUMP_ICON := preload("res://assets/ui/hud/saltar.png")
 const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
 const ROLE_CARDS := {
@@ -58,6 +59,7 @@ var alert: Label
 var next_step: Label
 var feedback: Label
 var _objective_hint: Label
+var _drop_body: VBoxContainer
 var _objective_marker: Button
 var _title_tween: Tween
 var _zone_panel: PanelContainer
@@ -195,18 +197,48 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	_objective_hint = _label(notes, "", 17)
+	# Objetivo y siguiente paso viven en un desplegable arriba a la izquierda, bajo los recursos.
+	# Así no tapan el panel de la zona ni los botones de abajo.
+	var drop := VBoxContainer.new()
+	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drop.add_theme_constant_override("separation", 6)
+	play.add_child(drop)
+	drop.anchor_left = 0.0
+	drop.anchor_right = 0.0
+	drop.offset_left = 18
+	drop.offset_right = 428
+	drop.offset_top = 74
+	drop.offset_bottom = 74
+	drop.grow_vertical = Control.GROW_DIRECTION_END
+	var drop_toggle := Button.new()
+	drop_toggle.text = "Objetivo  +"
+	drop_toggle.focus_mode = Control.FOCUS_NONE
+	drop_toggle.custom_minimum_size = Vector2(190, 42)
+	drop_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	LunarButtonKit.apply(drop_toggle, &"seguimiento", 16)
+	drop.add_child(drop_toggle)
+	_drop_body = VBoxContainer.new()
+	_drop_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_drop_body.add_theme_constant_override("separation", 6)
+	drop.add_child(_drop_body)
+	_drop_body.hide()
+	drop_toggle.pressed.connect(
+		func() -> void:
+			_drop_body.visible = not _drop_body.visible
+			drop_toggle.text = "Objetivo  -" if _drop_body.visible else "Objetivo  +"
+	)
+	_objective_hint = _label(_drop_body, "", 17)
 	_objective_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(_objective_hint)
 	_objective_hint.add_theme_constant_override("outline_size", 2)
 	_objective_hint.add_theme_stylebox_override("normal", _tag_style(Color("#e8821c")))
 	_objective_hint.hide()
-	next_step = _label(notes, "", 16)
+	next_step = _label(_drop_body, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
 	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	next_step.custom_minimum_size.x = 580
+	next_step.custom_minimum_size.x = 410
 	next_step.add_theme_constant_override("outline_size", 2)
 	next_step.add_theme_stylebox_override("normal", _tag_style(Color("#47c9c4")))
 	alert = _label(content, "", 19, TITLE)
@@ -282,8 +314,9 @@ func _build_play(root: Control) -> void:
 	_zone_panel.anchor_right = 1.0
 	_zone_panel.anchor_top = 1.0
 	_zone_panel.anchor_bottom = 1.0
-	_zone_panel.offset_left = -250
-	_zone_panel.offset_right = -16
+	_zone_panel.offset_left = -456
+	_zone_panel.offset_right = -124
+	_zone_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_zone_panel.offset_top = -60
 	_zone_panel.offset_bottom = -16
 	_zone_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -302,16 +335,25 @@ func _build_play(root: Control) -> void:
 	_zone_buttons = buttons
 	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
-	action_button.custom_minimum_size = Vector2(200, 50)
+	action_button.custom_minimum_size = Vector2(240, 50)
 	release_button = _button(buttons, "Soltar / pasar", "release")
-	release_button.custom_minimum_size = Vector2(200, 50)
-	jump_button = _button(play, "Saltar", "jump")
-	jump_button.custom_minimum_size = Vector2(110, 56)
+	release_button.custom_minimum_size = Vector2(240, 50)
+	for zone_button: Button in [action_button, release_button]:
+		zone_button.add_theme_font_size_override("font_size", 16)
+		zone_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	jump_button = _button(play, "", "jump")
+	jump_button.custom_minimum_size = Vector2(88, 88)
 	LunarButtonKit.apply(jump_button, &"mejorar")
+	jump_button.icon = JUMP_ICON
+	jump_button.expand_icon = true
+	jump_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	jump_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	jump_button.add_theme_constant_override("icon_max_width", 44)
+	jump_button.tooltip_text = "Saltar"
 	jump_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	jump_button.offset_left = -382
-	jump_button.offset_right = -266
-	jump_button.offset_top = -78
+	jump_button.offset_left = -108
+	jump_button.offset_right = -16
+	jump_button.offset_top = -104
 	jump_button.offset_bottom = -16
 	play.move_child(_objective_marker, -1)
 	play.hide()
@@ -334,7 +376,7 @@ func _build_menu(root: Control) -> void:
 	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_logo.custom_minimum_size = Vector2(500.0, 175.0)
+	_logo.custom_minimum_size = Vector2(520.0, 230.0)
 	var waves := ShaderMaterial.new()
 	waves.shader = LOGO_WAVES
 	_logo.material = waves
@@ -636,7 +678,7 @@ func _start_backdrop() -> void:
 
 
 func _animate_lobby() -> void:
-	_logo.pivot_offset = Vector2(0.0, 88.0)
+	_logo.pivot_offset = Vector2(0.0, 115.0)
 	_logo.scale = Vector2(0.3, 0.3)
 	_logo.rotation = -0.2
 	_logo.modulate.a = 0.0

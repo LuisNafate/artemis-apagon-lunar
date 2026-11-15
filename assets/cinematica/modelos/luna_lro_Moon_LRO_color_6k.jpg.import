@@ -2,16 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://nlywhwokxx17"
-path="res://.godot/imported/titulo_artemis.png-3d791a3fd0c40752d247ed19c97d8db8.ctex"
+uid="uid://oq5i4g2vjnr1"
+path="res://.godot/imported/luna_lro_Moon_LRO_color_6k.jpg-7e33000f2c912c5b1adf2379ff2a7cdc.ctex"
 metadata={
 "vram_texture": false
+}
+generator_parameters={
+"md5": "e21a9b80abfaeb0f78eac927fd85aad9"
 }
 
 [deps]
 
-source_file="res://assets/ui/titulo_artemis.png"
-dest_files=["res://.godot/imported/titulo_artemis.png-3d791a3fd0c40752d247ed19c97d8db8.ctex"]
+source_file="res://assets/cinematica/modelos/luna_lro_Moon_LRO_color_6k.jpg"
+dest_files=["res://.godot/imported/luna_lro_Moon_LRO_color_6k.jpg-7e33000f2c912c5b1adf2379ff2a7cdc.ctex"]
 
 [params]
 
@@ -23,7 +26,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

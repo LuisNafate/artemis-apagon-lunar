@@ -1,5 +1,5 @@
 {
-  "revision": 27,
+  "revision": 28,
   "nodes": [
     {
       "id": "config",
@@ -1048,7 +1048,7 @@
       "id": "lunar_interface",
       "kind": "script",
       "path": "lunar/lunar_interface.gd",
-      "import_dependencies": "assets/ui/hud/moneda.png y assets/ui/titulo_artemis.png"
+      "import_dependencies": "assets/ui/hud/moneda.png, assets/ui/hud/saltar.png, assets/ui/titulo_artemis_gato.png y fuente Silkscreen"
     },
     {
       "id": "lunar_touch",

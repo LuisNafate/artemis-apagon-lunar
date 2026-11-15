@@ -340,3 +340,9 @@
 
 - La limpieza posterior al merge eliminó por error metadatos de importación y texturas extraídas de recursos nuevos de main; el arranque directo falló al cargar GLB y PNG. Se regeneraron y conservaron los archivos de importación, UID y texturas.
 - Godot 4.7.2 Linux: importación headless y arranque headless durante 60 fotogramas sin errores; arranque gráfico Vulkan Forward+ durante 600 fotogramas sin errores. La primera importación registró avisos de UID ausentes y los regeneró; se conservan para próximos arranques. No se modificaron scripts ni escenas. En un clon nuevo Godot debe importar recursos antes de ejecutarlos.
+
+## 2026-11-15 · Integración de main con interfaz de píxel
+
+- Integrado `origin/main` hasta `8a22ae6`: título con gato, fuente y botones, objetivos desplegables, piloto e insumos para cinemática; se conserva el control de sonido y la música. Conflicto de UID de moneda resuelto con el de main; importaciones y texturas nuevas se conservan, y se retiró la importación del título eliminado.
+- Godot 4.7.2 Linux: `tests/verify.ps1` aprobó formato, lint, importación, arranque y Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta 10/214 con los mismos 22 fallos de ruta identificados anteriormente. Pruebas independientes: intro, selector, nueve bases, control de sonido y música nocturna. Arranque gráfico Vulkan correcto; cierre automático notificó dos instancias ObjectDB sin liberar.
+- Las regresiones restantes se ejecutaron por separado sin fallos: Campaña 12/543, Mundo abierto 12/878, MVP 9/520, navegación 1/15 y DONKI 2/732.
