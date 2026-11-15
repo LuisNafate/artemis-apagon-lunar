@@ -1,5 +1,5 @@
 {
-  "revision": 25,
+  "revision": 29,
   "nodes": [
     {
       "id": "config",
@@ -977,6 +977,49 @@
       "path": "lunar/lunar_game.gd"
     },
     {
+      "id": "lunar_audio",
+      "kind": "script",
+      "path": "lunar/lunar_audio.gd",
+      "footsteps": "tres muestras alternadas facilitadas por el usuario"
+    },
+    {
+      "id": "lunar_footstep_samples",
+      "kind": "asset",
+      "path": "assets/sfx/pasos/"
+    },
+    {
+      "id": "solar_audio_soho_loop",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/sol_sonificacion_soho_bucle.ogg"
+    },
+    {
+      "id": "solar_audio_soho",
+      "kind": "asset",
+      "path": "assets/props_luna/nasa/sol_sonificacion_soho.ogg"
+    },
+    {
+      "id": "solar_audio_psp",
+      "kind": "asset",
+      "path": "assets/sfx/solar/tormenta_psp.wav",
+      "source": "https://doi.org/10.5281/zenodo.20171838",
+      "license": "CC BY 4.0"
+    },
+    {
+      "id": "lunar_music",
+      "kind": "script",
+      "path": "lunar/lunar_music.gd"
+    },
+    {
+      "id": "lunar_music_tracks",
+      "kind": "asset",
+      "path": "assets/music/"
+    },
+    {
+      "id": "lunar_globe",
+      "kind": "script",
+      "path": "lunar/lunar_globe.gd"
+    },
+    {
       "id": "lunar_mission",
       "kind": "script",
       "path": "lunar/lunar_mission.gd"
@@ -1010,6 +1053,7 @@
       "id": "lunar_interface",
       "kind": "script",
       "path": "lunar/lunar_interface.gd",
+      "import_dependencies": "assets/ui/hud/moneda.png, assets/ui/hud/saltar.png, assets/ui/titulo_artemis_gato.png y fuente Silkscreen",
       "description": "El botón Jugar de la portada abre el selector de bases de la campaña individual."
     },
     {
@@ -1184,6 +1228,61 @@
     }
   ],
   "edges": [
+    [
+      "lunar_game",
+      "uses",
+      "lunar_audio"
+    ],
+    [
+      "lunar_audio",
+      "uses",
+      "lunar_footstep_samples"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "solar_audio_psp"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "solar_audio_soho"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "solar_audio_soho_loop"
+    ],
+    [
+      "lunar_audio",
+      "configured_by",
+      "lunar_profile"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "lunar_music"
+    ],
+    [
+      "lunar_music",
+      "loads",
+      "lunar_music_tracks"
+    ],
+    [
+      "lunar_music",
+      "uses",
+      "lunar_mission"
+    ],
+    [
+      "lunar_interface",
+      "uses",
+      "lunar_globe"
+    ],
+    [
+      "lunar_globe",
+      "uses",
+      "config"
+    ],
     [
       "director",
       "loads",

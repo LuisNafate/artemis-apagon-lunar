@@ -1,8 +1,9 @@
-# gdlint: disable=max-file-lines
+# gdlint: disable=max-file-lines,max-public-methods
 class_name LunarInterface
 extends CanvasLayer
 
 signal selected(action: String, argument: String)
+signal sfx_volume_changed(value: float)
 
 const TITLE := preload("res://assets/ui/fonts/BarlowCondensed-Bold.ttf")
 const BODY := preload("res://assets/ui/fonts/Barlow-SemiBold.ttf")
@@ -210,8 +211,8 @@ func _build_play(root: Control) -> void:
 	feedback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_float_text(feedback)
 	feedback.add_theme_color_override("font_color", Color("#fbefd3"))
-	# El objetivo y el siguiente paso van en un desplegable bajo los recursos para no
-	# taparse con el panel de la zona ni con los botones de abajo.
+	# Objetivo y siguiente paso viven en un desplegable arriba a la izquierda, bajo los recursos.
+	# Así no tapan el panel de la zona ni los botones de abajo.
 	var drop := VBoxContainer.new()
 	drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	drop.add_theme_constant_override("separation", 6)
@@ -648,13 +649,15 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	_list.add_child(extras)
 	var roles := LunarOpening.corner_button("Roles")
 	var archive := LunarOpening.corner_button("Archivo científico")
-	for link in [roles, archive]:
+	var sound := LunarOpening.corner_button("Sonido")
+	for link in [roles, archive, sound]:
 		link.custom_minimum_size = Vector2(150, 50)
 		LunarButtonKit.apply(link, &"soltar", 20)
 		extras.add_child(link)
 		_animate_button(link, _list.get_child_count() + 1, false)
 	roles.pressed.connect(func() -> void: selected.emit("roles", ""))
 	archive.pressed.connect(func() -> void: selected.emit("science", ""))
+	sound.pressed.connect(func() -> void: selected.emit("sound_options", ""))
 	var wallet := HBoxContainer.new()
 	wallet.add_theme_constant_override("separation", 8)
 	_list.add_child(wallet)
@@ -1017,13 +1020,37 @@ func wait_for_guest(base_name: String, host_address: String, status: String) -> 
 	_compact_menu()
 
 
-func session_menu(mode: StringName, status: String = "") -> void:
+func session_menu(mode: StringName, status: String = "", sfx_volume: float = 1.0) -> void:
 	var note := "Partida en pausa." if mode == &"solo" else "La base sigue en actividad."
 	_prepare_menu("OPCIONES", status if not status.is_empty() else note)
 	_button(_list, "Volver a la partida", "back_to_play")
+	_sfx_control(sfx_volume)
 	_button(_list, "Archivo científico", "science")
 	_button(_list, "Salir de la partida" if mode == &"guest" else "Guardar y salir", "leave")
 	_compact_menu()
+
+
+func sound_options(sfx_volume: float) -> void:
+	_prepare_menu("OPCIONES DE SONIDO", "Ajusta el volumen de los efectos.")
+	_sfx_control(sfx_volume)
+	_button(_list, "Volver", "lobby")
+
+
+func _sfx_control(volume: float) -> void:
+	var label := _label(_list, "Efectos de sonido · %d %%" % roundi(volume * 100.0), 22)
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = volume
+	slider.custom_minimum_size = Vector2(0, 50)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list.add_child(slider)
+	slider.value_changed.connect(
+		func(value: float) -> void:
+			label.text = "Efectos de sonido · %d %%" % roundi(value * 100.0)
+			sfx_volume_changed.emit(value)
+	)
 
 
 func show_science(record_title: String, description: String, index: int, count: int) -> void:

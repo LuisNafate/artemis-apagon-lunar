@@ -480,6 +480,16 @@
       "continuity": "El astronauta queda oculto hasta el fotograma 270 inclusive y sale tras el alunizaje."
     }
   },
+  "audio_feedback": {
+    "scope": "piloto local de la campaña; no modifica ni transmite el estado de simulación",
+    "startup": "antes del primer arranque de un clon, importar recursos con el editor Godot; conservar los metadatos y las texturas extraídas, incluidos el título y los iconos actuales",
+    "volume": "control local persistente, silencio al 0 %, efectos, alertas y recompensas ajustados juntos",
+    "solar_alert": "Parker Solar Probe al comenzar el aviso de partículas y SOHO en bucle durante el aviso y la tormenta, con fundido y volumen SFX; SOHO corto para llamarada sin partículas; pitidos finales y efectos visuales",
+    "steps": "tres muestras alternadas según distancia recorrida, mínimo 0,35 s entre pasos; se excluyen saltos de posición de un metro o más",
+    "proximity": "al cambiar a una estación o depósito cercano, con espera de 1,2 segundos",
+    "mining": "golpes cada 0,42 segundos mientras la extracción permanece activa",
+    "music": "menú fuera de partida; día o noche según shadow_active; fundido cruzado de 2 segundos y pausa de la pista saliente para reanudarla"
+  },
   "distribution_checks": {
     "android": {
       "outcome": "APK validado por firma, alineación y manifiesto",

@@ -25,6 +25,9 @@ const SINK_TOLERANCE := 0.25
 const TERRAIN_WAIT_MSEC := 8000
 const CARGO_MODELS := {&"ice": [preload("res://assets/props_luna/estaciones/caja_hielo.glb"), 0.62]}
 const ROUTES := preload("res://lunar/lunar_routes.gd")
+const AUDIO := preload("res://lunar/lunar_audio.gd")
+const MUSIC := preload("res://lunar/lunar_music.gd")
+const SOLAR_SOUND := preload("res://assets/sfx/solar/tormenta_psp.wav")
 const MATCOLORS := {
 	&"sample": CrestWorld.BLUE,
 	&"ice": CrestWorld.BLUE,
@@ -82,11 +85,16 @@ var _replica_positions: Array = []
 var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
+var _solar_audio := AudioStreamPlayer.new()
+var _audio := AUDIO.new()
+var _music := MUSIC.new()
 var _beep_audio := AudioStreamPlayer.new()
 var _flare_audio := AudioStreamPlayer.new()
 var _sun_loop := AudioStreamPlayer.new()
 var _sun_fade: Tween
 var _sun_fading := false
+var _sun_fade_db := -24.0
+var _sfx_level := 1.0
 var _solar_key := ""
 var _beep_second := 0
 var _storm_was_active := false
@@ -98,6 +106,8 @@ var _reward_audio := AudioStreamPlayer.new()
 
 func _ready() -> void:
 	LunarLanguage.setup()
+	add_child(_audio)
+	add_child(_music)
 	if profile_path == LunarProfile.SAVE_PATH:
 		for argument: String in OS.get_cmdline_user_args():
 			if argument.begins_with("--perfil="):
@@ -144,11 +154,13 @@ func _ready() -> void:
 	language.offset_top = 14.0
 	language.offset_bottom = 60.0
 	language.changed.connect(_language_changed)
+	ui.sfx_volume_changed.connect(_change_sfx_volume)
 	multiplayer.peer_disconnected.connect(_peer_left)
 	multiplayer.connected_to_server.connect(_request_join)
 	multiplayer.connection_failed.connect(_connection_failed)
 	multiplayer.server_disconnected.connect(_host_left)
 	_build_alert_audio()
+	_apply_sfx_volume(float(profile.data.get("sfx_volume", 1.0)) if profile.error == OK else 1.0)
 	if profile.error != OK:
 		ui.wait_for_guest("PERFIL LOCAL", "", "No se pudo leer el progreso guardado.")
 	else:
@@ -201,6 +213,11 @@ func _language_changed() -> void:
 func _process(delta: float) -> void:
 	if _language_layer != null:
 		_language_layer.visible = net == &"title" or (net == &"lobby" and not ui.has_close())
+	var in_game := net == &"solo" or net == &"guest" or (net == &"host" and play_started)
+	var music_context := &"menu"
+	if in_game:
+		music_context = &"night" if sim.shadow_active() else &"day"
+	_music.set_context(music_context)
 	if not _pending_reward.is_empty():
 		_reward_retry -= delta
 		if _reward_retry <= 0.0:
@@ -398,6 +415,7 @@ func _zone_name_at(point: Vector3) -> String:
 
 
 func _choose(action: String, argument: String) -> void:
+	_audio.play_effect(&"button")
 	if profile.error != OK or _loading:
 		return
 	match action:
@@ -452,7 +470,9 @@ func _choose(action: String, argument: String) -> void:
 		"leave":
 			_leave()
 		"menu":
-			ui.session_menu(net)
+			ui.session_menu(net, "", float(profile.data.sfx_volume))
+		"sound_options":
+			ui.sound_options(float(profile.data.sfx_volume))
 		"back_to_play":
 			ui.playing()
 		"action", "release":
@@ -473,7 +493,7 @@ func _choose(action: String, argument: String) -> void:
 			_show_science(1)
 		"close_science":
 			if _science_from_session:
-				ui.session_menu(net)
+				ui.session_menu(net, "", float(profile.data.sfx_volume))
 			else:
 				ui.lobby(profile, "")
 
@@ -578,6 +598,7 @@ func join(address: String, port: int = PORT) -> void:
 
 
 func _prepare_base(id: String, seed_value: int, single_player: bool = false) -> void:
+	_audio.reset_tracking()
 	_close_opening()
 	sim = LunarMission.new()
 	sim.prepare(id, seed_value, single_player)
@@ -653,7 +674,9 @@ func _leave() -> void:
 	if net in [&"host", &"solo"]:
 		if not _commit_reward() or not _save_base(true):
 			if play_started or net == &"solo":
-				ui.session_menu(net, "El guardado falló. Inténtalo de nuevo.")
+				ui.session_menu(
+					net, "El guardado falló. Inténtalo de nuevo.", float(profile.data.sfx_volume)
+				)
 			else:
 				ui.wait_for_guest(sim.base.name, _address, "El guardado falló. Inténtalo de nuevo.")
 			return
@@ -664,6 +687,7 @@ func _leave() -> void:
 
 
 func _close_network() -> void:
+	_audio.reset_tracking()
 	net = &"lobby"
 	_surface_camera()
 	play_started = false
@@ -1067,6 +1091,12 @@ func _sheltered() -> Array[bool]:
 
 
 func _render(delta: float, player: int) -> void:
+	if ui.play.visible and sim.phase != &"flight" and sim.connected[player]:
+		_audio.update_player(
+			delta, pilots[player].position, _spots[player], sim.pilots[player].mine != &""
+		)
+	else:
+		_audio.reset_tracking()
 	for index in range(2):
 		pilots[index].visible = sim.connected[index] and sim.phase != &"flight"
 	for id: int in _boxes.keys():
@@ -1157,11 +1187,13 @@ func _alert_if_changed() -> void:
 	var kind := ""
 	if sim.storm_warning() > 0.0 or sim.storm_active():
 		kind = "solar"
+	elif not sim.flare_notice().is_empty():
+		kind = "flare"
 	elif sim.outage_warning() > 0.0 or sim.energy_cut():
 		kind = "power"
 	elif sim.radio_warning() or sim.radio_cut():
 		kind = "radio"
-	if kind != _alert_kind and not kind.is_empty() and _alert_audio.stream != null:
+	if kind != _alert_kind and kind in ["power", "radio"] and _alert_audio.stream != null:
 		_alert_audio.play()
 	_alert_kind = kind
 
@@ -1172,7 +1204,9 @@ func _storm_effects(delta: float, player: int) -> void:
 	var key := sim.solar_key()
 	if key != _solar_key and not key.is_empty():
 		ui.flash()
-		if key.begins_with("flare@") and _flare_audio.stream != null:
+		if key.begins_with("sep@") and _solar_audio.stream != null:
+			_solar_audio.play()
+		elif key.begins_with("flare@") and _flare_audio.stream != null:
 			_flare_audio.play()
 	_solar_key = key
 	var left := sim.storm_warning()
@@ -1215,24 +1249,31 @@ func _fade_sun(volume: float, seconds: float, stop_after: bool) -> void:
 	if _sun_fade != null:
 		_sun_fade.kill()
 	if not _sun_loop.playing:
-		_sun_loop.volume_db = -24.0
+		_set_sun_fade_db(-24.0)
 		_sun_loop.play()
 	_sun_fading = stop_after
 	_sun_fade = create_tween()
-	_sun_fade.tween_property(_sun_loop, "volume_db", volume, seconds)
+	_sun_fade.tween_method(_set_sun_fade_db, _sun_fade_db, volume, seconds)
 	if stop_after:
 		_sun_fade.tween_callback(_sun_loop.stop)
 		_sun_fade.tween_callback(func() -> void: _sun_fading = false)
 
 
+func _set_sun_fade_db(value: float) -> void:
+	_sun_fade_db = value
+	_sun_loop.volume_db = value + _audio.BOOST_DB - 5.0 + linear_to_db(_sfx_level)
+
+
 func _build_alert_audio() -> void:
 	add_child(_alert_audio)
+	add_child(_solar_audio)
 	add_child(_reward_audio)
 	add_child(_beep_audio)
 	add_child(_flare_audio)
 	add_child(_sun_loop)
 	if DisplayServer.get_name() == "headless":
 		return
+	_solar_audio.stream = SOLAR_SOUND
 	# Sonificación real del Sol con datos de SOHO; créditos en assets/props_luna/nasa/procedencia.md.
 	_flare_audio.stream = load(FLARE_SOUND)
 	var loop := load(SUN_LOOP) as AudioStreamOggVorbis
@@ -1252,6 +1293,24 @@ func _build_alert_audio() -> void:
 	_reward_audio.pitch_scale = 1.5
 	_beep_audio.stream = stream
 	_beep_audio.pitch_scale = 2.0
+
+
+func _apply_sfx_volume(value: float) -> void:
+	var level := clampf(value, 0.0, 1.0)
+	_sfx_level = level
+	_set_sun_fade_db(_sun_fade_db)
+	_audio.set_volume(level)
+	_alert_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_solar_audio.volume_db = _audio.BOOST_DB - 5.0 + linear_to_db(level)
+	_reward_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_beep_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_flare_audio.volume_db = _audio.BOOST_DB - 5.0 + linear_to_db(level)
+
+
+func _change_sfx_volume(value: float) -> void:
+	_apply_sfx_volume(value)
+	profile.data.sfx_volume = clampf(value, 0.0, 1.0)
+	profile.save()
 
 
 func _send_snapshot() -> void:

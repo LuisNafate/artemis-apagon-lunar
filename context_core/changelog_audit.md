@@ -208,6 +208,41 @@
 - Blender 5.2.2. El gato queda oculto y a escala cero hasta el fotograma 270 inclusive. Se regeneró el tramo 185–270 y se verificó el descenso antes y después. El archivo Theora conserva sus 384 fotogramas a 24 fps y 1280 × 720.
 - Cresta y campaña vuelven al gato optimizado con 15 huesos, tinte por jugador, marcha articulada, reposo al parar y pose de carga. Se actualizó la prueba de Cresta para usar la posición actual de la mesa de práctica.
 - Godot 4.7.2. Verificadas las poses de ambos gatos y el traspaso en Cresta, con captura en Forward+. Cresta ejecuta 10 casos y mantiene 25 fallos de rutas y objetos del mapa. La campaña sigue reportando 17 fallos de tutorial, lanzamiento y recompensas.
+## 2026-11-15 · Comprobación de arranque en la rama soundFx
+
+- Godot 4.7.2 stable en Linux: importación del proyecto mediante `--headless --editor --import` y arranque de la escena principal durante 120 fotogramas con `--headless --quit-after 120`, ambos sin errores registrados tras la importación. El primer arranque, previo a importar, no encontró las clases globales.
+- No hay herramientas MCP de Godot disponibles en esta sesión. La comprobación headless no verifica imagen, interacción ni reproducción de audio. No se modificaron escenas ni GDScript; no se ejecutó `tests/verify.ps1`.
+
+## 2026-11-15 · Conexión MCP de Godot
+
+- Instalado fuera del proyecto Coding-Solo/godot-mcp (commit `1209744fad78f3998f98c7394fd0f6ef50da5281`), con dependencias actualizadas, y registrado como `godot` en la configuración global de Codex. `npm audit` terminó sin vulnerabilidades conocidas.
+- Un cliente MCP de prueba consultó la versión Godot 4.7.2, inspeccionó el proyecto, arrancó la escena principal con Vulkan Forward+ y la detuvo tras leer la salida: se registraron advertencias de GDScript, sin errores en la muestra. La sesión actual de Codex aún no dispone de las herramientas registradas; debe recargarse para descubrirlas. No se comprobó el sonido ni se modificaron escenas o GDScript.
+
+## 2026-11-15 · Primeros efectos de sonido
+
+- Godot 4.7.2 en Linux. `lunar_audio.gd` sintetiza efectos originales de botón, pasos por distancia, cercanía y extracción periódica; `LunarGame` los activa para el piloto local en individual y cooperativo. La síntesis evita dependencias de audio externas. Pendiente escucha y ajuste de mezcla en dispositivos y música.
+- `tests/verify.ps1` se ejecutó y se detuvo en `gdformat` por `crest/crest_world.gd` y `crest/lunar_crater.gd`, archivos previos a este corte. El lint general registra tres problemas previos en `crest_world.gd`; formato y lint de los dos scripts modificados pasan. Importación y arranque headless sin errores. Una prueba específica verificó generación de cuatro efectos, botones, distancia de pasos, proximidad, extracción, enfriamiento y descarte de teletransportes.
+- Comprobaciones individuales: Academia 16 casos y 3890 comprobaciones sin fallos; Puesto 7 y 75; Apagón lunar 3 y 35. Cresta no compila por tipos en su suite y Campaña obtiene 17 fallos de 419 comprobaciones. Ambas incidencias se reprodujeron en una copia limpia del commit previo `9219609` con los mismos resultados. No se validó la escucha de audio ni se corrieron pruebas en Android.
+
+## 2026-11-15 · Volumen de efectos
+
+- Godot 4.7.2 en Linux. Los efectos sintetizados suben de -10 a +4 dB, 14 dB respecto al corte anterior. Un deslizador en el menú de opciones y en el menú inicial controla efectos y alerta entre 0 y 100 %, con preferencia persistente en el perfil local y compatibilidad con perfiles anteriores.
+- `tests/verify.ps1` se ejecutó y volvió a detenerse en el formato previo de `crest/crest_world.gd` y `crest/lunar_crater.gd`. Formato y lint de los cuatro scripts modificados, importación y arranque headless pasaron. La prueba de integración comprobó deslizador, ganancia, silencio, alerta, menú y restauración desde el perfil. Pendiente escuchar y ajustar la mezcla en dispositivos.
+
+## 2026-11-15 · Música de menú, día y noche
+
+- Godot 4.7.2 en Linux. Copiadas íntegramente las tres pistas MP3 aportadas por el usuario a `assets/music/`. `LunarMusic` selecciona menú o ciclo de la misión, cruza las pistas durante 2 s y pausa la saliente para reanudar desde su posición; cada pista se repite al terminar. Las opciones durante una partida conservan la música del ciclo.
+- `tests/verify.ps1` se ejecutó tras el cambio y volvió a detenerse en el formato previo de `crest/crest_world.gd` y `crest/lunar_crater.gd`. Los scripts cambiados pasaron formato y lint; importación y arranque headless terminaron sin errores, aunque al cerrar con música activa Godot notificó dos instancias MP3 sin liberar. Pruebas específicas verificaron las tres pistas, bucle, fundido cruzado, reanudación desde la posición pausada y selección de menú/día/noche. Pendiente escucha y mezcla en dispositivos e investigar la advertencia de cierre.
+
+## 2026-11-15 · Integración de main en soundFx
+
+- Actualizada `soundFx` hasta `origin/main` en `41d1e75`, con el selector 3D de bases. Resuelto el conflicto de interfaz conservando el globo y las opciones de sonido. El modelo `assets/props_luna/luna_bases.glb` referenciado por main no está versionado ni se encontró localmente; se usa una esfera provisional con puntos derivados del registro de campaña, sustituida automáticamente si aparece el modelo.
+- Godot 4.7.2 en Linux. Importación sin errores, formato y lint de interfaz y globo aprobados. Una prueba headless comprobó las tres músicas, opciones de SFX, nueve bases y tarjetas visibles. `tests/verify.ps1` volvió a detenerse por el formato previo de `crest_world.gd` y `lunar_crater.gd`. La prueba registró advertencia de instancias al cerrar. Pendientes el modelo original, revisión visual y escucha.
+
+## 2026-11-15 · Segunda integración de main en soundFx
+
+- `origin/main` fue reescrito y avanzó a `dbab1b6`; se integró mediante el merge `fd75ad2`. Se conservaron la cinemática, el menú nuevo, el gato articulado y los cambios de sonido locales. El modelo original `luna_bases.glb` ya está incluido y se retiró la esfera provisional. El enlace Sonido se adaptó al menú de modos.
+- Godot 4.7.2 en Linux. `tests/verify.ps1` aprobó formato, lint, importación, Academia (16/3926), Puesto (7/75) y 3D (3/35), y se detuvo en Cresta (10/162, 25 fallos), ya documentados en main. Campaña se ejecutó por separado: 8/424, 17 fallos previamente documentados. La prueba de integración comprobó cinemática, Luna original, nueve bases, deslizador SFX y música nocturna. Godot notificó instancias sin liberar al cerrar las pruebas; falta revisión visual y escucha.
 
 ## 2026-11-15 - Colores originales, poses articuladas (revisión 21)
 
@@ -248,6 +283,10 @@
 - Ruta comprobada: Mons Mouton Plateau → Slater Plain → Malapert Massif → Mons Mouton → Peak near Cabeus B → Nobile Rim 1 → de Gerlache Rim 2 → Nobile Rim 2 → Haworth → anuncio de campaña completada. Los nueve regresos ocurrieron durante el primer día de su base. Las fases de vuelo, alerta, corte de radio, salto, paso por la puerta, continuación y reinicio tienen, además, pruebas de regresión independientes. Se verificó la visibilidad de las nueve fichas del globo y se repitió la primera misión con 30 y 120 FPS simulados. Se estabilizó la prueba de movimiento sin colisión, comprobando el estado antes de que el trabajador asíncrono instale el terreno.
 - Límites: recorrido automatizado con una serie semilla y una estrategia de compra. Quedan por medir la experiencia con jugadores, el tiempo percibido de progresión, dispositivos físicos y la completabilidad para otras semillas.
 
+## 2026-11-15 · Integración de mundo abierto en soundFx
+
+- Integrado `origin/main` hasta `2418b9c` conservando música, efectos y control de volumen, junto con mundo abierto, salto, economía transaccional y MVP individual. El sonido de recompensa también responde al control de SFX. La proximidad y la extracción usan las mismas referencias de estaciones y depósitos de la simulación. En headless no se inicia la mezcla de efectos ni música.
+- Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y todas las suites: Academia 16/3936, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 10/415, mundo abierto 12/876 y MVP individual 9/526, con cero fallos. Comprobación adicional de intro, selector, control SFX, persistencia del perfil, volumen de recompensa y selección musical nocturna. Pendiente escuchar y revisar la mezcla en dispositivos.
 ## Integración de ítems del MVP individual · revisión 24
 
 - P1. Reproducido en Forward+: una ración suelta fuera de una estación quedaba sin panel de recogida. La simulación y la interfaz ahora comparten el alcance. El terreno de apoyo se valida al soltar; las cajas antiguas en el aire se apoyan al aparecer en un chunk cargado. La carga conserva un único dueño. Los lotes preparados y sueltos cuentan para el límite de propelente y el stock listo espera si el mundo ya tiene 24 cajas.
@@ -265,7 +304,56 @@
 - El conductor de navegación identifica etiquetas y pulsa sus rectángulos visibles. La selección externa de las bases y la espera acelerada en el refugio se aplican en el arnés de progresión. La [matriz de objetivos](auditoria_objetivos_mvp.md) registra las instrucciones, los objetos y su validación. Pendientes la primera partida con jugadores nuevos y los dispositivos físicos.
 - Godot 4.7.2. Formato, lint, importación, arranque y ocho ejecuciones de regresión sin fallos. La campaña normal completó nueve bases con 535 comprobaciones. La ruta de botones visibles completó las nueve con 91 comprobaciones; la variante corta en el verificador pasó 15. El registro grafica 1280 × 720, 960 × 540 y el cambio nocturno a perspectiva en `dist/evidencia-objetivos/`.
 
+## 2026-11-15 · Integración de objetivos y tormentas en soundFx
+
+- Integrado `origin/main` hasta `1e046cc` conservando música, SFX y sus controles. Se incorporan objetivos táctiles, presentación de ítems y tormentas basadas en registros DONKI. Los efectos de proximidad y extracción siguen usando los puntos de estación y depósito de la misión; la configuración del escenario y el registro de audio conservan sus entradas.
+- Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y todas las regresiones: Academia 16/3953, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 12/542, mundo abierto 12/878, MVP 9/535, navegación visible 1/15 y DONKI 1/698; cero fallos. Comprobaciones adicionales verificaron intro, selector, volumen SFX persistente, recompensa y selección de música nocturna. Pendiente escucha y mezcla en dispositivos.
+
+## 2026-11-15 · Pasos amortiguados
+
+- El efecto de pasos usa un golpe de 85 Hz y ruido filtrado, con duración de 0,18 s, para sugerir la escucha desde el casco. Conserva el control SFX y la cadencia por distancia. Pendiente escucha y ajuste en dispositivos.
+- Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y las nueve ejecuciones de regresión: Academia 16/3953, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 12/542, mundo abierto 12/878, MVP 9/535, navegación visible 1/15 y DONKI 1/698. Una prueba específica comprobó la generación del golpe filtrado y el control de volumen.
+
+## 2026-11-15 · Muestras de pasos facilitadas por el usuario
+
+- Tres fragmentos de `dragon-studio-creepy-distant-footsteps-482883.mp3` reemplazan los pasos sintetizados. Se alternan al recorrer distancia, con separación mínima de 0,35 s y ajuste de nivel para evitar saturación. La procedencia y los puntos de corte se registran en `assets/sfx/pasos/procedencia.md`.
+- Godot 4.7.2 (Linux). Una prueba verificó tres muestras, ganancia, cadencia y reposo. `tests/verify.ps1` pasó formato, lint, importación, arranque y las nueve regresiones: Academia 16/3956, Puesto 7/75, 3D 3/35, Cresta 10/400, campaña 12/542, mundo abierto 12/878, MVP 9/535, navegación visible 1/15 y DONKI 1/698. En el primer intento falló una comprobación de ruta lejana; pasó al repetir la suite y en la ejecución completa posterior. Pendiente escuchar la mezcla en dispositivos.
+
+## 2026-11-15 · Prueba visible de monedas y llamarada
+
+- Godot 4.7.2 en Linux, Vulkan Forward+ y NVIDIA RTX 3050. Con perfil aislado se condujo Mons Mouton Plateau mediante los controles visibles hasta el regreso: la misión acreditó 150,00 monedas, mostró el saldo y registró el recibo. Después se preparó el segundo día y se adelantó el reloj hasta una alerta programada: se observó la llamarada DONKI M5.5 del 1 de septiembre de 2024 y su transición a tormenta con refugio. Se adelantó de nuevo al amanecer: se abonaron 27,50 monedas y el saldo de 177,50 quedó visible y guardado.
+- La prueba usó una semilla y ajustes explícitos del día y reloj, no una espera natural de la campaña completa. El perfil habitual no se usó. El motor notificó seis instancias sin liberar al cerrar el arnés temporal. No se modificaron GDScript ni escenas; no se ejecutó `tests/verify.ps1` en este corte.
+
+## 2026-11-15 · Representación sonora de alerta solar
+
+- Se incorporó un fragmento de `Solar_CME_Growl.wav`, audificación de datos FIELDS de Parker Solar Probe del 5 de septiembre de 2022, procesada por Robert Alexander y distribuida bajo CC BY 4.0. Fuente, crédito, transformaciones y hashes en `assets/sfx/solar/procedencia.md`. Es una representación de una eyección coronal, no el sonido literal en el vacío ni una grabación de cada llamarada DONKI. El aviso solar y el aviso sin partículas reproducen el fragmento una vez al entrar en el estado y obedecen el volumen SFX.
+- Godot 4.7.2 en Linux: `tests/verify.ps1` aprobó formato, lint, importación, arranque y las nueve regresiones (Academia 16/3956, Puesto 7/75, 3D 3/35, Cresta 10/400, Campaña 12/542, Mundo abierto 12/878, MVP 9/535, navegación 1/15 y DONKI 1/698). La prueba visible con perfil aislado mostró la alerta M5.5, su transición a partículas y el aviso X2.2 sin partículas; el reproductor estaba activo en ambos. La señal capturada del monitor de salida coincidió con dos segundos de la muestra (correlación 0,999). Para mostrar los eventos se ajustó el día y el reloj. El arnés temporal notificó cuatro instancias sin liberar al cerrar; queda pendiente escuchar la mezcla en otros dispositivos.
+
+## 2026-11-15 · Integración de main en soundFx
+
+- Integrado `origin/main` hasta `0fea98f`: interfaz, archivo científico y efectos visuales de tormenta junto con música, pasos, SFX y controles existentes. El aviso SEP reproduce Parker Solar Probe; la llamarada sin partículas reproduce SOHO. Cada evento se anuncia una vez y ambos sonidos y los pitidos respetan el control SFX. Se conservan los créditos en sus archivos de procedencia.
+- Godot 4.7.2 (Linux): `tests/verify.ps1` aprobó formato, lint, importación, arranque y las suites Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta 10/214 con 22 fallos de ruta. Una copia limpia de `origin/main` reprodujo exactamente los mismos 22 fallos. Pendiente revisar la ruta y las colisiones de Cresta incorporadas por main.
+- Prueba visible con perfil aislado y reloj adelantado: aviso SEP con sonido Parker, llegada de partículas, aviso sin partículas con sonido SOHO y ganancia SFX de ambos reproductores y pitidos. El arnés temporal notificó instancias y recursos sin liberar al cerrar. Prueba adicional headless: intro, selector, nueve bases, opción de sonido y música nocturna. Pendiente escuchar la mezcla en otros dispositivos.
+- Se ejecutaron por separado las regresiones restantes: Campaña 12/543, Mundo abierto 12/880, MVP 9/520, navegación 1/15 y DONKI 2/732, todas sin fallos.
+
+## 2026-11-15 · Reparación de arranque tras la integración
+
+- La limpieza posterior al merge eliminó por error metadatos de importación y texturas extraídas de recursos nuevos de main; el arranque directo falló al cargar GLB y PNG. Se regeneraron y conservaron los archivos de importación, UID y texturas.
+- Godot 4.7.2 Linux: importación headless y arranque headless durante 60 fotogramas sin errores; arranque gráfico Vulkan Forward+ durante 600 fotogramas sin errores. La primera importación registró avisos de UID ausentes y los regeneró; se conservan para próximos arranques. No se modificaron scripts ni escenas. En un clon nuevo Godot debe importar recursos antes de ejecutarlos.
+
+## 2026-11-15 · Integración de main con interfaz de píxel
+
+- Integrado `origin/main` hasta `8a22ae6`: título con gato, fuente y botones, objetivos desplegables, piloto e insumos para cinemática; se conserva el control de sonido y la música. Conflicto de UID de moneda resuelto con el de main; importaciones y texturas nuevas se conservan, y se retiró la importación del título eliminado.
+- Godot 4.7.2 Linux: `tests/verify.ps1` aprobó formato, lint, importación, arranque y Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta 10/214 con los mismos 22 fallos de ruta identificados anteriormente. Pruebas independientes: intro, selector, nueve bases, control de sonido y música nocturna. Arranque gráfico Vulkan correcto; cierre automático notificó dos instancias ObjectDB sin liberar.
+- Las regresiones restantes se ejecutaron por separado sin fallos: Campaña 12/543, Mundo abierto 12/878, MVP 9/520, navegación 1/15 y DONKI 2/732.
+
 ## Botón Jugar en la portada
 
 - **Jugar** abre el selector de bases de la campaña individual. Se actualizaron las pruebas de navegación para pulsar el nuevo texto.
 - Godot 4.7.2. Formato, lint, importación, arranque, Academia, Puesto y 3D pasaron. El verificador completo se detuvo en la ruta de Estación Cresta con 22 fallos. Por separado pasaron campaña lunar (543 comprobaciones), mundo abierto (878) y la navegación visible desde la portada hasta el primer regreso a Tierra (15).
+
+## 2026-11-15 · Integración de dosímetro y sonido solar continuo
+
+- Integrado `origin/main` hasta `e365481`, con dosímetro, consecuencias y reporte final, y sonido SOHO continuo durante la tormenta. Se conservan música, efectos y alerta inicial Parker; el fundido SOHO respeta el control SFX, incluido el silencio.
+- Godot 4.7.2 Linux: `tests/verify.ps1` pasó formato, lint, importación, arranque, Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta con los 22 fallos de ruta previamente documentados. Prueba gráfica específica verificó inicio, fundido, volumen al 50 %, silencio y apagado del sonido continuo. El primer arnés temporal se cerró con un fallo por acceder a un objeto después de liberarlo; se corrigió el arnés y la repetición terminó sin errores.
+- Las regresiones restantes pasaron por separado: Campaña 12/544, Mundo abierto 12/878, MVP 9/530, navegación 1/15 y DONKI 3/749.

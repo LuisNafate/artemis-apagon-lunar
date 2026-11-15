@@ -1028,6 +1028,25 @@
         "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
       }
     },
+    "live_validation": {
+      "scope": "Mons Mouton Plateau individual, perfil aislado",
+      "mission_coins": 150.0,
+      "second_day_coins": 27.5,
+      "flare": "2024-09-01T11:45:00-FLR-001 · M5.5",
+      "conditions": "segundo día y reloj adelantados para probar tormenta y amanecer",
+      "pending": "revisión visual en otros dispositivos y más semillas"
+    },
+    "audio_effects": {
+      "source": "pasos facilitados por el usuario, alerta solar basada en datos NASA, otros efectos sintetizados",
+      "startup": "recursos de main hasta 8a22ae6 importados con Godot 4.7.2; conservar metadatos y texturas extraídas",
+      "events": ["botón", "pasos", "proximidad a estaciones y depósitos", "extracción", "alerta", "recompensa"],
+      "footsteps": "tres fragmentos de dragon-studio-creepy-distant-footsteps-482883.mp3, alternados",
+      "solar_alert": "tormentas: adaptación de Solar CME Growl, Parker Solar Probe, Robert Alexander, CC BY 4.0; sonificación SOHO en bucle durante la tormenta y corta para llamaradas sin partículas, ver assets/props_luna/nasa/procedencia.md; pitidos finales y efectos visuales",
+      "local_player_only": true,
+      "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
+      "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",
+      "pending": ["escucha y mezcla en dispositivos", "revisar ruta bloqueada y colisiones de Cresta presentes en main"]
+    },
     "objective_guidance": {
       "audit": "context_core/auditoria_objetivos_mvp.md",
       "display": "Un objetivo táctil en superficie, con nombre y dirección; la acción contextual lo reemplaza al llegar.",

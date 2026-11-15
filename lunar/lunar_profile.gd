@@ -30,7 +30,7 @@ func _init(campaign_rules: Dictionary, save_path: String = SAVE_PATH) -> void:
 			var saved: Variant = file.get_var(false)
 			if file.get_error() == OK and _valid_save(saved):
 				data = saved
-				data.merge({"solo_bases": {}, "recent_mode": "host"})
+				data.merge({"solo_bases": {}, "recent_mode": "host", "sfx_volume": 1.0})
 				_committed = data.duplicate(true)
 				_has_save = true
 				return
@@ -45,6 +45,7 @@ func _init(campaign_rules: Dictionary, save_path: String = SAVE_PATH) -> void:
 		"active_role": "",
 		"recent": "",
 		"recent_mode": "host",
+		"sfx_volume": 1.0,
 		"bases": {},
 		"solo_bases": {},
 		"paid_missions": {},

@@ -187,6 +187,15 @@ LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al
 ## Pilotos y alunizaje · revisión 20
 
 CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por piloto y poses por velocidad y carga. La cinemática suprime toda la geometría del astronauta durante el descenso y la revela al desembarcar en el fotograma 271.
+## Efectos de la campaña
+
+`LunarGame` instancia `lunar/lunar_audio.gd`, que sintetiza efectos breves para botones, proximidad y extracción, y alterna tres fragmentos de pasos facilitados por el usuario en `assets/sfx/pasos/`. La cadencia sigue el desplazamiento del piloto local, sin alterar la simulación ni transmitir eventos de audio. El control de SFX del menú inicial y de opciones ajusta también las alertas y recompensas y se guarda en `LunarProfile`. `lunar/lunar_music.gd` reproduce las tres pistas del usuario desde `assets/music/` según menú y ciclo de día/noche, con fundido cruzado y pausa de las pistas inactivas. En headless no se inicia la mezcla. Pendiente revisar la mezcla con altavoces y dispositivos móviles.
+
+Cada evento solar se anuncia una vez: las tormentas de partículas usan la adaptación de datos de Parker Solar Probe acreditada en `assets/sfx/solar/procedencia.md`, y las llamaradas sin partículas usan la sonificación SOHO acreditada en `assets/props_luna/nasa/procedencia.md`. Durante el aviso y la tormenta suena además un bucle SOHO con fundidos, que se apaga al terminar o abrir un menú. Destello, pitidos de cuenta regresiva, sacudida y bordes de tormenta acompañan los eventos; todos los sonidos responden al control SFX. Las demás alertas conservan su tono.
+
+## Selector de bases de main
+
+`LunarGlobe` muestra el selector 3D y envía las acciones a `LunarInterface`. El modelo original `assets/props_luna/luna_bases.glb` está incluido desde la integración posterior de main.
 
 ## Paleta de AstroCat · revisión 21
 
@@ -207,3 +216,7 @@ LunarGame valida alcance y superficie de las cajas sueltas. LunarItemContext des
 ## Referencias de objetivos · revisión 25
 
 LunarObjective elige el texto y la clave del paso activo. LunarGame resuelve la estación, la puerta, la caja o el depósito en sus datos existentes. LunarInterface proyecta un marcador táctil sobre la cámara y lo reemplaza por el panel de proximidad al llegar. El marcador llama al planificador normal al pulsarlo. La [matriz de objetivos](auditoria_objetivos_mvp.md) documenta los textos, la identidad visual y el conductor automatizado de controles visibles.
+
+Godot importa los modelos GLB y las imágenes antes de ejecutar: se conservan sus archivos `.import`, UID y texturas extraídas. En un clon nuevo se debe abrir el proyecto en el editor o ejecutar la importación headless antes del primer arranque.
+
+La interfaz de campaña usa el título con gato, botones de píxel, fuente Silkscreen y objetivos desplegables de main; conserva el acceso al control de SFX. Los nuevos recursos mantienen sus importaciones de Godot.
