@@ -13,6 +13,16 @@ const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
 const CHIP_FILL := Color("#ecd5a8")
+const ROLE_CARDS := {
+	"engineer": preload("res://assets/ui/roles/engineer.png"),
+	"botanist": preload("res://assets/ui/roles/botanist.png"),
+	"geologist": preload("res://assets/ui/roles/geologist.png")
+}
+const ROLE_PERKS := {
+	"engineer": "Montaje un 10% más rápido",
+	"botanist": "Una ración extra cada 5 cosechas",
+	"geologist": "Una caja extra cada 10 extracciones"
+}
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
 const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const CHIP_ICONS := [
@@ -718,20 +728,132 @@ func roles(profile: LunarProfile) -> void:
 	_prepare_menu(
 		"ROLES", "%s monedas · Un rol por partida. Elige antes de entrar." % profile.balance_text()
 	)
-	_button(_list, "Volver", "lobby")
-	for id in ["", "engineer", "botanist", "geologist"]:
-		var entry: Dictionary = profile.rules.roles.get(id, {"label": "Sin rol"})
-		var owned: bool = id.is_empty() or id in profile.data.roles
-		var picked: bool = id == profile.data.active_role
-		var suffix := " · elegido" if picked else ("" if owned else " · 250 monedas")
-		_button(_list, entry.label + suffix, "choose_role" if owned else "buy_role", id)
-		var description: Dictionary = {
-			"engineer": "Montaje un 10% más rápido",
-			"botanist": "Una ración extra cada 5 cosechas",
-			"geologist": "Una caja extra cada 10 extracciones"
-		}
-		if description.has(id):
-			_label(_list, description[id], 20).modulate = SOFT
+	menu.offset_left = -435.0
+	menu.offset_right = 435.0
+	menu.offset_top = -345.0
+	menu.offset_bottom = 345.0
+	var price := int(profile.rules.wallet.role_price)
+	var coins := float(profile.data.balance) / float(LunarProfile.SCALE)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 22)
+	_list.add_child(row)
+	var index := 0
+	for id in ["engineer", "botanist", "geologist"]:
+		_role_card(row, profile, id, index, price, coins >= price)
+		index += 1
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_CENTER
+	footer.add_theme_constant_override("separation", 18)
+	_list.add_child(footer)
+	var none_picked: bool = String(profile.data.active_role).is_empty()
+	var none := _button(footer, "Sin rol · elegido" if none_picked else "Sin rol", "choose_role", "")
+	none.custom_minimum_size = Vector2(200, 50)
+	var back := _button(footer, "Volver", "lobby")
+	back.custom_minimum_size = Vector2(200, 50)
+
+
+func _role_card(
+	row: Control, profile: LunarProfile, id: String, index: int, price: int, can_afford: bool
+) -> void:
+	var owned: bool = id in profile.data.roles
+	var picked: bool = id == profile.data.active_role
+	var action := "choose_role" if owned else "buy_role"
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 6)
+	card.pivot_offset = Vector2(120.0, 190.0)
+	row.add_child(card)
+
+	var art := Button.new()
+	art.custom_minimum_size = Vector2(240.0, 340.0)
+	art.focus_mode = Control.FOCUS_ALL
+	art.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for state in ["normal", "pressed", "disabled"]:
+		art.add_theme_stylebox_override(state, _card_frame(picked, false))
+	for state in ["hover", "focus"]:
+		art.add_theme_stylebox_override(state, _card_frame(picked, true))
+	card.add_child(art)
+	var picture := TextureRect.new()
+	picture.texture = ROLE_CARDS[id]
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not owned:
+		picture.modulate = Color(0.5, 0.48, 0.55)
+	art.add_child(picture)
+	picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	picture.offset_left = 4.0
+	picture.offset_top = 4.0
+	picture.offset_right = -4.0
+	picture.offset_bottom = -4.0
+	if not owned:
+		var tag := HBoxContainer.new()
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.alignment = BoxContainer.ALIGNMENT_CENTER
+		tag.add_theme_constant_override("separation", 6)
+		art.add_child(tag)
+		tag.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		tag.offset_left = -70.0
+		tag.offset_right = 70.0
+		tag.offset_top = -26.0
+		tag.offset_bottom = 26.0
+		var coin := TextureRect.new()
+		coin.texture = COIN_ICON
+		coin.custom_minimum_size = Vector2(44.0, 44.0)
+		coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tag.add_child(coin)
+		var cost := _label(tag, str(price), 40, TITLE)
+		_float_text(cost)
+	art.pressed.connect(func() -> void: selected.emit(action, id))
+
+	var perk := _label(card, ROLE_PERKS[id], 17)
+	perk.custom_minimum_size.x = 240.0
+	perk.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	perk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	perk.modulate = SOFT
+	var caption := "Elegido" if picked else ("Elegir" if owned else "Comprar · %d" % price)
+	var button := _button(card, caption, action, id)
+	button.custom_minimum_size = Vector2(240.0, 50.0)
+	button.focus_mode = Control.FOCUS_ALL
+	if picked:
+		_emphasize(button)
+	elif not owned:
+		button.icon = COIN_ICON
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 26)
+		if not can_afford:
+			button.modulate = Color(1.0, 0.78, 0.74)
+
+	art.mouse_entered.connect(func() -> void: _pop(card, Vector2(1.04, 1.04), 0.18))
+	art.mouse_exited.connect(func() -> void: _pop(card, Vector2.ONE, 0.18))
+	card.scale = Vector2(0.6, 0.6)
+	card.modulate.a = 0.0
+	var wait := 0.08 + index * 0.12
+	var intro := card.create_tween().set_parallel(true)
+	intro.tween_property(card, "scale", Vector2.ONE, 0.5).set_delay(wait).set_trans(
+		Tween.TRANS_BACK
+	).set_ease(Tween.EASE_OUT)
+	intro.tween_property(card, "modulate:a", 1.0, 0.3).set_delay(wait)
+	if picked:
+		var glow := art.create_tween().set_loops()
+		glow.tween_property(art, "self_modulate", Color(1.3, 1.2, 0.8), 0.8).set_trans(
+			Tween.TRANS_SINE
+		)
+		glow.tween_property(art, "self_modulate", Color.WHITE, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _card_frame(picked: bool, hover: bool) -> StyleBoxFlat:
+	var frame := StyleBoxFlat.new()
+	frame.bg_color = Color.TRANSPARENT
+	frame.set_corner_radius_all(16)
+	frame.set_border_width_all(6 if picked else (3 if hover else 0))
+	frame.border_color = Color("#ffd05b") if picked else Color("#fff0cf")
+	if picked:
+		frame.shadow_color = Color("#ffd05b99")
+		frame.shadow_size = 14
+	return frame
 
 
 func wait_for_guest(base_name: String, host_address: String, status: String) -> void:
