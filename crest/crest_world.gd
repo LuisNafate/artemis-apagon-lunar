@@ -23,6 +23,7 @@ const MODEL_ROVER_ANTENNA := preload("res://assets/props_luna/estaciones/antena_
 const MODEL_WATER_TANK := preload("res://assets/props_luna/estaciones/tanque_agua.glb")
 const MODEL_TRAINING_TABLE := preload("res://assets/props_luna/estaciones/mesa_azul.glb")
 const MODEL_WOOD_TABLE := preload("res://assets/props_luna/estaciones/mesa_madera.glb")
+const MODEL_FUEL_TANK := preload("res://assets/props_luna/estaciones/deposito_propelente.glb")
 const TRANSPORT_PARK := Vector3(-11.9, 0.04, 7.45)
 const ANTENNA := preload("res://assets/props_luna/kenney/antena.glb")
 const RECEIVER := preload("res://assets/props_luna/kenney/consola.glb")
@@ -648,14 +649,10 @@ func _stations() -> void:
 
 
 func _build_fuel_cabinet(root: Node3D) -> void:
-	var point := Vector3(0, 0.42, -1.42)
-	FieldWorld.box(root, point, Vector3(1.15, 0.84, 0.72), FRAME)
-	FieldWorld.box(root, point + Vector3(0, 0.42, 0), Vector3(1.2, 0.13, 0.76), WHITE)
-	for x in [-0.30, 0.30]:
-		var cell := point + Vector3(x, 0.08, 0.365)
-		FieldWorld.box(root, cell, Vector3(0.39, 0.46, 0.048), AMBER)
-		FieldWorld.box(root, cell + Vector3(0, 0.1, 0.031), Vector3(0.22, 0.055, 0.025), FRAME)
-	_solid(root.position + point, Vector3(1.15, 0.84, 0.72))
+	# El deposito de propelente es un modelo propio (tumbado a lo largo) y sustituye al armario de cubos.
+	var point := Vector3(0, 0.0, -1.42)
+	station_prop(root, MODEL_FUEL_TANK, point, 1.7, 0.364, 90.0)
+	_solid(root.position + point + Vector3(0, 0.62, 0), Vector3(1.7, 1.24, 1.27))
 
 
 func _shelter() -> void:
