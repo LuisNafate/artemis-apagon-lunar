@@ -179,3 +179,7 @@ El preset Android usa ETC2/ASTC, ARM64 y orientación horizontal. El icono compa
 ## Portada cinematográfica · revisión 18
 
 LunarGame aloja LunarOpening sobre la campaña actual. La portada enlaza el viaje de 16 segundos y el bucle lunar de 4 segundos. Su señal de entrada retira la portada y abre el menú con el selector de bases. Los clips y los subtítulos se configuran en state_registry.json.
+
+## Menú de modos · revisión 19
+
+LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al acabar o al pulsar Saltar. LunarInterface presenta los modos sobre el fotograma lunar y puede solicitar que LunarGame reproduzca la intro desde el principio.

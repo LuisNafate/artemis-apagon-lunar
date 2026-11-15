@@ -1,5 +1,5 @@
 {
-  "revision": 18,
+  "revision": 19,
   "progress": "campaign_2026_integration",
   "validation_engine": "Godot 4.7.2",
   "scenario": {
@@ -927,9 +927,9 @@
     "opening": {
       "frames": 480,
       "fps": 24,
-      "loop_starts_at": 16.0,
+      "landing_starts_at": 16.0,
       "flight": "res://assets/cinematica/artemis-viaje.ogv",
-      "loop": "res://assets/cinematica/artemis-luna.ogv",
+      "landing": "res://assets/cinematica/artemis-luna.ogv",
       "poster": "res://assets/cinematica/artemis-luna.png",
       "captions": [
         [
