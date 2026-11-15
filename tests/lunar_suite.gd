@@ -678,7 +678,7 @@ func _item_controls() -> void:
 			game.ui.action_button.disabled and "0:05" in game.ui._zone_detail.text,
 			"timer reads the actual refinery job"
 		)
-		_check(game.world._water_machine_full.visible, "working refinery uses loaded model")
+		_check(game.world._water_machine_empty.visible, "working refinery shows empty model")
 		game.ui.selected.emit("menu", "")
 		for frame in range(5):
 			await get_tree().physics_frame
@@ -694,7 +694,7 @@ func _item_controls() -> void:
 			game.sim.water > before + 0.8 and game.sim.crates.is_empty(),
 			"refined water credited once"
 		)
-		_check(game.world._water_machine_empty.visible, "completed refinery shows empty model")
+		_check(game.world._water_machine_full.visible, "completed refinery shows loaded model")
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame
