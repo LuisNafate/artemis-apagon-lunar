@@ -226,9 +226,15 @@ def textured_toon(name, image, gamma=1.0, tint=(1, 1, 1)):
 
 
 def base_image(mat):
+    """Textura conectada al color base (ignora mapas de normales)."""
     if mat and mat.use_nodes:
         for node in mat.node_tree.nodes:
-            if node.type == "TEX_IMAGE" and node.image:
+            if node.type == "BSDF_PRINCIPLED":
+                link = node.inputs["Base Color"].links
+                if link and link[0].from_node.type == "TEX_IMAGE":
+                    return link[0].from_node.image
+        for node in mat.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and node.image and "norm" not in node.image.name.lower():
                 return node.image
     return None
 
@@ -352,14 +358,6 @@ def lunar_crater(x, y, radius):
     for polygon in obj.data.polygons:
         polygon.material_index = int(polygon.index >= sides)
 
-
-for i in range(52):
-    x, y = moon_x + rng.uniform(-6.6, 6.6), rng.uniform(-4.9, 6.7)
-    if abs(x - 16.75) < .72 and abs(y + 1.1) < .9 or abs(x - 19.4) < .82 and abs(y) < .85:
-        continue
-    size = rng.uniform(.065, .24)
-    rock = ico("Fragmento de regolito", (x, y, surface(x, y) + .02), (size * 1.3, size, size * .53), rng.choice(stone), subdivisions=1)
-    rock.rotation_euler.z = rng.uniform(0, math.tau)
 
 rocket = empty("Rocket_Capsule")
 cone("Casco de cápsula", (0, 0, .99), .61, .47, 1.22, cream, rocket)
