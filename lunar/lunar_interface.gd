@@ -12,7 +12,7 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
-const LOGO := preload("res://assets/ui/logo_artemis.png")
+const LOGO := preload("res://assets/ui/titulo_artemis.png")
 const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
 const ROLE_CARDS := {
@@ -327,7 +327,7 @@ func _build_menu(root: Control) -> void:
 	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_logo.custom_minimum_size = Vector2(396.0, 139.0)
+	_logo.custom_minimum_size = Vector2(500.0, 175.0)
 	var waves := ShaderMaterial.new()
 	waves.shader = LOGO_WAVES
 	_logo.material = waves
@@ -623,7 +623,7 @@ func _start_backdrop() -> void:
 
 
 func _animate_lobby() -> void:
-	_logo.pivot_offset = Vector2(0.0, 70.0)
+	_logo.pivot_offset = Vector2(0.0, 88.0)
 	_logo.scale = Vector2(0.3, 0.3)
 	_logo.rotation = -0.2
 	_logo.modulate.a = 0.0
