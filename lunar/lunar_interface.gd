@@ -13,6 +13,7 @@ const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const CHIP_FILL := Color("#ecd5a8")
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
+const MONTHS := ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 const CHIP_ICONS := [
 	AIR_ICON,
 	AIR_ICON,
@@ -716,12 +717,31 @@ func show_objective(instruction: String, title: String = "", projected := Vector
 	_objective_marker.size = marker_size
 
 
+## "Llamarada X8.2 · 10 sep 2017" a partir de un registro del catálogo DONKI.
+static func flare_label(record: Dictionary) -> String:
+	var date := String(record.begin)
+	var month: String = MONTHS[int(date.substr(5, 2)) - 1]
+	return (
+		"Llamarada %s · %d %s %s" % [record.class_type, int(date.substr(8, 2)), month, date.left(4)]
+	)
+
+
 func _show_alert(mission: LunarMission, safe: bool) -> void:
 	alert.show()
+	var flare := mission.storm_flare()
+	var quiet := mission.flare_notice()
 	if mission.storm_active():
-		alert.text = "⚠ Partículas solares · " + ("A cubierto" if safe else "Ve al refugio")
+		var source := "llamarada %s" % flare.class_type if not flare.is_empty() else "solares"
+		alert.text = "⚠ Partículas %s · %s" % [source, "A cubierto" if safe else "Ve al refugio"]
 	elif mission.storm_warning() > 0:
-		alert.text = "⚠ Al refugio en %d s" % ceili(mission.storm_warning())
+		var seconds := ceili(mission.storm_warning())
+		alert.text = (
+			"⚠ %s · Al refugio en %d s" % [flare_label(flare), seconds]
+			if not flare.is_empty()
+			else "⚠ Al refugio en %d s" % seconds
+		)
+	elif not quiet.is_empty():
+		alert.text = "☀ %s · Sin partículas, sigue trabajando" % flare_label(quiet)
 	elif mission.energy_cut():
 		alert.text = "⚡ Apagón nocturno   ·   Taller y cultivo en pausa"
 	elif mission.outage_warning() > 0:

@@ -29,10 +29,10 @@ function Invoke-GodotCheck {
     if ($engineStatus -ne 0 -or $logContents -match '(?im)^\s*(SCRIPT ERROR|ERROR|WARNING|Parse Error):') {
         throw "$Name falló (salida $engineStatus).`n$logContents"
     }
-    if ($Name -like 'Regresión*' -and $logContents -notmatch '(?m)^(ARTEMIS|OUTPOST|FIELD|CREST|LUNAR|OPEN|MVP) SUITE: \d+ cases, \d+ assertions, 0 failed') {
+    if ($Name -like 'Regresión*' -and $logContents -notmatch '(?m)^(ARTEMIS|OUTPOST|FIELD|CREST|LUNAR|OPEN|MVP|DONKI) SUITE: \d+ cases, \d+ assertions, 0 failed') {
         throw 'La suite se cerró antes de completar los casos.'
     }
-    $logContents -split '\r?\n' | Where-Object { $_ -match '^Godot Engine|^(ARTEMIS|OUTPOST|FIELD|CREST|LUNAR|OPEN|MVP) SUITE' }
+    $logContents -split '\r?\n' | Where-Object { $_ -match '^Godot Engine|^(ARTEMIS|OUTPOST|FIELD|CREST|LUNAR|OPEN|MVP|DONKI) SUITE' }
 }
 
 Push-Location $project
@@ -51,6 +51,7 @@ try {
     Invoke-GodotCheck -Name 'Regresión mundo abierto' -GodotArguments @('--fixed-fps', '60', '--quit-after', '60000', 'res://tests/open_world_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión MVP individual' -GodotArguments @('--fixed-fps', '60', '--quit-after', '200000', 'res://tests/mvp_suite.tscn')
     Invoke-GodotCheck -Name 'Regresión navegación visible' -GodotArguments @('--fixed-fps', '60', '--quit-after', '24000', 'res://tests/mvp_suite.tscn', '--', '--mvp-one', '--mvp-guide')
+    Invoke-GodotCheck -Name 'Regresión tormentas DONKI' -GodotArguments @('--quit-after', '300', 'res://tests/donki_suite.tscn')
 } finally {
     Pop-Location
     Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue

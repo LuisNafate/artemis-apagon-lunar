@@ -74,6 +74,8 @@ func _cycle() -> void:
 				if event[0] == "outage":
 					_check(event[1] >= 420 and event[2] == 60, "night blackout")
 					power += 1
+				elif event[0] == "flare":
+					_check(event[2] == 8, "false alarm notice length")
 				else:
 					_check(event[2] == 45, "solar alert duration")
 					alerts += 1
