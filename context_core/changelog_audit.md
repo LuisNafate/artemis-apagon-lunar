@@ -166,3 +166,9 @@
 - La intro reproduce viaje y alunizaje una vez. Saltar en la esquina superior izquierda y Esc abren el menú de modos. Repetir intro aparece como acción secundaria arriba a la derecha del menú.
 - Menú sobre la escena lunar a pantalla completa, con título crema y botones tipo cartel. Jugar solo, crear o unirse en línea, continuar, roles y archivo conservan sus flujos.
 - Godot 4.7.2 (Windows, Forward+). Capturas a 1280 × 720 y prueba de clic en ambos controles de esquina. Verificados fin natural, repetición, Esc y entrada al selector de bases. Formato, lint, importación, arranque y suites Academia, Puesto y 3D correctos. La prueba de rig Cresta sigue sin compilar y la suite de campaña mantiene los 17 fallos del corte anterior.
+
+## 2026-11-15 - Continuidad de alunizaje y rig de pilotos (revisión 20)
+
+- Blender 5.2.2. El gato queda oculto y a escala cero hasta el fotograma 270 inclusive. Se regeneró el tramo 185–270 y se verificó el descenso antes y después. El archivo Theora conserva sus 384 fotogramas a 24 fps y 1280 × 720.
+- Cresta y campaña vuelven al gato optimizado con 15 huesos, tinte por jugador, marcha articulada, reposo al parar y pose de carga. Se actualizó la prueba de Cresta para usar la posición actual de la mesa de práctica.
+- Godot 4.7.2. Verificadas las poses de ambos gatos y el traspaso en Cresta, con captura en Forward+. Cresta ejecuta 10 casos y mantiene 25 fallos de rutas y objetos del mapa. La campaña sigue reportando 17 fallos de tutorial, lanzamiento y recompensas.

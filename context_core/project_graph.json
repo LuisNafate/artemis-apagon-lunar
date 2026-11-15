@@ -1,5 +1,5 @@
 {
-  "revision": 19,
+  "revision": 20,
   "nodes": [
     {
       "id": "config",
@@ -2649,11 +2649,6 @@
       "lro_miniatura"
     ],
     [
-      "crest_world",
-      "displays",
-      "astrocat_mesh"
-    ],
-    [
       "crest_pilot",
       "extends",
       "field_pilot"
@@ -2670,6 +2665,11 @@
     ],
     [
       "crest_game",
+      "hosts",
+      "crest_pilot"
+    ],
+    [
+      "lunar_game",
       "hosts",
       "crest_pilot"
     ],

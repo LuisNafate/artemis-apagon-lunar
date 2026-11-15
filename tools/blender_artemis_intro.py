@@ -331,7 +331,12 @@ bounds = [cat_mesh.matrix_world @ vertex.co for vertex in cat_mesh.data.vertices
 bottom = min(point.z for point in bounds)
 model_height = max(point.z for point in bounds) - bottom
 size = 1.2 / model_height
-keys(cat_mesh, "hide_render", [(1, True), (270, True), (271, False)])
+# Hide the entire rig before disembarkation even when a background render
+# evaluates object visibility from a later frame.
+DISEMBARK_FRAME = 271
+for obj in cat_nodes:
+    if obj.type == "MESH":
+        keys(obj, "hide_render", [(1, True), (DISEMBARK_FRAME, False)])
 ground_hero = surface(16.75, -1.18)
 hero_base = ground_hero - bottom * size + .006
 keys(hero, "location", [
@@ -342,7 +347,8 @@ keys(hero, "location", [
 ])
 keys(hero, "rotation_euler", [(1, (0, 0, rad(158))), (275, (0, 0, rad(185))), (320, (0, 0, rad(211)))])
 keys(hero, "scale", [
-    (1, (size, size, size)), (271, (size, size, size)),
+    (1, (0, 0, 0)), (DISEMBARK_FRAME - 1, (0, 0, 0)),
+    (DISEMBARK_FRAME, (size, size, size)),
     (301, (size * .96, size * .96, size * 1.06)), (313, (size * 1.07, size * 1.07, size * .85)),
     (322, (size * .99, size * .99, size * 1.05)), (330, (size, size, size)),
     (385, (size, size, size)), (421, (size, size, size * 1.018)), (480, (size, size, size)),
@@ -477,6 +483,10 @@ for block in (*bpy.data.objects, *bpy.data.cameras, *bpy.data.lights, *(m.node_t
 for name, frame in (("Tierra", 1), ("Viaje", 121), ("Alunizaje", 264), ("Despliegue", 311), ("Bucle", 385)):
     scene.timeline_markers.new(name, frame=frame)
 
+for frame in range(1, DISEMBARK_FRAME):
+    scene.frame_set(frame)
+    assert hero.scale.length_squared == 0.0
+
 bpy.ops.file.pack_all()
 scene.frame_set(400)
 evaluated = cat_mesh.evaluated_get(bpy.context.evaluated_depsgraph_get())
@@ -490,5 +500,6 @@ if PREVIEW:
         scene.render.filepath = str(OUTPUT / f"preview-{frame:04d}.png")
         bpy.ops.render.render(write_still=True)
 else:
+    scene.frame_set(1)
     scene.render.filepath = "//fotogramas/artemis-"
     bpy.ops.wm.save_as_mainfile(filepath=str(OUTPUT / "artemis-apertura.blend"))

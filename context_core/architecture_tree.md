@@ -183,3 +183,7 @@ LunarGame aloja LunarOpening sobre la campaña actual. La portada enlaza el viaj
 ## Menú de modos · revisión 19
 
 LunarOpening muestra dos clips consecutivos y devuelve el control a LunarGame al acabar o al pulsar Saltar. LunarInterface presenta los modos sobre el fotograma lunar y puede solicitar que LunarGame reproduzca la intro desde el principio.
+
+## Pilotos y alunizaje · revisión 20
+
+CrestPilot vuelve a usar el gato optimizado articulado, con un Skeleton3D por piloto y poses por velocidad y carga. La cinemática suprime toda la geometría del astronauta durante el descenso y la revela al desembarcar en el fotograma 271.

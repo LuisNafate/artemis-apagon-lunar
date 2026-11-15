@@ -266,14 +266,7 @@ func _input_and_world() -> void:
 		game.world.transport.visible and game.world.transport.position == CrestWorld.TRANSPORT_PARK,
 		"la nave queda estacionada al salir de la introducción"
 	)
-	_check(
-		(
-			game.world.field_models.visible
-			and game.world.guide_animator.has_animation(&"Wave")
-			and game.world.guide_animator.has_animation(&"Idle")
-		),
-		"AstroCat y las maquetas están visibles en el mapa"
-	)
+	_check(game.world.field_models.visible, "las maquetas están visibles en el mapa")
 	var radio: Vector3 = CrestWorld.STATIONS[&"radio"]
 	for part in ["satelliteDish_detailed", "machine_wirelessCable"]:
 		var model := game.world.find_child(part, true, false) as MeshInstance3D
@@ -324,6 +317,7 @@ func _input_and_world() -> void:
 		game.set_physics_process(true)
 		game.camera.transform = original_transform
 		game.camera.size = original_size
+	_place_at_training(game.pilots)
 	_tap(KEY_E)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -398,6 +392,7 @@ func _input_and_world() -> void:
 	solo.intro._process(30.0)
 	await get_tree().physics_frame
 	_check(solo.sim.solo and solo.sim.phase == &"tutorial", "selector individual por teclado")
+	_place_at_training(solo.pilots)
 	_tap(KEY_E)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -413,6 +408,12 @@ func _input_and_world() -> void:
 		"en individual se pasa y entrega alternando"
 	)
 	solo.queue_free()
+
+
+func _place_at_training(pilots: Array[CrestPilot]) -> void:
+	var desk: Vector3 = CrestWorld.STATIONS[&"training"]
+	pilots[0].position = desk + Vector3(-0.58, 0.1, 1.27)
+	pilots[1].position = desk + Vector3(0.58, 0.1, 1.27)
 
 
 func _capture_nobile() -> void:
