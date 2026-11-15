@@ -14,6 +14,7 @@ const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const COIN_ICON := preload("res://assets/ui/hud/moneda.png")
 const LOGO := preload("res://assets/ui/titulo_artemis_gato.png")
+const JUMP_ICON := preload("res://assets/ui/hud/saltar.png")
 const LOGO_WAVES := preload("res://assets/ui/logo_ondas.gdshader")
 const CHIP_FILL := Color("#ecd5a8")
 const ROLE_CARDS := {
@@ -281,8 +282,9 @@ func _build_play(root: Control) -> void:
 	_zone_panel.anchor_right = 1.0
 	_zone_panel.anchor_top = 1.0
 	_zone_panel.anchor_bottom = 1.0
-	_zone_panel.offset_left = -250
-	_zone_panel.offset_right = -16
+	_zone_panel.offset_left = -456
+	_zone_panel.offset_right = -124
+	_zone_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_zone_panel.offset_top = -60
 	_zone_panel.offset_bottom = -16
 	_zone_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -301,16 +303,25 @@ func _build_play(root: Control) -> void:
 	_zone_buttons = buttons
 	zone_box.add_child(buttons)
 	action_button = _button(buttons, "Acción", "action")
-	action_button.custom_minimum_size = Vector2(200, 50)
+	action_button.custom_minimum_size = Vector2(240, 50)
 	release_button = _button(buttons, "Soltar / pasar", "release")
-	release_button.custom_minimum_size = Vector2(200, 50)
-	jump_button = _button(play, "Saltar", "jump")
-	jump_button.custom_minimum_size = Vector2(110, 56)
+	release_button.custom_minimum_size = Vector2(240, 50)
+	for zone_button: Button in [action_button, release_button]:
+		zone_button.add_theme_font_size_override("font_size", 16)
+		zone_button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	jump_button = _button(play, "", "jump")
+	jump_button.custom_minimum_size = Vector2(88, 88)
 	LunarButtonKit.apply(jump_button, &"mejorar")
+	jump_button.icon = JUMP_ICON
+	jump_button.expand_icon = true
+	jump_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	jump_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	jump_button.add_theme_constant_override("icon_max_width", 44)
+	jump_button.tooltip_text = "Saltar"
 	jump_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	jump_button.offset_left = -382
-	jump_button.offset_right = -266
-	jump_button.offset_top = -78
+	jump_button.offset_left = -108
+	jump_button.offset_right = -16
+	jump_button.offset_top = -104
 	jump_button.offset_bottom = -16
 	play.move_child(_objective_marker, -1)
 	play.hide()
