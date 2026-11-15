@@ -13,6 +13,7 @@ const STORM_BEEPS := 5.0
 const SHAKE_SECONDS := 0.6
 const SHAKE_SIZE := 0.22
 const FLARE_SOUND := "res://assets/props_luna/nasa/sol_sonificacion_soho.ogg"
+const SUN_LOOP := "res://assets/props_luna/nasa/sol_sonificacion_soho_bucle.ogg"
 const FOLLOW_FOV := 45.0
 const FOLLOW_HEIGHT := 0.8
 const BASE_HYSTERESIS := 1.0
@@ -81,6 +82,9 @@ var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
 var _beep_audio := AudioStreamPlayer.new()
 var _flare_audio := AudioStreamPlayer.new()
+var _sun_loop := AudioStreamPlayer.new()
+var _sun_fade: Tween
+var _sun_fading := false
 var _solar_key := ""
 var _beep_second := 0
 var _storm_was_active := false
@@ -184,6 +188,7 @@ func _process(delta: float) -> void:
 		if _award_retry <= 0.0:
 			_send_awards()
 	sky.update_sky(delta, not sim.base.is_empty() and sim.radio_cut())
+	_sun_loop_update()
 
 
 func _notification(what: int) -> void:
@@ -1104,7 +1109,7 @@ func _storm_effects(delta: float) -> void:
 	var key := sim.solar_key()
 	if key != _solar_key and not key.is_empty():
 		ui.flash()
-		if _flare_audio.stream != null:
+		if key.begins_with("flare@") and _flare_audio.stream != null:
 			_flare_audio.play()
 	_solar_key = key
 	var left := sim.storm_warning()
@@ -1123,15 +1128,46 @@ func _storm_effects(delta: float) -> void:
 		camera.h_offset = randf_range(-1.0, 1.0) * SHAKE_SIZE * _shake / SHAKE_SECONDS
 
 
+## El sonido del Sol empieza con la llamarada de una tormenta y sigue durante el aviso y
+## la parte roja. Se apaga suave al terminar o al abrir un menú. Las falsas alarmas usan
+## el sonido corto de una sola vez.
+func _sun_loop_update() -> void:
+	if _sun_loop.stream == null or ui == null or ui.play == null:
+		return
+	var storm: bool = ui.play.visible and (sim.storm_warning() > 0.0 or sim.storm_active())
+	if storm and (not _sun_loop.playing or _sun_fading):
+		_fade_sun(0.0, 0.8, false)
+	elif not storm and _sun_loop.playing and not _sun_fading:
+		_fade_sun(-40.0, 1.5, true)
+
+
+func _fade_sun(volume: float, seconds: float, stop_after: bool) -> void:
+	if _sun_fade != null:
+		_sun_fade.kill()
+	if not _sun_loop.playing:
+		_sun_loop.volume_db = -24.0
+		_sun_loop.play()
+	_sun_fading = stop_after
+	_sun_fade = create_tween()
+	_sun_fade.tween_property(_sun_loop, "volume_db", volume, seconds)
+	if stop_after:
+		_sun_fade.tween_callback(_sun_loop.stop)
+		_sun_fade.tween_callback(func() -> void: _sun_fading = false)
+
+
 func _build_alert_audio() -> void:
 	add_child(_alert_audio)
 	add_child(_reward_audio)
 	add_child(_beep_audio)
 	add_child(_flare_audio)
+	add_child(_sun_loop)
 	if DisplayServer.get_name() == "headless":
 		return
 	# Sonificación real del Sol con datos de SOHO; créditos en assets/props_luna/nasa/procedencia.md.
 	_flare_audio.stream = load(FLARE_SOUND)
+	var loop := load(SUN_LOOP) as AudioStreamOggVorbis
+	loop.loop = true
+	_sun_loop.stream = loop
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)
