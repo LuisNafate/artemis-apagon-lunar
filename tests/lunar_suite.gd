@@ -561,9 +561,14 @@ func _solo() -> void:
 	player.sim.launch_fx = 0.01
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	var clean := int(player.sim.rules.radiation.clean_bonus)
 	_check(
-		player.sim.returned and player.profile.data.balance == 175 * LunarProfile.SCALE,
+		player.sim.returned and player.profile.data.balance == (175 + clean) * LunarProfile.SCALE,
 		"solo completes the mission and earns its bonus"
+	)
+	_check(
+		player.profile.data.received.has("lunar/clean/" + base_id),
+		"crew without radiation earns the careful astronaut bonus"
 	)
 
 	elapsed = player.sim.elapsed
@@ -590,7 +595,8 @@ func _solo() -> void:
 		"solo reset only removes the solo slot"
 	)
 	_check(
-		player.profile.data.balance == 175 * LunarProfile.SCALE, "reset preserves the shared wallet"
+		player.profile.data.balance == (175 + clean) * LunarProfile.SCALE,
+		"reset preserves the shared wallet"
 	)
 	DirAccess.remove_absolute(player.profile_path)
 	player.get_parent().queue_free()

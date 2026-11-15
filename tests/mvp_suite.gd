@@ -10,6 +10,8 @@ var _case := ""
 var _checks := 0
 var _failed := 0
 var _cases := 0
+var _target := {}
+var _sheltering := false
 
 
 func _ready() -> void:
@@ -331,6 +333,7 @@ func _station(spot: StringName) -> bool:
 
 
 func _walk(point: Vector3, spot: StringName) -> bool:
+	_target = {"point": point, "spot": spot}
 	if spot == &"training":
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
@@ -381,8 +384,49 @@ func _until(condition: Callable, title: String, frames := STEP_LIMIT) -> bool:
 	for frame in range(frames):
 		if condition.call():
 			return _check(true, title)
+		if _storm_outside() and not await _ride_out_storm():
+			return false
 		await get_tree().physics_frame
 	return _check(condition.call(), title)
+
+
+func _storm_outside() -> bool:
+	var sim := _game.sim
+	return (
+		not _sheltering
+		and sim.phase in [&"active", &"countdown"]
+		and (sim.storm_active() or sim.storm_warning() > 0.0)
+		and not _game.world.sheltered(_game.pilots[0].position)
+	)
+
+
+## Como un astronauta precavido: ante una alerta entra al refugio, espera a que pase y vuelve
+## a lo que hacía. Si estaba minando, retoma la extracción.
+func _ride_out_storm() -> bool:
+	var sim := _game.sim
+	var target := _target.duplicate()
+	var mining: bool = sim.pilots[0].mine != &""
+	_sheltering = true
+	var safe := await _station(&"life")
+	if safe:
+		safe = await _until(
+			func() -> bool: return not sim.storm_active() and sim.storm_warning() <= 0.0,
+			"espera la tormenta en el refugio",
+			5100
+		)
+	_sheltering = false
+	if not safe or target.is_empty() or target.spot == &"life":
+		return safe
+	_target = target
+	_game._set_destination(0, target.point)
+	var spot: StringName = target.spot
+	if not await _until(
+		func() -> bool: return _game._spots[0] == spot, "regresa a %s tras la tormenta" % spot
+	):
+		return false
+	if mining:
+		_game.ui.action_button.pressed.emit()
+	return true
 
 
 func _check(condition: bool, message: String) -> bool:

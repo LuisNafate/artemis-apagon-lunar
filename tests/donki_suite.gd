@@ -10,6 +10,7 @@ var _cases := 0
 func _ready() -> void:
 	_catalog()
 	_cards()
+	_radiation()
 	print("DONKI SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -151,6 +152,68 @@ func _cards() -> void:
 		_check(not text.contains("%"), "card has no empty data slot")
 	var radio := _record(mission, "ntrs_lunar_radio")
 	_check(mission.science_text(radio).contains("384 000 km"), "big numbers are easy to read")
+
+
+func _radiation() -> void:
+	_cases += 1
+	const OUT: Array[bool] = [false, false]
+	const SAFE: Array[bool] = [true, true]
+	const AWAY: Array[StringName] = [&"", &""]
+	var mission := _mission()
+	var rules: Dictionary = mission.rules.radiation
+	var storm := func(m: LunarMission) -> void: m.events = [["sep", m.elapsed - 0.1, 400, 10, ""]]
+	storm.call(mission)
+	_walk(mission, OUT, 4.0)
+	_check(is_equal_approx(mission.dose_level(0), 0.2), "dose rises outside in the red phase")
+	_check(not mission.is_tired(0), "no tiredness below half")
+	_walk(mission, OUT, 6.0)
+	_check(mission.is_tired(0), "half dose makes the astronaut tired")
+	_check(
+		is_equal_approx(mission.speed_factor(0), float(rules.tired_speed)),
+		"a tired astronaut walks slower"
+	)
+	var dose := mission.dose_level(0)
+	_walk(mission, SAFE, 3.0)
+	_check(not mission.is_tired(0), "resting in the shelter removes tiredness")
+	_check(mission.dose_level(0) == dose, "the dose never goes down during the mission")
+	mission.events.clear()
+	_walk(mission, OUT, 5.0)
+	_check(mission.dose_level(0) == dose, "no dose without a storm")
+	storm.call(mission)
+	var evacuated := false
+	for step in range(40):
+		mission.tick(0.5, OUT, AWAY)
+		evacuated = evacuated or mission.evacuated[0]
+	_check(evacuated and mission.dose_level(0) == 1.0, "a full dosimeter sends the crew home")
+	mission.events.clear()
+	mission.pilots[0].checkup = float(rules.checkup_seconds)
+	_check(mission.speed_factor(0) == 0.0, "no walking during the medical check")
+	_check(
+		mission.use_station(0, &"radio").begins_with("Revisión médica"),
+		"no actions during the medical check"
+	)
+	_walk(mission, SAFE, float(rules.checkup_seconds) + 0.5)
+	_check(mission.checkup_left(0) == 0.0, "the medical check ends")
+	_check(mission.crew_dose() == float(rules.limit), "the report reads the crew dose")
+	var easy := _mission("mons_mouton_plateau")
+	storm.call(easy)
+	_walk(easy, OUT, float(easy.rules.events.alert_seconds))
+	_check(easy.dose_level(0) < 1.0, "on easy one storm cannot fill the dosimeter")
+	var old := _mission()
+	old.pilots[0].erase("tired")
+	old.pilots[0].erase("checkup")
+	_check(not old.is_tired(0) and old.checkup_left(0) == 0.0, "old saves start without effects")
+	var profile := LunarProfile.new(mission.rules, "user://donki-%d.dat" % randi())
+	var coins := int(mission.difficulty.coins)
+	_check(profile.pay_clean(mission.base_id, coins), "careful crew earns the bonus once")
+	_check(not profile.pay_clean(mission.base_id, coins), "the bonus cannot be paid twice")
+	_check(not profile.pay_clean(mission.base_id, coins + 1), "the bonus needs the real difficulty")
+
+
+func _walk(mission: LunarMission, sheltered: Array[bool], seconds: float) -> void:
+	var away: Array[StringName] = [&"", &""]
+	for step in range(roundi(seconds / 0.5)):
+		mission.tick(0.5, sheltered, away)
 
 
 func _record(mission: LunarMission, id: String) -> Dictionary:
