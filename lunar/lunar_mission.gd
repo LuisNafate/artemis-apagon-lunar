@@ -188,6 +188,19 @@ func _finish_deposit(player: int, key: StringName) -> StringName:
 	return kind
 
 
+## Id de la caja suelta más cercana a `point` dentro del alcance de las manos (0 si no hay).
+func closest_crate(point: Vector3) -> int:
+	var closest := 1.25
+	var result := 0
+	for id: int in crates:
+		var crate: Dictionary = crates[id]
+		var distance := point.distance_to(crate.point)
+		if crate.owner == -1 and distance < closest:
+			result = id
+			closest = distance
+	return result
+
+
 func shadow_active() -> bool:
 	return elapsed >= float(rules.cycle.day)
 

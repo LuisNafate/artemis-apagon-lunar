@@ -12,6 +12,13 @@ const INK := Color("#30251e")
 const TEAL := Color("#205851")
 const BRICK := Color("#8e3e33")
 const CHIP_FILL := Color("#ecd5a8")
+const CRATE_NAMES := {
+	&"sample": "Caja de muestra",
+	&"ice": "Caja de hielo",
+	&"ore": "Caja de mineral",
+	&"fuel": "Caja de propelente",
+	&"food": "Caja de raciones"
+}
 const AIR_ICON := preload("res://assets/ui/hud/aire.png")
 const CHIP_ICONS := [
 	AIR_ICON,
@@ -542,7 +549,12 @@ func playing() -> void:
 
 
 func sync(
-	mission: LunarMission, player: int, spot: StringName, sheltered: Array[bool], message: String
+	mission: LunarMission,
+	player: int,
+	spot: StringName,
+	sheltered: Array[bool],
+	message: String,
+	point: Vector3
 ) -> void:
 	var night := mission.shadow_active()
 	var cycle := "%s %d" % ["Noche" if night else "Día", mission.days + 1]
@@ -597,13 +609,16 @@ func sync(
 	var seated: bool = mission.pilots[player].seated
 	var spot_name := String(CrestWorld.NAMES.get(named, ""))
 	var tapped := Time.get_ticks_msec() < _tapped_until and not _tapped_name.is_empty()
-	var actionable := not spot_name.is_empty() or carrying or seated
+	var crate: int = 0 if carrying or seated else mission.closest_crate(point)
+	var actionable := not spot_name.is_empty() or carrying or seated or crate != 0
 	_zone_buttons.visible = actionable
 	_zone_panel.visible = actionable or tapped
 	if not spot_name.is_empty():
 		_zone_title.text = spot_name
 	elif carrying or seated:
 		_zone_title.text = "Llevas carga" if carrying else "A bordo"
+	elif crate != 0:
+		_zone_title.text = CRATE_NAMES.get(mission.crates[crate].kind, "Caja")
 	else:
 		_zone_title.text = _tapped_name
 	action_button.text = _action_caption(named)
@@ -618,6 +633,8 @@ func sync(
 			)
 		elif mission.tutorial_step == 2 and player == 1:
 			action_button.text = "Entregar muestra"
+	if crate != 0:
+		action_button.text = "Recoger caja"
 
 
 func _show_alert(mission: LunarMission) -> void:

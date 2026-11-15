@@ -28,6 +28,7 @@ func _run() -> void:
 	await _jump()
 	await _open_routes()
 	await EnclosureCases.new(self).run()
+	await PickupCases.new(self).run()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -436,6 +437,9 @@ func _campaign() -> void:
 	_check(game.sim.cargo_kind(0) == &"ice", "mined starter ice")
 	game._interact(0, true)
 	await _frames(2)
+	_check(game.ui.action_button.text == "Recoger caja", "the dropped ice can be picked up")
+	game._set_positions([ice + Vector3(-0.6, 0.3, 0), Vector3.ZERO])
+	await _frames(10)
 	_check(game.ui.action_button.text == "Depósito vacío", "emptied starter deposit")
 	var crate_id: int = game.sim.crates.keys()[0]
 	var far := Vector3(300, 2, 300)

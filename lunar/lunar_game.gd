@@ -738,7 +738,7 @@ func _interact(player: int, release: bool) -> void:
 	else:
 		if sim.pilots[player].seated:
 			spot = &"pad"
-		var crate := _closest_box(pilot.position) if sim.cargo_kind(player) == &"" else 0
+		var crate := sim.closest_crate(pilot.position) if sim.cargo_kind(player) == &"" else 0
 		if crate != 0 and sim.pickup(player, crate):
 			_notice("Caja recogida")
 			return
@@ -751,18 +751,6 @@ func _interact(player: int, release: bool) -> void:
 	if message.is_empty():
 		message = "Acércate a una estación o a una caja" if not release else "Toma una caja primero"
 	_notice(message)
-
-
-func _closest_box(point: Vector3) -> int:
-	var closest := 1.25
-	var result := 0
-	for id: int in sim.crates:
-		var crate: Dictionary = sim.crates[id]
-		var distance := point.distance_to(crate.point)
-		if crate.owner == -1 and distance < closest:
-			result = id
-			closest = distance
-	return result
 
 
 func _set_destination(player: int, point: Vector3) -> void:
@@ -869,7 +857,8 @@ func _render(delta: float, player: int) -> void:
 	world.present_lander(flight_phase, view.y, sim.returned)
 	flight.present(flight_phase, view.y)
 	_feedback_time = maxf(0.0, _feedback_time - delta)
-	ui.sync(sim, player, _spots[player], _sheltered(), _feedback if _feedback_time > 0.0 else "")
+	var note := _feedback if _feedback_time > 0.0 else ""
+	ui.sync(sim, player, _spots[player], _sheltered(), note, pilots[player].position)
 	ui.flight_status(flight_phase, view.y)
 	_alert_if_changed()
 
