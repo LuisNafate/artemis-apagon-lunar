@@ -7,6 +7,7 @@ const AWAY: Array[StringName] = [&"", &""]
 var _checks := 0
 var _failed := 0
 var _cases := 0
+var _max_step := 0
 
 
 func _ready() -> void:
@@ -19,6 +20,7 @@ func _run() -> void:
 	_ice_and_ids()
 	_base_exits()
 	_deposits()
+	await _streaming()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -295,6 +297,68 @@ func _deposits() -> void:
 	ghost.tick(2.0, SAFE, at_ghost)
 	_check(ghost.cargo_kind(0) == &"" and ghost.world_deltas.is_empty(), "unregistered key safe")
 	_check(ghost.pilots[0].mine == &"", "unregistered mining cancelled")
+
+
+func _streaming() -> void:
+	_cases += 1
+	var sim := LunarMission.new()
+	sim.prepare("mons_mouton_plateau", 41, true)
+	var streamer := ChunkStreamer.new()
+	add_child(streamer)
+	var s: Dictionary = sim.rules.open_world
+	streamer.configure(sim, s, s.regions.mons_mouton_plateau, Color("#6b6678"))
+	var focus: Array[Vector3] = [Vector3(100, 0, 100)]
+	_check(streamer.needed_coords(focus).size() == 49, "7x7 chunks around one pilot")
+	streamer.update(focus)
+	_check(streamer.loaded_coords().size() <= 2, "at most 2 chunks per frame")
+	await _pump(streamer, focus, func() -> bool: return streamer.loaded_coords().size() == 49)
+	_check(
+		streamer.loaded_coords().size() == 49 and streamer.is_ready_at(focus[0]), "window loaded"
+	)
+	_check(_max_step >= 1 and _max_step <= 2, "chunks added per frame stay within the cap")
+	var all_data := true
+	for coord in streamer.needed_coords(focus):
+		all_data = all_data and streamer.data_at(coord) != null
+	_check(all_data, "data_at answers for every loaded chunk")
+	var key := streamer.nearest_deposit(focus[0], 60.0)
+	_check(key != &"" and sim.deposit_left(key) > 0, "deposit registered on load")
+	_check(streamer.nearest_deposit(Vector3(100, 0, 100), 0.0) == &"", "no deposit out of reach")
+	var parts := String(key).split(":")
+	var view: ChunkView = streamer.get_node("Chunk_%d_%d" % [int(parts[1]), int(parts[2])])
+	_check(view.body.collision_layer == 1, "terrain collides on layer 1")
+	var marker: Node3D = view.get_node("Deposito%d" % int(parts[3]))
+	var full_y: float = marker.get_child(0).position.y
+	sim.world_deltas[String(key).trim_prefix("dep:")] = {"left": 0, "emptied_day": 0}
+	sim.deposit_changed.emit(key, 0)
+	_check(marker.get_child(0).position.y < full_y, "empty marker sinks")
+	sim.deposit_changed.emit(key, 2)
+	_check(is_equal_approx(marker.get_child(0).position.y, full_y), "full marker restored")
+	var far: Array[Vector3] = [Vector3(-300, 0, -300)]
+	await _pump(streamer, far, func() -> bool: return not streamer.is_ready_at(focus[0]))
+	_check(not streamer.is_ready_at(focus[0]), "unloaded beyond radius 4")
+	await _pump(streamer, focus, func() -> bool: return streamer.loaded_coords().size() == 49)
+	_check(sim.deposit_left(key) == 0, "reloaded chunk keeps empty deposit")
+	var edge: Array[Vector3] = [Vector3(510, 0, 0)]
+	_check(
+		streamer.needed_coords(edge).all(func(c: Vector2i) -> bool: return c.x < 32),
+		"no chunks past the world edge"
+	)
+	var wall: StaticBody3D = streamer.get_node("ParedDelMundo")
+	_check(wall.collision_layer == 1 and wall.shape_owner_get_shape_count(0) == 1, "edge wall")
+	var elsewhere: Array[Vector3] = [Vector3(300, 0, 300)]
+	streamer.update(elsewhere)
+	streamer.queue_free()
+	await get_tree().process_frame
+
+
+## Llama a `update` cada frame hasta que `done` sea cierto o pasen 20 s de reloj.
+func _pump(streamer: ChunkStreamer, focus: Array[Vector3], done: Callable) -> void:
+	var deadline := Time.get_ticks_msec() + 20000
+	while not done.call() and Time.get_ticks_msec() < deadline:
+		var before := streamer.loaded_coords().size()
+		streamer.update(focus)
+		_max_step = maxi(_max_step, streamer.loaded_coords().size() - before)
+		await get_tree().process_frame
 
 
 func _check(condition: bool, label: String) -> void:

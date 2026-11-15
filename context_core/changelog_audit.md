@@ -171,3 +171,9 @@
 - `crest_suite`: caso de pilotos reescrito para `AnimationPlayer` (modelo y reproductor propios, clips `Idle`/`Walk`/`Run` en bucle, tinte `BLUE`/`AMBER` con `TINT_STRENGTH`, `Walk` al caminar e `Idle` en reposo). Se quitaron las comprobaciones de `guide_animator` y de los modelos Kenney de la radio (ahora antena del rover), los pilotos del tutorial se colocan en el puesto de práctica y las rutas dan rodeos por el nuevo refugio, los bancos y el cohete. El hielo se extrae desde el borde del refugio (`ICE_BAY`) porque fuera de él la exposición de tormenta mata en unos 30 s. La suite necesita más fotogramas (el recorrido hielo-refinado ahora mide más de 20 m): `verify.ps1` usa `--quit-after 60000`.
 - Registro `campaign_2026.open_world`: `base_flat_rect` [-20, -11, 40, 22] y `base_exclusion_rect` [-28, -19, 56, 38]. `open_world_suite` lee la exclusión del registro.
 - Comprobado: `tests/verify.ps1` (resultados en el informe de la tarea).
+
+## Mundo abierto: ChunkStreamer y ChunkView
+
+- Godot 4.7.2. `ChunkStreamer` genera `ChunkData` y la malla en `WorkerThreadPool` y solo toca el árbol en `update()` (máximo `chunks_per_frame` por llamada; histéresis `load_radius`/`unload_radius`; `clear()` y `_exit_tree` esperan las tareas en vuelo). `data_at` responde con cualquier chunk cargado y, para los recién descargados, con una caché LRU de 32. `ChunkView` crea malla facetada, `StaticBody3D` en capa 1 con `HeightMapShape3D`, rocas en `MultiMesh` y marcadores de depósito (`set_deposit` llena/vacío). Pared invisible a 1 m del borde. Aún no está conectado a la escena (Tarea 4).
+- La suite espera la carga con tiempo de reloj (`_pump`, 20 s) porque la generación es asíncrona y los fotogramas headless son muy rápidos.
+- Comprobado: `tests/verify.ps1` en verde. Academia 16 casos y 3890 comprobaciones, Tablero 7 y 75, Apagón lunar 3 y 35, Cresta 10 y 400, Campaña 8 y 419, Mundo abierto 6 casos y 680 comprobaciones, 0 fallos.

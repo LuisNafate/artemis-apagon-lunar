@@ -3,9 +3,11 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://csm11ixmal6bp"
-path="res://.godot/imported/astrocat_guia_Suit_MetallicRoughness.png-1b63c69c1e15cc8f55f8351fd794a141.ctex"
+path.s3tc="res://.godot/imported/astrocat_guia_Suit_MetallicRoughness.png-1b63c69c1e15cc8f55f8351fd794a141.s3tc.ctex"
+path.etc2="res://.godot/imported/astrocat_guia_Suit_MetallicRoughness.png-1b63c69c1e15cc8f55f8351fd794a141.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "981f8d1571ad8d770a70e211af51326e"
@@ -14,11 +16,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/pilotos/astrocat_guia_Suit_MetallicRoughness.png"
-dest_files=["res://.godot/imported/astrocat_guia_Suit_MetallicRoughness.png-1b63c69c1e15cc8f55f8351fd794a141.ctex"]
+dest_files=["res://.godot/imported/astrocat_guia_Suit_MetallicRoughness.png-1b63c69c1e15cc8f55f8351fd794a141.s3tc.ctex", "res://.godot/imported/astrocat_guia_Suit_MetallicRoughness.png-1b63c69c1e15cc8f55f8351fd794a141.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +42,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
