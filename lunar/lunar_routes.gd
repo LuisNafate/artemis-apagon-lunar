@@ -2,7 +2,7 @@ class_name LunarRoutes
 extends RefCounted
 
 const CELL := 0.5
-const LIMITS := Rect2i(-29, -16, 59, 33)
+const LIMITS := Rect2i(-44, -26, 89, 53)
 
 var _grid := AStarGrid2D.new()
 
