@@ -42,10 +42,10 @@ const STATIONS := {
 	&"ice": Vector3(14.75, 0, -2.6),
 	&"ore": Vector3(-10.0, 0, 5.4),
 	&"refinery": Vector3(-6.4, 0, 4.7),
-	&"drill": Vector3(-14.1, 0, 4.4),
+	&"drill": Vector3(-14.1, 0, 5.6),
 	&"battery": Vector3(-3.0, 0, -3.9),
 	&"life": Vector3(15.25, 0, 0.2),
-	&"power": Vector3(-13.2, 0, -4.4),
+	&"power": Vector3(-13.2, 0, -5.3),
 	&"crop": Vector3(-9.4, 0, 0.3),
 	&"fuel": Vector3(-0.8, 0, 0.8),
 	&"radio": Vector3(7.8, 0, -3.5),
@@ -653,23 +653,14 @@ func _solar() -> void:
 
 
 func _greenhouse() -> void:
+	# El invernadero es la estacion de cultivos: cupula grande al oeste, sin macetas sueltas.
 	var origin: Vector3 = STATIONS[&"crop"]
-	var dome := Vector3(-14.3, 0.0, -0.1)
-	_equipment.append(station_prop(self, MODEL_GREENHOUSE, dome, 6.0, 0.34))
-	_solid(dome + Vector3(0.0, 0.8, 0.0), Vector3(5.4, 1.6, 5.0))
+	var dome := Vector3(-14.4, 0.0, -0.2)
+	_equipment.append(station_prop(self, MODEL_GREENHOUSE, dome, 9.0, 0.34))
+	_solid(dome + Vector3(0.0, 0.9, 0.0), Vector3(7.8, 1.8, 7.2))
 	crops = Node3D.new()
-	crops.position = origin + Vector3(0.0, 0.0, 0.42)
+	crops.position = origin
 	add_child(crops)
-	for col in range(3):
-		for row in range(2):
-			var seedling := Vector3(-1.05 + col * 1.05, 0.21, -0.2 + row * 0.4)
-			FieldWorld.ball(crops, seedling, Vector3(0.53, 0.43, 0.33), LIME)
-			FieldWorld.ball(
-				crops,
-				seedling + Vector3(0.11, 0.11, -0.02),
-				Vector3(0.35, 0.24, 0.25),
-				Color("#74a653")
-			)
 
 
 func _quarry(key: StringName, color: Color) -> void:
