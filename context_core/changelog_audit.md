@@ -218,3 +218,8 @@
 
 - Godot 4.7.2 (Windows, headless). `FieldPilot` gana `gravity`, `jump_speed`, `air_acceleration` y `jump_scale` (por defecto 16, 6,4 y 13). La campaña los fija desde `open_world` (3,2, 3,2 y 4,0) y con caja salta al 0,7. Botón "Saltar" y tecla Espacio; el invitado envía el salto con el eje. El ajuste al relieve ocurre solo cuando el chunk del piloto pasa a estar listo. Marcha lunar, pose en el aire, sombra y polvo en `CrestPilot`.
 - `tests/verify.ps1`: formato, lint, importación, arranque y suites en verde. Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 10 / 729, 0 fallos. Captura renderizada del salto pendiente: se prueba a mano.
+
+## 2026-11-15 - Tocar para caminar fuera de la base (mundo abierto, tarea 7)
+
+- Godot 4.7.2 (Windows, headless). `OpenRoutes` (AStarGrid2D de celdas de 0,5 m con offset de media celda sobre los chunks cargados; lo no cargado es sólido) y `RoutePlanner`, que decide la ruta al tocar: dentro del rectángulo plano de la base, `LunarRoutes`; fuera y a ≤ `tap_route_radius`, `OpenRoutes`; base↔exterior, `LunarRoutes` hasta el borde plano y `OpenRoutes` desde él; más lejos, recta de un punto (destino en la base sin ventana cargada conserva `LunarRoutes`). Se reconstruye al cambiar `loaded_coords`, como máximo cada 0,5 s (49 chunks: ~16 ms). `tests/verify.ps1`: `--quit-after` de la suite abierta sube a 12000.
+- `tests/verify.ps1` en verde: Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 11 / 761, 0 fallos.

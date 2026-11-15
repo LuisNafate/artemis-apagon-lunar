@@ -26,6 +26,7 @@ func _run() -> void:
 	await _campaign()
 	await _camera()
 	await _jump()
+	await _open_routes()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -592,6 +593,57 @@ func _jump() -> void:
 		"legacy pilot unchanged"
 	)
 	plain.free()
+	DirAccess.remove_absolute(game.profile_path)
+	game.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## Rutas al tocar: A* sobre chunks cargados fuera de la base, recta si es lejos, mixta en el borde.
+func _open_routes() -> void:
+	_cases += 1
+	var game := await _game_solo("mons_mouton_plateau")
+	game._set_positions([Vector3(80, 1, 60), Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.loaded_coords().size() == 49)
+	await _frames(240)
+	var routes := OpenRoutes.new()
+	var began := Time.get_ticks_usec()
+	routes.rebuild(game.streamer)
+	print("OPEN ROUTES rebuild 49 chunks: %.1f ms" % [(Time.get_ticks_usec() - began) / 1000.0])
+	var start: Vector3 = game.pilots[0].position
+	var path := routes.path(start, start + Vector3(12, 0, 6))
+	_check(path.size() >= 2, "short open route exists")
+	for p in path:
+		var c := ChunkGenerator.coord_of(Vector3(p.x, 0, p.y), 16.0)
+		var data: ChunkData = game.streamer.data_at(c)
+		var cell := Vector2i(((Vector2(p.x, p.y) - Vector2(c) * 16.0) / 0.5).floor())
+		_check(data.walkable[cell.y * 32 + cell.x] == 1, "route only on walkable cells")
+	game._set_destination(0, start + Vector3(12, 0, 6))
+	_check(game._route[0].size() >= 2, "tap within radius follows the open route")
+	game._set_destination(0, start + Vector3(35, 0, 0))
+	_check(game._route[0].size() == 1, "far tap walks straight")
+	# Cruzar el borde plano: un extremo dentro y otro fuera dan una ruta continua.
+	var flat := _rect(game.sim.rules.open_world.base_flat_rect)
+	var inside := Vector3(flat.end.x - 3.0, 0.0, 0.0)
+	var outside := Vector3(flat.end.x + 8.0, 0.0, 0.0)
+	game._set_positions([inside, Vector3.ZERO])
+	await _frames(30)
+	game._planner.open.rebuild(game.streamer)
+	game._set_destination(0, outside)
+	var out_route: PackedVector2Array = game._route[0]
+	_check(out_route.size() >= 2, "base to outside has a route")
+	_check(
+		out_route[out_route.size() - 1].distance_to(Vector2(outside.x, outside.z)) < 1.0,
+		"outbound ends at the tap"
+	)
+	game._set_positions([outside, Vector3.ZERO])
+	await _frames(30)
+	game._set_destination(0, inside)
+	var in_route: PackedVector2Array = game._route[0]
+	_check(in_route.size() >= 2, "outside to base has a route")
+	_check(
+		in_route[in_route.size() - 1].distance_to(Vector2(inside.x, inside.z)) < 1.0,
+		"inbound ends at the tap"
+	)
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame

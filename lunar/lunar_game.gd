@@ -58,6 +58,7 @@ var _chunk_ready: Array[bool] = [false, false]
 var _route: Array[PackedVector2Array] = [[], []]
 var _routes := ROUTES.new()
 var _routes_ready := false
+var _planner := RoutePlanner.new()
 var _spots: Array[StringName] = [&"", &""]
 var _boxes: Dictionary = {}
 var _cargo_templates: Dictionary = {}
@@ -176,6 +177,7 @@ func _physics_process(delta: float) -> void:
 		_routes.build(get_world_3d().direct_space_state)
 		_routes_ready = true
 	streamer.update(_focus_points())
+	_planner.update(streamer, delta)
 	if net == &"host" and play_started:
 		_local_frame(delta)
 	elif net == &"solo" and ui.play.visible:
@@ -765,7 +767,9 @@ func _closest_box(point: Vector3) -> int:
 
 func _set_destination(player: int, point: Vector3) -> void:
 	if point.is_finite():
-		_route[player] = _routes.path(pilots[player].position, point)
+		_route[player] = _planner.plan(
+			_routes, pilots[player].position, point, sim.rules.open_world
+		)
 
 
 func _move_pilot(index: int, delta: float) -> void:
