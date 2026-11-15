@@ -183,8 +183,8 @@ func _build_play(root: Control) -> void:
 	)
 	_wallet_balance = _label(play, "", 20, TITLE)
 	_wallet_balance.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_wallet_balance.offset_left = -330
-	_wallet_balance.offset_right = -150
+	_wallet_balance.offset_left = -310
+	_wallet_balance.offset_right = -128
 	_wallet_balance.offset_top = 26
 	_wallet_balance.offset_bottom = 67
 	_wallet_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
