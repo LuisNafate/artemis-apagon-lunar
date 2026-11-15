@@ -1,4 +1,5 @@
 # gdlint: disable=max-returns,max-public-methods
+class_name LunarGame
 extends Node3D
 
 const PORT := 44260
@@ -6,6 +7,12 @@ const SAMPLE_RATE := 0.10
 const CAMERA_ELEVATION := 34.0
 const SURFACE_SIZE := 27.0
 const PLAY_SIZE := 9.8
+const CAMERA_DISTANCE := 26.0
+const PLAY_V_OFFSET := 2.9
+const FOLLOW_FOV := 45.0
+const FOLLOW_HEIGHT := 0.8
+const BASE_HYSTERESIS := 1.0
+const HORIZON_SPAN := 400.0
 const DEPOSIT_REACH := 1.63
 const LOOKAHEAD_FRAMES := 4.0
 const SINK_TOLERANCE := 0.25
@@ -116,14 +123,18 @@ func _ready() -> void:
 
 func _surface_camera() -> void:
 	var view := Vector2(0.228, 0.974).normalized()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.position = Vector3(
-		view.x * 26.0, 26.0 * tan(deg_to_rad(CAMERA_ELEVATION)), view.y * 26.0
+		view.x * CAMERA_DISTANCE,
+		CAMERA_DISTANCE * tan(deg_to_rad(CAMERA_ELEVATION)),
+		view.y * CAMERA_DISTANCE
 	)
 	camera.look_at(Vector3.ZERO)
 	_camera_home = camera.position
 	camera.size = SURFACE_SIZE
 	camera.h_offset = 0.0
-	camera.v_offset = 2.9
+	camera.v_offset = PLAY_V_OFFSET
+	sky.pan = 0.0
 
 
 func _process(delta: float) -> void:
@@ -158,11 +169,60 @@ func _physics_process(delta: float) -> void:
 
 
 func _follow_camera(delta: float) -> void:
-	# Zoom de juego: camara cercana que sigue a los pilotos sin salir de la plataforma.
-	var focus := (pilots[0].position + pilots[1].position) * 0.5
-	var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -6.0, 6.0))
-	camera.position = camera.position.lerp(_camera_home + shift, minf(1.0, delta * 4.0))
-	camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
+	# Cada dispositivo sigue a su propio piloto; la orientacion nunca cambia.
+	var own := pilots[1 if net == &"guest" else 0].position
+	var outside := _camera_outside(own)
+	if outside != (camera.projection == Camera3D.PROJECTION_PERSPECTIVE):
+		_switch_projection(outside)
+	var blend := minf(1.0, delta * 4.0)
+	if outside:
+		var target := own + Vector3.UP * FOLLOW_HEIGHT + camera.basis.z * _follow_distance()
+		camera.position = camera.position.lerp(target, blend)
+		camera.v_offset = lerpf(camera.v_offset, 0.0, blend)
+	else:
+		# Zoom de juego: camara cercana que sigue a los pilotos conectados sin salir de la
+		# plataforma (en solo, el piloto ausente no cuenta).
+		var points := _focus_points()
+		var focus := Vector3.ZERO
+		for point in points:
+			focus += point
+		focus /= maxf(1.0, float(points.size()))
+		var shift := Vector3(clampf(focus.x, -12.0, 12.0), 0.0, clampf(focus.z, -6.0, 6.0))
+		camera.position = camera.position.lerp(_camera_home + shift, blend)
+		camera.size = lerpf(camera.size, PLAY_SIZE, minf(1.0, delta * 2.5))
+		camera.v_offset = lerpf(camera.v_offset, PLAY_V_OFFSET, blend)
+	sky.pan = camera.position.dot(camera.basis.x) / HORIZON_SPAN
+
+
+## Fuera de la plataforma plana (con histeresis para no alternar en el borde).
+func _camera_outside(point: Vector3) -> bool:
+	var values: Array = sim.rules.open_world.base_flat_rect
+	var flat := Rect2(float(values[0]), float(values[1]), float(values[2]), float(values[3]))
+	var perspective := camera.projection == Camera3D.PROJECTION_PERSPECTIVE
+	var margin := -BASE_HYSTERESIS if perspective else BASE_HYSTERESIS
+	return not flat.grow(margin).has_point(Vector2(point.x, point.z))
+
+
+## Distancia en perspectiva que encuadra lo mismo que la ortografica de juego.
+func _follow_distance() -> float:
+	return PLAY_SIZE / (2.0 * tan(deg_to_rad(FOLLOW_FOV) * 0.5))
+
+
+## Cambia de proyeccion conservando el punto mirado y el encuadre, para que el paso
+## por el borde de la base sea una mezcla y no un salto.
+func _switch_projection(perspective: bool) -> void:
+	var back := camera.basis.z
+	if perspective:
+		var look := camera.position - back * CAMERA_DISTANCE
+		var zoom := camera.size / PLAY_SIZE
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = FOLLOW_FOV
+		camera.position = look + back * _follow_distance() * zoom
+	else:
+		var look := camera.position - back * _follow_distance()
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = PLAY_SIZE
+		camera.position = look + back * CAMERA_DISTANCE
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -433,6 +493,7 @@ func _leave() -> void:
 
 func _close_network() -> void:
 	net = &"lobby"
+	_surface_camera()
 	play_started = false
 	guest_peer = 0
 	guest_id = ""

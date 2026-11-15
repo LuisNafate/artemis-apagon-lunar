@@ -24,6 +24,7 @@ func _run() -> void:
 	await _streaming()
 	await _streaming_limits()
 	await _campaign()
+	await _camera()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -471,6 +472,49 @@ func _campaign() -> void:
 	)
 	DirAccess.remove_absolute(again.profile_path)
 	again.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## Ortográfica de equipo en la base; fuera, perspectiva que sigue al piloto sin girar.
+func _camera() -> void:
+	_cases += 1
+	var game := await _game_solo("mons_mouton_plateau")
+	await _frames(240)
+	_check(game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "orthographic inside base")
+	_check(absf(game.camera.size - LunarGame.PLAY_SIZE) < 0.05, "team follow zoom kept in base")
+	var basis_home: Basis = game.camera.global_basis
+	var far := Vector3(60, 1, 40)
+	game._set_positions([far, Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(far))
+	await _frames(180)
+	_check(game.camera.projection == Camera3D.PROJECTION_PERSPECTIVE, "perspective outside")
+	_check(is_equal_approx(game.camera.fov, 45.0), "45 degree field of view")
+	var screen: Vector2 = (
+		game.camera.unproject_position(game.pilots[0].position) / Vector2(game.get_viewport().size)
+	)
+	_check(screen.distance_to(Vector2(0.5, 0.55)) < 0.2, "pilot near screen centre (%s)" % screen)
+	_check(
+		game.camera.global_basis.z.angle_to(basis_home.z) < deg_to_rad(12), "camera keeps heading"
+	)
+	_check(absf(game.sky.pan) > 0.01, "horizon ridges follow the camera")
+	var home := Vector3(2, 0.1, 2)
+	game._set_positions([home, Vector3.ZERO])
+	await _frames(240)
+	var in_base: Vector2 = (
+		game.camera.unproject_position(game.pilots[0].position) / Vector2(game.get_viewport().size)
+	)
+	_check(absf(in_base.x - 0.5) < 0.1, "solo team camera centres the only pilot (%s)" % in_base)
+	_check(
+		(
+			game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL
+			and absf(game.camera.size - LunarGame.PLAY_SIZE) < 0.05
+		),
+		"back to the team camera in base"
+	)
+	game._leave()
+	_check(game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "lobby uses the base view")
+	DirAccess.remove_absolute(game.profile_path)
+	game.get_parent().queue_free()
 	await get_tree().process_frame
 
 
