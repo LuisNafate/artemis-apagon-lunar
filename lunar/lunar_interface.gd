@@ -96,14 +96,14 @@ func _build_play(root: Control) -> void:
 	header.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var content := VBoxContainer.new()
 	header.add_child(content)
-	location = _label(content, "", 30, TITLE)
+	location = _label(content, "", 23, TITLE)
 	_float_text(location)
 	_resources = GridContainer.new()
 	_resources.columns = 2
 	_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	play.add_child(_resources)
 	_resources.position = Vector2(18, 8)
-	_resources.add_theme_constant_override("h_separation", 14)
+	_resources.add_theme_constant_override("h_separation", 10)
 	_resources.add_theme_constant_override("v_separation", 0)
 	var colors := [Color("#4d7fc4"), Color("#e0883a"), Color("#e0883a"), Color("#3f6fc0"), Color("#d8602f")]
 	for index in range(colors.size()):
@@ -113,26 +113,39 @@ func _build_play(root: Control) -> void:
 		_resources.add_child(chip)
 		var row := HBoxContainer.new()
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 5)
+		row.add_theme_constant_override("separation", 4)
 		chip.add_child(row)
 		var icon := TextureRect.new()
 		icon.texture = CHIP_ICONS[index]
-		icon.custom_minimum_size = Vector2(54, 54)
+		icon.custom_minimum_size = Vector2(38, 38)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(icon)
-		var reading := _label(row, "", 25, TITLE)
+		var reading := _label(row, "", 19, TITLE)
 		reading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_float_text(reading)
 		_readouts.append(reading)
-	details = _label(content, "", 21)
+	details = _label(content, "", 16)
 	_float_text(details)
 	details.hide()
-	next_step = _label(content, "", 22)
+	var notes := VBoxContainer.new()
+	notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play.add_child(notes)
+	notes.anchor_top = 1.0
+	notes.anchor_bottom = 1.0
+	notes.offset_left = 18
+	notes.offset_right = 600
+	notes.offset_top = -170
+	notes.offset_bottom = -140
+	notes.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	next_step = _label(notes, "", 16)
 	next_step.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_float_text(next_step)
-	alert = _label(content, "", 25, TITLE)
+	next_step.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	next_step.custom_minimum_size.x = 580
+	next_step.add_theme_constant_override("outline_size", 6)
+	alert = _label(content, "", 19, TITLE)
 	_float_text(alert)
 	alert.add_theme_color_override("font_color", Color("#ff9a72"))
 	_pause = _button(play, "Menú", "menu")
