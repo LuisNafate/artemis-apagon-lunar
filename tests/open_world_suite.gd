@@ -25,6 +25,7 @@ func _run() -> void:
 	await _streaming_limits()
 	await _campaign()
 	await _camera()
+	await _jump()
 	print("OPEN SUITE: %d cases, %d assertions, %d failed" % [_cases, _checks, _failed])
 	get_tree().quit(int(_failed > 0))
 
@@ -531,6 +532,66 @@ func _camera() -> void:
 	)
 	game._leave()
 	_check(game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "lobby uses the base view")
+	DirAccess.remove_absolute(game.profile_path)
+	game.get_parent().queue_free()
+	await get_tree().process_frame
+
+
+## Salto lunar: gravedad y velocidad del registro, ~2 s en el aire y ~1,6 m de altura.
+func _jump() -> void:
+	_cases += 1
+	var game := await _game_solo("mons_mouton_plateau")
+	var pilot: CrestPilot = game.pilots[0]
+	var s: Dictionary = game.sim.rules.open_world
+	_check(
+		(
+			is_equal_approx(pilot.gravity, float(s.gravity))
+			and is_equal_approx(pilot.jump_speed, float(s.jump_speed))
+			and is_equal_approx(pilot.air_acceleration, float(s.air_control))
+		),
+		"lunar jump from registry"
+	)
+	# Punto abierto y sin techo (el arranque está dentro del refugio).
+	var open_point := Vector3(60, 1, 40)
+	game._set_positions([open_point, Vector3.ZERO])
+	await _until(func() -> bool: return game.streamer.is_ready_at(open_point))
+	await _until(func() -> bool: return pilot.is_on_floor())
+	await _frames(30)
+	var above := PhysicsRayQueryParameters3D.create(
+		pilot.global_position + Vector3.UP, pilot.global_position + Vector3.UP * 5.0
+	)
+	above.collision_mask = 1
+	_check(game.get_world_3d().direct_space_state.intersect_ray(above).is_empty(), "no ceiling")
+	_check(pilot.is_on_floor(), "standing before the jump")
+	var ground := pilot.position.y
+	game._jump[0] = true
+	await _frames(2)
+	var airborne := 2
+	var apex := 0.0
+	while not pilot.is_on_floor() and airborne < 400:
+		airborne += 1
+		apex = maxf(apex, pilot.position.y - ground)
+		await get_tree().physics_frame
+	_check(absf(airborne / 60.0 - 2.0) < 0.15, "about 2 s airborne (%.2f)" % (airborne / 60.0))
+	_check(absf(apex - 1.6) < 0.12, "about 1.6 m apex (%.2f)" % apex)
+	_check(not game._jump[0], "jump press consumed")
+	game.sim._create_cargo(0, &"ice")
+	await _frames(2)
+	_check(is_equal_approx(pilot.jump_scale, float(s.jump_with_box)), "box scales the jump")
+	game.sim.crates.erase(game.sim.pilots[0].cargo)
+	game.sim.pilots[0].cargo = 0
+	# Sin chunk listo no hay salto ni gravedad.
+	var unloaded := Vector3(400, 5, 400)
+	game._set_positions([unloaded, Vector3.ZERO])
+	game._jump[0] = true
+	await _frames(3)
+	_check(pilot.position == unloaded and not game._jump[0], "no jump while the chunk loads")
+	var plain := FieldPilot.new()
+	_check(
+		plain.gravity == 16.0 and plain.jump_speed == FieldPilot.JUMP_SPEED,
+		"legacy pilot unchanged"
+	)
+	plain.free()
 	DirAccess.remove_absolute(game.profile_path)
 	game.get_parent().queue_free()
 	await get_tree().process_frame

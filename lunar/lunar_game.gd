@@ -53,6 +53,8 @@ var _base_mode := "solo"
 var _loading := false
 var _address := ""
 var _vectors := [Vector2.ZERO, Vector2.ZERO]
+var _jump: Array[bool] = [false, false]
+var _chunk_ready: Array[bool] = [false, false]
 var _route: Array[PackedVector2Array] = [[], []]
 var _routes := ROUTES.new()
 var _routes_ready := false
@@ -282,6 +284,8 @@ func _choose(action: String, argument: String) -> void:
 	if profile.error != OK or _loading:
 		return
 	match action:
+		"jump":
+			_jump[0] = ui.play.visible  # el invitado lo envia con el siguiente eje
 		"title_enter":
 			_close_opening()
 			net = &"lobby"
@@ -499,6 +503,7 @@ func _set_positions(points: Array) -> void:
 	for index in range(2):
 		pilots[index].position = points[index]
 		pilots[index].velocity = Vector3.ZERO
+		_chunk_ready[index] = false
 
 
 func _save_base(exact: bool) -> bool:
@@ -684,7 +689,8 @@ func _guest_frame(delta: float) -> void:
 	_send_left -= delta
 	if _send_left <= 0.0:
 		_send_left = 0.06
-		_guest_move.rpc_id(1, ui.joystick.axis)
+		_guest_move.rpc_id(1, ui.joystick.axis, _jump[0])
+		_jump[0] = false
 	if _replica_positions.is_empty():
 		return
 	for index in range(2):
@@ -764,17 +770,23 @@ func _set_destination(player: int, point: Vector3) -> void:
 
 func _move_pilot(index: int, delta: float) -> void:
 	var pilot := pilots[index]
+	var jump := _jump[index]
+	_jump[index] = false
 	if sim.phase == &"flight" or not sim.connected[index] or sim.pilots[index].seated:
 		pilot.velocity = Vector3.ZERO
 		return
 	# Sin colision bajo los pies el piloto espera quieto a que llegue su chunk.
 	if not streamer.is_ready_at(pilot.position):
 		pilot.velocity = Vector3.ZERO
+		_chunk_ready[index] = false
 		return
-	var ground := streamer.height_at(pilot.position)
-	if pilot.position.y < ground - SINK_TOLERANCE:
-		pilot.position.y = ground + 0.1
-		pilot.velocity.y = 0.0
+	# Solo al llegar el chunk: height_at es bilineal y la malla triangulada.
+	if not _chunk_ready[index]:
+		_chunk_ready[index] = true
+		var ground := streamer.height_at(pilot.position)
+		if pilot.position.y < ground - SINK_TOLERANCE:
+			pilot.position.y = ground + 0.1
+			pilot.velocity.y = 0.0
 	var input: Vector2 = _vectors[index]
 	var direction := Vector2.ZERO
 	if input.length_squared() > 0.012:
@@ -790,8 +802,11 @@ func _move_pilot(index: int, delta: float) -> void:
 			direction = Vector2.ZERO
 			pilot.velocity.x = 0.0
 			pilot.velocity.z = 0.0
-	pilot.drive(delta, direction * sim.speed_factor(index), false, false)
-	pilot.animate_gait(delta, sim.pilots[index].cargo != 0, false)
+	var carrying: bool = sim.pilots[index].cargo != 0
+	pilot.jump_scale = float(sim.rules.open_world.jump_with_box) if carrying else 1.0
+	pilot.lunar_gait = _camera_outside(pilot.position)
+	pilot.drive(delta, direction * sim.speed_factor(index), jump, false)
+	pilot.animate_gait(delta, carrying, false)
 
 
 func _follow_path(index: int, point: Vector3) -> Vector2:
@@ -923,9 +938,10 @@ func _snapshot(packet: PackedByteArray) -> void:
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _guest_move(axis: Vector2) -> void:
+func _guest_move(axis: Vector2, jump: bool) -> void:
 	if net == &"host" and multiplayer.get_remote_sender_id() == guest_peer and axis.is_finite():
 		_vectors[1] = axis.limit_length()
+		_jump[1] = _jump[1] or jump
 		_inactivity = 0.0
 
 
@@ -977,21 +993,4 @@ func _show_science(step: int) -> void:
 
 
 func _add_pilot(index: int) -> void:
-	var pilot := CrestPilot.new()
-	pilot.tint = CrestWorld.BLUE if index == 0 else CrestWorld.AMBER
-	pilot.collision_layer = 2
-	pilot.collision_mask = 1
-	pilot.position = CrestWorld.SPAWNS[index]
-	add_child(pilot)
-	pilot.build()
-	var marker := Label3D.new()
-	marker.text = "● J1" if index == 0 else "◆ J2"
-	marker.font = CrestWorld.MONO
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	marker.modulate = pilot.tint
-	marker.position = Vector3.UP * 1.92
-	marker.no_depth_test = true
-	marker.pixel_size = 0.019
-	marker.outline_size = 12
-	pilot.add_child(marker)
-	pilots.append(pilot)
+	pilots.append(LunarPilotFactory.spawn(self, index, sim.rules.open_world))

@@ -34,6 +34,7 @@ var menu: PanelContainer
 var address: LineEdit
 var action_button: Button
 var release_button: Button
+var jump_button: Button
 var details: Label
 var location: Label
 var alert: Label
@@ -236,6 +237,14 @@ func _build_play(root: Control) -> void:
 	_emphasize(action_button)
 	release_button = _button(buttons, "Soltar / pasar", "release")
 	release_button.custom_minimum_size = Vector2(200, 50)
+	jump_button = _button(play, "Saltar", "jump")
+	jump_button.custom_minimum_size = Vector2(110, 56)
+	_emphasize(jump_button)
+	jump_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	jump_button.offset_left = -382
+	jump_button.offset_right = -266
+	jump_button.offset_top = -78
+	jump_button.offset_bottom = -16
 	play.hide()
 
 
@@ -714,6 +723,12 @@ func show_title() -> void:
 	_title_tween.tween_property(location, "modulate:a", 1.0, 0.25)
 	_title_tween.tween_interval(3.5)
 	_title_tween.tween_property(location, "modulate:a", 0.0, 0.8).set_trans(Tween.TRANS_SINE)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if play.visible and key.pressed and not key.echo and key.keycode == KEY_SPACE:
+		selected.emit("jump", "")
 
 
 func _input(event: InputEvent) -> void:

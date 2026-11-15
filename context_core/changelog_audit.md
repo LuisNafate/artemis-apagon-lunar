@@ -213,3 +213,8 @@
 
 - AstroCat recupera las texturas previas, con el tinte original de 32 % aplicado al traje. La marcha, el reposo y la carga se aplican al esqueleto de 20 huesos mediante sus bases de reposo.
 - Godot 4.7.2. Captura de ambos pilotos en Forward+. Pasaron los controles del color, marcha, carga, entrega y retorno a reposo de la suite Cresta. Formato, lint, importación, arranque y suites Academia, Puesto y 3D correctos. Cresta conserva sus 25 fallos de rutas y objetos del mapa.
+
+## 2026-11-15 - Salto con gravedad lunar (mundo abierto, tarea 5)
+
+- Godot 4.7.2 (Windows, headless). `FieldPilot` gana `gravity`, `jump_speed`, `air_acceleration` y `jump_scale` (por defecto 16, 6,4 y 13). La campaña los fija desde `open_world` (3,2, 3,2 y 4,0) y con caja salta al 0,7. Botón "Saltar" y tecla Espacio; el invitado envía el salto con el eje. El ajuste al relieve ocurre solo cuando el chunk del piloto pasa a estar listo. Marcha lunar, pose en el aire, sombra y polvo en `CrestPilot`.
+- `tests/verify.ps1`: formato, lint, importación, arranque y suites en verde. Artemis 16 casos / 3911 comprobaciones, Outpost 7 / 75, Field 3 / 35, Crest 10 / 400, Lunar 8 / 368, Open 10 / 729, 0 fallos. Captura renderizada del salto pendiente: se prueba a mano.
