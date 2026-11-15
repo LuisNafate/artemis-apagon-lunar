@@ -21,6 +21,7 @@ const CARGO_MODELS := {&"ice": [preload("res://assets/props_luna/estaciones/caja
 const ROUTES := preload("res://lunar/lunar_routes.gd")
 const AUDIO := preload("res://lunar/lunar_audio.gd")
 const MUSIC := preload("res://lunar/lunar_music.gd")
+const SOLAR_SOUND := preload("res://assets/sfx/solar/tormenta_psp.wav")
 const MATCOLORS := {
 	&"sample": CrestWorld.BLUE,
 	&"ice": CrestWorld.BLUE,
@@ -77,6 +78,7 @@ var _replica_positions: Array = []
 var _replica_headings: Array = []
 var _alert_kind := ""
 var _alert_audio := AudioStreamPlayer.new()
+var _solar_audio := AudioStreamPlayer.new()
 var _audio := AUDIO.new()
 var _music := MUSIC.new()
 var _reward_audio := AudioStreamPlayer.new()
@@ -1099,20 +1101,27 @@ func _alert_if_changed() -> void:
 	var kind := ""
 	if sim.storm_warning() > 0.0 or sim.storm_active():
 		kind = "solar"
+	elif not sim.flare_notice().is_empty():
+		kind = "flare"
 	elif sim.outage_warning() > 0.0 or sim.energy_cut():
 		kind = "power"
 	elif sim.radio_warning() or sim.radio_cut():
 		kind = "radio"
-	if kind != _alert_kind and not kind.is_empty() and _alert_audio.stream != null:
-		_alert_audio.play()
+	if kind != _alert_kind and not kind.is_empty():
+		if kind in ["solar", "flare"] and _solar_audio.stream != null:
+			_solar_audio.play()
+		elif _alert_audio.stream != null:
+			_alert_audio.play()
 	_alert_kind = kind
 
 
 func _build_alert_audio() -> void:
 	add_child(_alert_audio)
+	add_child(_solar_audio)
 	add_child(_reward_audio)
 	if DisplayServer.get_name() == "headless":
 		return
+	_solar_audio.stream = SOLAR_SOUND
 	var stream := AudioStreamWAV.new()
 	var buffer := PackedByteArray()
 	buffer.resize(4000)
@@ -1131,6 +1140,7 @@ func _apply_sfx_volume(value: float) -> void:
 	var level := clampf(value, 0.0, 1.0)
 	_audio.set_volume(level)
 	_alert_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
+	_solar_audio.volume_db = _audio.BOOST_DB - 5.0 + linear_to_db(level)
 	_reward_audio.volume_db = _audio.BOOST_DB + linear_to_db(level)
 
 

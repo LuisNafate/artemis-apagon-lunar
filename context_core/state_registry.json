@@ -1019,10 +1019,19 @@
         "previous": "dist/Anterior/Artemis-Ultima-Ventana-Individual.exe"
       }
     },
+    "live_validation": {
+      "scope": "Mons Mouton Plateau individual, perfil aislado",
+      "mission_coins": 150.0,
+      "second_day_coins": 27.5,
+      "flare": "2024-09-01T11:45:00-FLR-001 · M5.5",
+      "conditions": "segundo día y reloj adelantados para probar tormenta y amanecer",
+      "pending": "revisión visual en otros dispositivos y más semillas"
+    },
     "audio_effects": {
-      "source": "pasos derivados de una grabación facilitada por el usuario; otros efectos sintetizados",
+      "source": "pasos facilitados por el usuario, alerta solar basada en datos NASA, otros efectos sintetizados",
       "events": ["botón", "pasos", "proximidad a estaciones y depósitos", "extracción", "alerta", "recompensa"],
       "footsteps": "tres fragmentos de dragon-studio-creepy-distant-footsteps-482883.mp3, alternados",
+      "solar_alert": "adaptación del audio Solar CME Growl, datos Parker Solar Probe, Robert Alexander, CC BY 4.0",
       "local_player_only": true,
       "sfx_volume": "preferencia local persistente, 0-100 %, valor inicial 100 %",
       "music": "pistas del usuario para menú, día y noche; fundido cruzado de 2 segundos y reanudación por pista",

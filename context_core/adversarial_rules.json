@@ -483,6 +483,7 @@
   "audio_feedback": {
     "scope": "piloto local de la campaña; no modifica ni transmite el estado de simulación",
     "volume": "control local persistente, silencio al 0 %, efectos, alertas y recompensas ajustados juntos",
+    "solar_alert": "representación sonora de datos magnéticos de una eyección solar; una vez al iniciar aviso de tormenta o llamarada sin partículas",
     "steps": "tres muestras alternadas según distancia recorrida, mínimo 0,35 s entre pasos; se excluyen saltos de posición de un metro o más",
     "proximity": "al cambiar a una estación o depósito cercano, con espera de 1,2 segundos",
     "mining": "golpes cada 0,42 segundos mientras la extracción permanece activa",

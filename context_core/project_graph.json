@@ -988,6 +988,13 @@
       "path": "assets/sfx/pasos/"
     },
     {
+      "id": "solar_audio_psp",
+      "kind": "asset",
+      "path": "assets/sfx/solar/tormenta_psp.wav",
+      "source": "https://doi.org/10.5281/zenodo.20171838",
+      "license": "CC BY 4.0"
+    },
+    {
       "id": "lunar_music",
       "kind": "script",
       "path": "lunar/lunar_music.gd"
@@ -1218,6 +1225,11 @@
       "lunar_audio",
       "uses",
       "lunar_footstep_samples"
+    ],
+    [
+      "lunar_game",
+      "uses",
+      "solar_audio_psp"
     ],
     [
       "lunar_audio",
