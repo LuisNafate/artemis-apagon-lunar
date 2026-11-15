@@ -166,17 +166,12 @@ func _build_footer() -> void:
 	var back := Button.new()
 	back.text = "VOLVER"
 	back.focus_mode = Control.FOCUS_NONE
-	back.add_theme_font_override("font", MONO)
-	back.add_theme_font_size_override("font_size", 22)
-	back.add_theme_color_override("font_color", TEXT)
-	back.add_theme_stylebox_override("normal", _plate(Color("#3a2c26"), Color("#8f6f58")))
-	back.add_theme_stylebox_override("hover", _plate(Color("#4d3a31"), RIM))
-	back.add_theme_stylebox_override("pressed", _plate(Color("#2c211c"), RIM))
+	LunarButtonKit.apply(back, &"soltar", 24)
 	add_child(back)
 	back.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	back.offset_left = 30
 	back.offset_right = 196
-	back.offset_top = -74
+	back.offset_top = -80
 	back.offset_bottom = -26
 	back.pressed.connect(func() -> void: picked.emit("lobby", ""))
 	var purse := _coin(30.0)
@@ -245,7 +240,7 @@ func show_bases(
 	_notice_left = 4.0
 	_entries = base_entries
 	_mode.text = heading
-	_coins.text = "%s monedas" % balance
+	_coins.text = LunarLanguage.t("%s monedas") % balance
 	for card: Button in _cards.values():
 		card.queue_free()
 	_cards.clear()
@@ -319,17 +314,11 @@ func _add_actions(card: Button, entry: Dictionary) -> void:
 	card.add_child(row)
 	row.custom_minimum_size.x = card.size.x
 	row.size.x = card.size.x
-	var go := _small(String(entry.resume).to_upper(), SAVED_INK)
+	var go := _small(String(entry.resume).to_upper(), &"mejorar")
 	go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	go.add_theme_stylebox_override("normal", _plate(SAVED, Color("#f6d98a")))
-	go.add_theme_stylebox_override("hover", _plate(Color("#f6cd62"), Color("#fff0c4")))
-	go.add_theme_stylebox_override("pressed", _plate(Color("#cfa033"), Color("#f6d98a")))
 	go.pressed.connect(func() -> void: picked.emit(entry.action, entry.id))
 	row.add_child(go)
-	var redo := _small("REINICIAR", DIM)
-	redo.add_theme_stylebox_override("normal", _plate(CARD, MUTED))
-	redo.add_theme_stylebox_override("hover", _plate(Color("#1f1f26"), COIN))
-	redo.add_theme_stylebox_override("pressed", _plate(Color("#0c0c10"), COIN))
+	var redo := _small("REINICIAR", &"cancelar")
 	redo.pressed.connect(func() -> void: picked.emit("reset_confirm", entry.id))
 	row.add_child(redo)
 	var tall := row.get_combined_minimum_size().y
@@ -338,16 +327,16 @@ func _add_actions(card: Button, entry: Dictionary) -> void:
 	card.size.y += tall + 5.0
 
 
-func _small(words: String, tone: Color) -> Button:
+func _small(words: String, kind: StringName) -> Button:
 	var button := Button.new()
 	button.text = words
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_override("font", MONO)
-	button.add_theme_font_size_override("font_size", 14)
-	button.add_theme_color_override("font_color", tone)
-	button.add_theme_color_override("font_hover_color", tone)
+	LunarButtonKit.apply(button, kind, 16)
 	button.custom_minimum_size = Vector2(
-		MONO.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14).x + 22.0, 27.0
+		LunarButtonKit.FONT.get_string_size(
+			TranslationServer.translate(words), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16
+		).x + 56.0,
+		44.0
 	)
 	return button
 

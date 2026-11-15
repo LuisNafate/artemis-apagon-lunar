@@ -579,7 +579,7 @@ func lobby(profile: LunarProfile, status: String) -> void:
 	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	coin.pivot_offset = Vector2(19.0, 19.0)
 	wallet.add_child(coin)
-	var balance := _label(wallet, "%s monedas" % profile.balance_text(), 22, TITLE)
+	var balance := _label(wallet, LunarLanguage.t("%s monedas") % profile.balance_text(), 22, TITLE)
 	_float_text(balance)
 	balance.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var spin := coin.create_tween().set_loops()
@@ -714,7 +714,7 @@ func _animate_lobby() -> void:
 func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 	var single_player := mode == "solo"
 	var title := "JUGAR SOLO" if single_player else "CREAR PARTIDA EN LÍNEA"
-	_prepare_menu(title, "%s monedas · Elige una base lunar." % profile.balance_text())
+	_prepare_menu(title, LunarLanguage.t("%s monedas · Elige una base lunar.") % profile.balance_text())
 	var spots: Array[Dictionary] = []
 	var focus := String(profile.data.recent)
 	if focus.is_empty() or not profile.open_base(focus):
@@ -728,7 +728,7 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 	for id: String in profile.rules.bases:
 		order += 1
 		var entry: Dictionary = profile.rules.bases[id]
-		var difficulty: String = profile.rules.difficulties[entry.difficulty].label
+		var difficulty: String = LunarLanguage.t(profile.rules.difficulties[entry.difficulty].label)
 		_label(_list, entry.terrain, 20).modulate = SOFT
 		var owned := profile.open_base(id)
 		var has_save := profile.saved_bases(single_player).has(id)
@@ -739,16 +739,16 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 		_button(_list, caption, mode if owned else "buy_base", id)
 		if has_save:
 			_button(_list, LunarLanguage.t("Reiniciar %s…") % entry.name, "reset_confirm", id)
-		var note := "%s · misión nueva" % difficulty
+		var note := LunarLanguage.t("%s · misión nueva") % difficulty
 		var resume := ""
 		if id == focus and owned and not has_save:
-			note = "%s · empieza aquí" % difficulty
+			note = LunarLanguage.t("%s · empieza aquí") % difficulty
 		if not owned:
 			note = "%s - %d" % [difficulty, entry.cost]
 		elif has_save:
 			var slot: Dictionary = profile.saved_bases(single_player)[id]
 			var day := int(slot.get("active", {}).get("days", 0)) + 1
-			note = "%s · guardada" % difficulty
+			note = LunarLanguage.t("%s · guardada") % difficulty
 			resume = LunarLanguage.t("Continuar día %d") % day
 		spots.append(
 			{
@@ -771,7 +771,7 @@ func bases(profile: LunarProfile, mode: String, notice: String = "") -> void:
 
 func roles(profile: LunarProfile) -> void:
 	_prepare_menu(
-		"ROLES", "%s monedas · Un rol por partida. Elige antes de entrar." % profile.balance_text()
+		"ROLES", LunarLanguage.t("%s monedas · Un rol por partida. Elige antes de entrar.") % profile.balance_text()
 	)
 	menu.offset_left = -435.0
 	menu.offset_right = 435.0
@@ -937,7 +937,7 @@ func show_science(record_title: String, description: String, index: int, count: 
 func confirm_reset(base_name: String, id: String) -> void:
 	_prepare_menu(
 		"¿Reiniciar esta base?",
-		"%s perderá sus días y mejoras. Tus monedas globales se conservan." % base_name
+		LunarLanguage.t("%s perderá sus días y mejoras. Tus monedas globales se conservan.") % base_name
 	)
 	_button(_list, "Cancelar", "bases")
 	_button(_list, "Reiniciar base", "reset", id)

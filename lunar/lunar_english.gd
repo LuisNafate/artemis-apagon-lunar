@@ -220,5 +220,14 @@ const TEXT := {
 	"Meseta abierta · rutas cortas": "Open plateau · short routes",
 	"Pico y cuenca frío": "Peak and cold basin",
 	"Pico y cuenca fría": "Peak and cold basin",
-	"Terrazas y pendientes": "Terraces and slopes"
+	"Terrazas y pendientes": "Terraces and slopes",
+	"VOLVER": "BACK",
+	"REINICIAR": "RESTART",
+	"%s · misión nueva": "%s · new mission",
+	"%s · empieza aquí": "%s · start here",
+	"%s · guardada": "%s · saved",
+	"%s monedas": "%s coins",
+	"%s monedas · Elige una base lunar.": "%s coins · Choose a lunar base.",
+	"%s monedas · Un rol por partida. Elige antes de entrar.": "%s coins · One role per game. Choose before you enter.",
+	"%s perderá sus días y mejoras. Tus monedas globales se conservan.": "%s will lose its days and upgrades. Your global coins are kept.",
 }
