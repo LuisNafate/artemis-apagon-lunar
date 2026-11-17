@@ -220,3 +220,7 @@ LunarObjective elige el texto y la clave del paso activo. LunarGame resuelve la 
 Godot importa los modelos GLB y las imágenes antes de ejecutar: se conservan sus archivos `.import`, UID y texturas extraídas. En un clon nuevo se debe abrir el proyecto en el editor o ejecutar la importación headless antes del primer arranque.
 
 La interfaz de campaña usa el título con gato, botones de píxel, fuente Silkscreen y objetivos desplegables de main; conserva el acceso al control de SFX. Los nuevos recursos mantienen sus importaciones de Godot.
+
+## Distribución pública
+
+La portada del repositorio y la galería inglesa se documentan en `README.md` y `docs/screenshots/`. `export_presets.cfg` reúne los perfiles de exportación. El perfil **Android** distribuye la campaña individual en ARM64 y conserva localmente datos científicos, progreso y cinemáticas. La firma se configura fuera del repositorio. [Avisos y créditos](../THIRD_PARTY_NOTICES.md) · [Verificación del APK](../docs/release-verification.md).

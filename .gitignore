@@ -3,4 +3,19 @@ __pycache__/
 *.tmp
 *.log
 *.swf
+
 /dist/
+/output/
+/Artemis - Capturas para el reporte/
+/Artemis - English report screenshots/
+*.apk
+*.aab
+
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pfx
+export_credentials.cfg

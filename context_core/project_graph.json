@@ -1,6 +1,31 @@
 {
-  "revision": 29,
+  "revision": 30,
   "nodes": [
+    {
+      "id": "public_readme",
+      "kind": "doc",
+      "path": "README.md"
+    },
+    {
+      "id": "screenshots_en",
+      "kind": "doc",
+      "path": "docs/screenshots/README.md"
+    },
+    {
+      "id": "android_export",
+      "kind": "config",
+      "path": "export_presets.cfg"
+    },
+    {
+      "id": "release_checks",
+      "kind": "doc",
+      "path": "docs/release-verification.md"
+    },
+    {
+      "id": "third_party_notices",
+      "kind": "doc",
+      "path": "THIRD_PARTY_NOTICES.md"
+    },
     {
       "id": "config",
       "kind": "data",
@@ -1228,6 +1253,36 @@
     }
   ],
   "edges": [
+    [
+      "public_readme",
+      "documents",
+      "lunar_scene"
+    ],
+    [
+      "public_readme",
+      "links",
+      "screenshots_en"
+    ],
+    [
+      "public_readme",
+      "links",
+      "third_party_notices"
+    ],
+    [
+      "android_export",
+      "packages",
+      "lunar_scene"
+    ],
+    [
+      "release_checks",
+      "verifies",
+      "android_export"
+    ],
+    [
+      "release_checks",
+      "references",
+      "verify"
+    ],
     [
       "lunar_game",
       "uses",

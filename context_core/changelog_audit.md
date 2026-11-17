@@ -357,3 +357,9 @@
 - Integrado `origin/main` hasta `e365481`, con dosímetro, consecuencias y reporte final, y sonido SOHO continuo durante la tormenta. Se conservan música, efectos y alerta inicial Parker; el fundido SOHO respeta el control SFX, incluido el silencio.
 - Godot 4.7.2 Linux: `tests/verify.ps1` pasó formato, lint, importación, arranque, Academia 16/3962, Puesto 7/75 y 3D 3/35; se detuvo en Cresta con los 22 fallos de ruta previamente documentados. Prueba gráfica específica verificó inicio, fundido, volumen al 50 %, silencio y apagado del sonido continuo. El primer arnés temporal se cerró con un fallo por acceder a un objeto después de liberarlo; se corrigió el arnés y la repetición terminó sin errores.
 - Las regresiones restantes pasaron por separado: Campaña 12/544, Mundo abierto 12/878, MVP 9/530, navegación 1/15 y DONKI 3/749.
+
+## 2026-11-17 · Primera release pública de Android
+
+- README de la campaña individual y galería de 13 capturas en inglés, publicadas como WebP. Avisos de Godot, fuentes y créditos de audio y modelos reunidos para la distribución. El equipo confirmó el permiso de redistribución de su música y de los modelos de Tripo.
+- Exportación Android de Godot 4.7.2, versión 1.0.0 y ARM64. APK de 96,4 MB firmado con la clave del proyecto. Se excluyeron los archivos de autoría, las pruebas y la galería del paquete. Importación de 48 texturas de estaciones y refinado con límite de 1024 px, conservando los originales.
+- Pasaron firma, manifiesto sin internet, integridad ZIP, arranque de recursos extraídos del APK y suites de campaña lunar (544 comprobaciones), mundo abierto (878) y navegación visible hasta el regreso a Tierra (15). El verificador general se detuvo con 22 fallos conocidos de la demo histórica Estación Cresta. Pendiente instalar y jugar en Android físico. [Verificación de la release](../docs/release-verification.md).
